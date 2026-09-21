@@ -1,0 +1,151 @@
+study:
+  name: safe-fusion-full-rebuild
+  seed: 1729
+  results_root: artifacts/runs
+  bootstrap_replicates: 2000
+  primary_endpoint: log1p_mae
+  minimum_relative_improvement: 0.05
+  fill_budgets: [0.02, 0.05, 0.081, 0.10]
+
+# The checked-in target is deliberately small and fully executable. Production
+# datasets are locked below and become runnable only after their source paths
+# and expected SHA-256 values are supplied in a site-specific config overlay.
+# External Perturb-seq and trajectory reviewer analyses use specialized,
+# split-first preparation scripts rather than these legacy generic stubs. Their
+# completed local sources and artifact roots are recorded alongside the stubs
+# so `enabled: false` is not mistaken for missing data or unfinished analysis.
+datasets:
+  synthetic_smoke:
+    enabled: true
+    accession: synthetic
+    role: development
+    kind: sergio_like
+    biological_unit: donor
+    source: synthetic
+    expected_sha256: generated
+    n_cells: 96
+    n_genes: 32
+    n_units: 6
+  cbmc:
+    enabled: false
+    accession: GSE100866
+    role: core_citeseq
+    biological_unit: donor
+    source: ep_dataset/GSE100866/GSE100866_CBMC_8K_13AB_10X-RNA_umi.h5ad
+    expected_sha256: REQUIRED
+  pbmc:
+    enabled: false
+    accession: GSE100501
+    role: core_citeseq_quarantined_until_rerun
+    biological_unit: donor
+    source: ep_dataset/GSE100501/GSE100501_PBMC_RNA_umi.h5ad
+    expected_sha256: REQUIRED
+  mnc:
+    enabled: false
+    accession: GSE128639
+    role: core_citeseq
+    biological_unit: donor
+    source: ep_dataset/GSE128639/GSE128639_MNC_RNA_umi.h5ad
+    expected_sha256: REQUIRED
+  crohn:
+    enabled: false
+    accession: GSE134809
+    role: nonimmune_downstream
+    biological_unit: donor
+    source: data/GSE134809/raw.h5ad
+    expected_sha256: REQUIRED
+  zebrafish:
+    enabled: false
+    accession: GSE112294
+    role: trajectory_stage_only
+    biological_unit: embryo
+    source: data/GSE112294/raw.h5ad
+    expected_sha256: REQUIRED
+    specialized_status: completed
+    specialized_source: external_data/trajectory/zebrafish_embryogenesis_axial_mesoderm.h5ad
+    specialized_sha256: 991b1f060f7f413c95b36f8e9309a43c370b9aa121d5dc6bf6b21e91a6c6342c
+    specialized_artifacts: artifacts/external_trajectory/zebrafish
+  eccite_ko:
+    enabled: false
+    accession: GSE153056
+    role: perturbation_ko_quarantined_until_rerun
+    biological_unit: replicate
+    source: data/GSE153056/raw.h5ad
+    expected_sha256: REQUIRED
+    expected_guides: 111
+    expected_targets: 26
+    expected_nt_guides: 10
+    specialized_status: completed
+    specialized_dataset: papalexi_eccite
+    specialized_source: external_data/scperturb/PapalexiSatija2021_eccite_RNA.h5ad
+    specialized_sha256: 03e9602d124c261281936717d5795445805e6e704a52b0310bcde94225aa0929
+    specialized_artifacts: artifacts/external_perturbseq/papalexi_eccite
+  norman_crispra:
+    enabled: false
+    accession: GSE133344
+    role: perturbation_crispra
+    biological_unit: perturbation
+    source: data/GSE133344/raw.h5ad
+    expected_sha256: REQUIRED
+  adamson_crispri:
+    enabled: false
+    accession: GSE90546
+    role: perturbation_crispri
+    biological_unit: perturbation
+    source: data/GSE90546/raw.h5ad
+    expected_sha256: REQUIRED
+    specialized_status: completed
+    specialized_source: external_data/scperturb/AdamsonWeissman2016_GSM2406681_10X010.h5ad
+    specialized_sha256: e70fcd49808cab8d724de8d5a332940911206e1c8ef44cc7b568d048ed795c85
+    specialized_artifacts: artifacts/external_perturbseq/adamson_crispri
+  dixit_ko:
+    enabled: false
+    accession: GSE90063
+    role: perturbation_ko_quarantined_until_rerun
+    biological_unit: perturbation
+    source: data/GSE90063/raw.h5ad
+    expected_sha256: REQUIRED
+    specialized_status: completed
+    specialized_source: external_data/scperturb/DixitRegev2016.h5ad
+    specialized_sha256: a448af6aa250a6cdca472d26bcba5aec857381d8aeb03024b9358aebc2d6d23e
+    specialized_artifacts: artifacts/external_perturbseq/dixit_ko
+
+split:
+  development_fraction: 0.50
+  validation_fraction: 0.25
+  test_fraction: 0.25
+  lock_test: true
+
+corruptions:
+  thinning_025: {kind: binomial_thinning, retained_fraction: 0.25}
+  thinning_050: {kind: binomial_thinning, retained_fraction: 0.50}
+  mask_010: {kind: stratified_nonzero_mask, fraction: 0.10, gene_bins: 4, library_bins: 4}
+
+methods:
+  raw: {enabled: true, family: no_imputation, runner: builtin}
+  gene_mean: {enabled: true, family: simple, runner: builtin}
+  gene_median: {enabled: true, family: simple, runner: builtin}
+  random_fill: {enabled: true, family: negative_control, runner: builtin}
+  safe_fusion: {enabled: true, family: fusion, runner: builtin, smoke_only: true}
+  alra: {enabled: false, family: zero_preserving, runner: external, version: REQUIRED_IMMUTABLE_COMMIT, env: workflow/envs/alra.yaml}
+  scgcl: {enabled: false, family: gnn, runner: external, version: REQUIRED_IMMUTABLE_COMMIT, env: workflow/envs/scgcl.yaml}
+  saver: {enabled: false, family: uncertainty_aware, runner: external, version: 1.1.3, env: workflow/envs/saver.yaml}
+  scgpt: {enabled: false, family: foundation_embedding_only, runner: external, version: 0.2.4, env: workflow/envs/scgpt.yaml}
+  scvi: {enabled: false, family: generative, runner: external, version: 1.2.2.post2, env: workflow/envs/scvi.yaml}
+  magic: {enabled: false, family: diffusion, runner: external, version: 3.0.0, env: workflow/envs/magic.yaml}
+  dca: {enabled: false, family: autoencoder, runner: external, version: 0.3.2, env: workflow/envs/dca.yaml}
+  safe_fusion_no_gate: {enabled: false, family: ablation, runner: builtin}
+  safe_fusion_gate_no_fallback: {enabled: false, family: ablation, runner: builtin}
+  safe_fusion_random_gate: {enabled: false, family: ablation, runner: builtin}
+  safe_fusion_variance_shuffled: {enabled: false, family: ablation, runner: builtin}
+  safe_fusion_no_scvi: {enabled: false, family: ablation, runner: builtin}
+  scvi_fallback_only: {enabled: false, family: ablation, runner: builtin}
+
+perturbation:
+  effective_classes: [KO]
+  forbidden_effective_classes: [NP, NT]
+  protein_readouts:
+    PD-L1: CD274
+    PD-L2: PDCD1LG2
+    CD86: CD86
+  exclude_same_gene_perturbations: true

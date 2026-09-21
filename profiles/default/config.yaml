@@ -1,0 +1,7 @@
+cores: 1
+# The local profile uses `uv sync --extra workflow --extra paper`.
+# Per-method Conda isolation is enabled by the Slurm profile.
+rerun-incomplete: true
+printshellcmds: true
+show-failed-logs: true
+latency-wait: 30

@@ -1,0 +1,13 @@
+name: safefusion-scgcl
+channels: [pytorch, nvidia, conda-forge, bioconda]
+dependencies:
+  - python=3.10.16
+  - pytorch=2.5.1
+  - pytorch-cuda=12.4
+  - scanpy=1.10.4
+  - pip=25.0
+  - pip:
+      - faiss-cpu==1.9.0.post1
+      - torch-geometric==2.6.1
+      - tensorboardX==2.6.2.2
+# The official scGCL checkout is pinned in the adapter metadata.

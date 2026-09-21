@@ -1,0 +1,75 @@
+_config_path: configs/pbmc_pilot.yaml
+
+study:
+  name: safe-fusion-pbmc-citeseq-locked-donor-benchmark
+  seed: 1729
+  results_root: artifacts/pbmc_runs
+  bootstrap_replicates: 2000
+  primary_endpoint: log1p_mae
+  minimum_relative_improvement: 0.05
+  fill_budgets: [0.02, 0.05, 0.081, 0.10]
+
+datasets:
+  synthetic_smoke: {enabled: false}
+  cbmc: {enabled: false}
+  pbmc:
+    enabled: true
+    accession: GSE100501
+    role: core_citeseq_rerun_with_protein_proxy
+    biological_unit: donor
+    source: external_data/prepared/pbmc_citeseq.h5ad
+    expected_sha256: f8672f72bc8fce7ea932d01e3032e2d90b0f54aacf6da19acd182667b8c7a105
+  mnc: {enabled: false}
+  crohn: {enabled: false}
+  zebrafish: {enabled: false}
+  eccite_ko: {enabled: false}
+  norman_crispra: {enabled: false}
+  adamson_crispri: {enabled: false}
+
+split:
+  development_fraction: 0.3333333333
+  validation_fraction: 0.3333333333
+  test_fraction: 0.3333333334
+  lock_test: true
+
+corruptions:
+  thinning_025: {enabled: false, kind: binomial_thinning, retained_fraction: 0.25}
+  thinning_050: {enabled: false, kind: binomial_thinning, retained_fraction: 0.50}
+  mask_010: {enabled: true, kind: stratified_nonzero_mask, fraction: 0.10, gene_bins: 4, library_bins: 4}
+
+methods:
+  raw: {enabled: true, family: no_imputation, runner: builtin}
+  gene_mean: {enabled: true, family: simple, runner: builtin}
+  gene_median: {enabled: true, family: simple, runner: builtin}
+  random_fill: {enabled: true, family: negative_control, runner: builtin}
+  svd_impute:
+    enabled: true
+    family: low_rank
+    runner: external
+    version: parent-repository-frozen
+    command: [python, scripts/run_leakage_safe_method.py, --method, svd_impute, --input, "{input}", --coordinates, "{coordinates}", --splits, "{splits}", --output, "{output}", --seed, "{seed}"]
+  graph_smooth:
+    enabled: true
+    family: knn_smoothing
+    runner: external
+    version: parent-repository-frozen
+    command: [python, scripts/run_leakage_safe_method.py, --method, graph_smooth, --input, "{input}", --coordinates, "{coordinates}", --splits, "{splits}", --output, "{output}", --seed, "{seed}"]
+  safe_fusion:
+    enabled: true
+    family: fusion
+    runner: external
+    version: parent-repository-frozen
+    command: [python, scripts/run_leakage_safe_method.py, --method, safe_fusion, --input, "{input}", --coordinates, "{coordinates}", --splits, "{splits}", --output, "{output}", --seed, "{seed}", --epochs, "12", --batch-size, "64"]
+  alra: {enabled: false}
+  scgcl: {enabled: false}
+  saver: {enabled: false}
+  scgpt: {enabled: false}
+  scvi: {enabled: false}
+  magic: {enabled: false}
+  dca: {enabled: false}
+  safe_fusion_no_gate: {enabled: false}
+  safe_fusion_gate_no_fallback: {enabled: false}
+  safe_fusion_random_gate: {enabled: false}
+  safe_fusion_variance_shuffled: {enabled: false}
+  safe_fusion_no_scvi: {enabled: false}
+  scvi_fallback_only: {enabled: false}

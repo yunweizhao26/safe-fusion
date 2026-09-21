@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "safefusion-benchmark"
+version = "0.1.0"
+description = "Leakage-resistant, provenance-tracked Safe Fusion benchmark"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "anndata==0.11.4",
+  "h5py==3.12.1",
+  "numpy==1.26.4",
+  "pandas==2.2.3",
+  "pyarrow==19.0.1",
+  "pyyaml==6.0.2",
+  "scikit-learn==1.7.2",
+  "scipy==1.15.2",
+]
+
+[project.optional-dependencies]
+workflow = ["snakemake==8.30.0", "snakemake-executor-plugin-slurm==0.13.0"]
+paper = ["torch==2.5.1", "matplotlib==3.10.9", "seaborn==0.13.2"]
+
+[project.scripts]
+safefusion-benchmark = "safefusion_benchmark.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/safefusion_benchmark"]

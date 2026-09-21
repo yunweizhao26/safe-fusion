@@ -1,0 +1,77 @@
+_config_path: configs/pancreas_pilot.yaml
+
+study:
+  name: safe-fusion-pancreas-islet-donor-benchmark
+  seed: 1729
+  results_root: artifacts/pancreas_runs
+  bootstrap_replicates: 2000
+  primary_endpoint: log1p_mae
+  minimum_relative_improvement: 0.05
+  fill_budgets: [0.02, 0.05, 0.081, 0.10]
+
+datasets:
+  synthetic_smoke: {enabled: false}
+  cbmc: {enabled: false}
+  pbmc: {enabled: false}
+  mnc: {enabled: false}
+  crohn: {enabled: false}
+  zebrafish: {enabled: false}
+  eccite_ko: {enabled: false}
+  norman_crispra: {enabled: false}
+  adamson_crispri: {enabled: false}
+  pancreas_islets:
+    enabled: true
+    accession: CELLxGENE-f89a618b-fe4b-404e-bd39-7c574529b1f5
+    publication_doi: 10.1038/s42255-022-00531-x
+    role: nonimmune_downstream_replication
+    biological_unit: donor
+    source: external_data/prepared/pancreas_islets.h5ad
+    expected_sha256: 02e68751d0add44ba6e6e0f694d14fbaa4413ba6ce2d5614f414474b9ff58ede
+
+split:
+  development_fraction: 0.50
+  validation_fraction: 0.25
+  test_fraction: 0.25
+  lock_test: true
+
+corruptions:
+  thinning_025: {enabled: false, kind: binomial_thinning, retained_fraction: 0.25}
+  thinning_050: {enabled: false, kind: binomial_thinning, retained_fraction: 0.50}
+  mask_010: {enabled: true, kind: stratified_nonzero_mask, fraction: 0.10, gene_bins: 4, library_bins: 4}
+
+methods:
+  raw: {enabled: true, family: no_imputation, runner: builtin}
+  gene_mean: {enabled: true, family: simple, runner: builtin}
+  gene_median: {enabled: true, family: simple, runner: builtin}
+  random_fill: {enabled: true, family: negative_control, runner: builtin}
+  svd_impute:
+    enabled: true
+    family: low_rank
+    runner: external
+    version: parent-repository-frozen
+    command: [python, scripts/run_leakage_safe_method.py, --method, svd_impute, --input, "{input}", --coordinates, "{coordinates}", --splits, "{splits}", --output, "{output}", --seed, "{seed}"]
+  graph_smooth:
+    enabled: true
+    family: knn_smoothing
+    runner: external
+    version: parent-repository-frozen
+    command: [python, scripts/run_leakage_safe_method.py, --method, graph_smooth, --input, "{input}", --coordinates, "{coordinates}", --splits, "{splits}", --output, "{output}", --seed, "{seed}"]
+  safe_fusion:
+    enabled: true
+    family: fusion
+    runner: external
+    version: parent-repository-frozen
+    command: [python, scripts/run_leakage_safe_method.py, --method, safe_fusion, --input, "{input}", --coordinates, "{coordinates}", --splits, "{splits}", --output, "{output}", --seed, "{seed}", --epochs, "12", --batch-size, "64"]
+  alra: {enabled: false}
+  scgcl: {enabled: false}
+  saver: {enabled: false}
+  scgpt: {enabled: false}
+  scvi: {enabled: false}
+  magic: {enabled: false}
+  dca: {enabled: false}
+  safe_fusion_no_gate: {enabled: false}
+  safe_fusion_gate_no_fallback: {enabled: false}
+  safe_fusion_random_gate: {enabled: false}
+  safe_fusion_variance_shuffled: {enabled: false}
+  safe_fusion_no_scvi: {enabled: false}
+  scvi_fallback_only: {enabled: false}

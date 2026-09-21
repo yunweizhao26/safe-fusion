@@ -1,140 +1,193 @@
 # Safe Fusion / Signal-to-Noise
 
-Key functions:
-- Reproduce the **main table** at fill rate `0.081`.
-- Reproduce **F1 vs fill-rate curves** for CBMC/PBMC/MNC.
-- Reproduce the **MNC q-sweep** summary.
+Safe Fusion combines estimates from several imputation methods, scores the
+zero entries, and fills a chosen fraction with the fused estimates. Measured
+nonzero entries are preserved. The paper uses an MLP to select entries to fill.
 
-Large datasets, full imputed matrices, local job logs, and paper drafts are
-**not** included. See [docs/data_manifest.md](docs/data_manifest.md) for data
-source links and expected local paths.
+This repository contains code to reproduce:
+
+- Masked-count recovery and F1 versus fill-rate curves.
+- Marker recovery, clustering, and differential-expression analyses.
+- Perturbation, trajectory, gene-regulatory-network, and RNA–protein analyses.
+- Baseline comparisons and selector ablations.
+
+Large datasets, full imputed matrices, job logs, and paper drafts are not
+included. Data sources and expected paths are in [docs/DATA.md](docs/DATA.md).
 
 ## Environment
 
-- Python 3.10
-- Create conda env
+Use Python 3.11 or 3.12 and run commands from the repository root.
+With `uv` installed:
 
-Install minimal deps:
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/yunweizhao26/safe-fusion.git
+cd safe-fusion
+uv sync --python 3.11 --extra workflow --extra paper
+source .venv/bin/activate
 ```
+
+The workflow expects the environment at `.venv/`. PyTorch is needed for fusion
+training; Matplotlib and Seaborn are needed for figures. External baselines
+have separate requirements; see [workflow/envs/](workflow/envs/).
+
+Check the installation:
+
+```bash
+snakemake --snakefile workflow/Snakefile --profile profiles/default
+```
+
+This check uses synthetic data. Paper experiments require the datasets below.
 
 ## Data setup
 
-Download and place these h5ad files under `ep_dataset/`:
+Download the source data listed in [docs/DATA.md](docs/DATA.md), then prepare
+the inputs with the corresponding scripts:
 
-- CBMC: `ep_dataset/GSE100866/GSE100866_CBMC_8K_13AB_10X-RNA_umi.h5ad`
-  - GEO: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE100866
-- PBMC: `ep_dataset/GSE100501/GSE100501_PBMC_RNA_umi.h5ad`
-  - GEO: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE100501
-- MNC: `ep_dataset/GSE128639/GSE128639_MNC_RNA_umi.h5ad`
-  - GEO: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE128639
+| Dataset | Preparation script |
+|---|---|
+| Colon epithelium | [prepare_colon_atlas.py](scripts/prepare_colon_atlas.py) |
+| Pancreatic islets | [prepare_pancreas_atlas.py](scripts/prepare_pancreas_atlas.py) |
+| PBMC CITE-seq | [prepare_pbmc_citeseq.py](scripts/prepare_pbmc_citeseq.py) |
+| Norman CRISPRa | [prepare_norman_crispra.py](scripts/prepare_norman_crispra.py) |
+| Adamson CRISPRi, Dixit KO, Papalexi ECCITE-seq | [prepare_external_perturbseq.py](scripts/prepare_external_perturbseq.py) |
+| Zebrafish trajectory | [prepare_zebrafish_trajectory.py](scripts/prepare_zebrafish_trajectory.py) |
 
-Marker files expected by the commands:
-- `output/cbmc_cluster_markers.json`
-- `output/markers/pbmc_curated_markers.json`
-- `output/markers/mnc_curated_markers.json`
+For example, after downloading the colon source H5AD:
 
-These marker files are small derived inputs. If they are not present after
-cloning, copy them from the released artifact bundle or regenerate them from the
-curated marker lists used in the paper.
+```bash
+python scripts/prepare_colon_atlas.py \
+  --input /path/to/downloaded_colon.h5ad \
+  --output external_data/prepared/colon_epithelial.h5ad \
+  --report external_data/prepared/colon_epithelial_preparation.json \
+  --seed 1729
+```
+
+Replace `/path/to/downloaded_colon.h5ad` with your downloaded file. Each script
+supports `--help`. The dataset configurations check input hashes; use the
+source files and preparation settings specified in the data guide.
 
 ## Methods
 
-**Training / inference (fusion)**
-- `scripts/run_fusion_methods.py`
+- Training and inference: [run_leakage_safe_method.py](scripts/run_leakage_safe_method.py).
+- MLP selection and fill-rate evaluation: [calibrated_selective_fill.py](scripts/calibrated_selective_fill.py).
+- Baselines: SVD, weighted kNN, ALRA, SAVER, MAGIC, scVI, scGCL, and scGPT.
+  Their entry points are listed in [docs/PAPER_EXPERIMENTS.md](docs/PAPER_EXPERIMENTS.md).
 
-**Evaluation + safe-fusion**
-- `precision_validation_experiments.py`
+A fill rate of `0.02` means selecting 2% of candidate zero entries. The
+benchmark hides 10% of measured positive counts before fitting. The selector
+is fitted on development or validation cells and evaluated on held-out cells.
 
-**Baselines**
-- `run_simple_imputers.py` (gene_median, svd_impute, graph_smooth)
-- `run_magic.py`
-- `run_scvi.py`
+## Main table and masked recovery
 
-## the main table
+### 1. Train the methods and evaluate reconstruction
 
-Precomputed CSVs are in `results/main_tables/`.
-These are the exact rows used in the paper table.
+For colon:
 
-To regenerate from scratch:
-
-1) Baselines (example: CBMC)
 ```bash
-python run_simple_imputers.py \
-  --input_file ep_dataset/GSE100866/GSE100866_CBMC_8K_13AB_10X-RNA_umi.h5ad \
-  --disease CBMC --tissue CBMC \
-  --methods gene_median,svd_impute,graph_smooth \
-  --output_root output
+snakemake --snakefile workflow/Snakefile --profile profiles/default \
+  --configfile configs/colon_pilot.yaml --cores 4
 ```
 
-2) Fusion (selection-only scVI)
+Use `configs/pancreas_pilot.yaml` or `configs/pbmc_pilot.yaml` for pancreatic
+islets or PBMC. The workflow saves matrices, splits, metrics, and provenance
+under `artifacts/<dataset>_runs/<run-id>/`. The run ID includes the Git commit
+and configuration hash.
+
+### 2. Select entries with Safe Fusion
+
+Set `RUN` to the colon output directory printed by the workflow. Replace
+`REPLACE_WITH_RUN_ID` below with that directory's run ID.
+
 ```bash
-python scripts/run_fusion_methods.py \
-  --input_file ep_dataset/GSE100866/GSE100866_CBMC_8K_13AB_10X-RNA_umi.h5ad \
-  --disease CBMC --tissue CBMC \
-  --teacher_methods gene_median,svd_impute,graph_smooth,MAGIC,scVI \
-  --teacher_likelihood_exclude scVI \
-  --best_teacher_weight 0.8 \
-  --teacher_dropout 0.4 \
-  --best_teacher_temp 0.5 \
-  --best_teacher_min_log 1.0 \
-  --best_teacher_exclude gene_median \
-  --methods latent_truth \
-  --output_root output/latent_truth_scvi_select
+RUN=artifacts/colon_runs/REPLACE_WITH_RUN_ID
+DATA="$RUN/data/colon_epithelial"
+METHODS="$RUN/methods/standardized/colon_epithelial/mask_010"
+SELECTOR=artifacts/paper_evidence/selector_mlp_range/colon
+
+python scripts/calibrated_selective_fill.py \
+  --truth "$DATA/preprocessed.h5ad" \
+  --corrupted "$DATA/corrupted/mask_010.h5ad" \
+  --coordinates "$DATA/coordinates/mask_010.parquet" \
+  --splits "$DATA/splits.parquet" \
+  --fusion-contract "$METHODS/safe_fusion" \
+  --teacher-contract "$METHODS/graph_smooth" \
+  --teacher-contract "$METHODS/svd_impute" \
+  --teacher-contract "$METHODS/gene_median" \
+  --output-dir "$SELECTOR" \
+  --architecture mlp --budget-mode apply_topk \
+  --fit-split validation --fit-cells 3852 \
+  --budgets 0.02 0.05 0.081 0.10 \
+  --curve-min-budget 0.001 --curve-max-budget 1.0 --curve-points 1000 \
+  --seed 1729
 ```
 
-3) Evaluation + safe-fusion (q=0.90)
+Here, a *contract* is a directory containing a method's predicted counts and
+metadata. The command saves selected matrices for each requested fill rate
+and `calibration_report.json` with masked recovery and F1 curves. For example,
+the 2% matrix is under `safe_fusion_calibrated_mlp_topk_0p02/`.
+
+Reconstruction metrics are in `$RUN/tables/consolidated_metrics.parquet`.
+For paired comparisons and uncertainty estimates, follow
+[the locked-test analysis](docs/REPRODUCTION.md#1-primary-locked-runs-colon-pancreatic-islets-pbmc).
+Pancreas uses three donor folds, and Norman uses a perturbation split; follow
+their preparation and fitting steps in [docs/REPRODUCTION.md](docs/REPRODUCTION.md).
+
+## F1 versus fill-rate curves
+
+The paper compares pancreatic islets, colon, and Norman CRISPRa across
+1,000 fill rates from 0.1% to 100%. Prepare the three datasets, train every
+baseline, and run MLP selection for each pancreas fold, colon, and Norman.
+The dataset settings are in [slurm_selector_mlp_range.sh](scripts/slurm_selector_mlp_range.sh).
+
+The curve scripts expect the artifact layout recorded in
+[docs/REPRODUCTION.md](docs/REPRODUCTION.md). Set `PANCREAS` and `COLON` in
+[compute_matched_baseline_f1_curves.py](scripts/compute_matched_baseline_f1_curves.py)
+to your workflow run directories before running these commands. All baseline
+matrices and selector reports must be present.
+
 ```bash
-python precision_validation_experiments.py \
-  --input_file ep_dataset/GSE100866/GSE100866_CBMC_8K_13AB_10X-RNA_umi.h5ad \
-  --disease CBMC --tissue CBMC \
-  --methods raw,gene_median,svd_impute,graph_smooth,MAGIC,scVI,latent_truth_scvi_select \
-  --markers_file output/cbmc_cluster_markers.json \
-  --validation_panels ep_dataset/GSE100866/cbmc_cite_panel.csv \
-  --latent_prob_eps 1.0 --latent_score_mode z \
-  --output_dir results/main_tables/cbmc \
-  --safe_fusion_method latent_truth_scvi_select \
-  --safe_fusion_teachers scVI,MAGIC,graph_smooth,svd_impute \
-  --safe_fusion_conf_quantile 0.90 \
-  --safe_fusion_name safe_latent_truth_scvi_select
+python scripts/compute_matched_baseline_f1_curves.py
+python scripts/combine_mlp_baseline_curves.py
+python scripts/plot_selector_f1_fillrate.py \
+  --input artifacts/paper_evidence/selector_f1_fillrate_mlp_baselines_1000_points.csv \
+  --output artifacts/paper_evidence/f1_fillrate.png
 ```
 
-Repeat for PBMC/MNC (MNC uses `--max_cells 40000`).
+The combined CSV contains the per-method curves. The companion
+`selector_f1_fillrate_mlp_baselines_summary.json` contains range summaries.
 
-## MNC q-sweep
+## Biological experiments and ablations
 
-Summary CSV (fixed grid) is at:
-- `results/q_sweep/mnc_safe_fusion_q_sweep.csv`
+Run each experiment after preparing its data and generating the method
+matrices. The linked instructions give the required inputs and evaluation
+commands; the [experiment map](docs/PAPER_EXPERIMENTS.md) lists the scripts.
 
-To regenerate:
-```bash
-for q in 0.70 0.75 0.80 0.85 0.90 0.95; do
-  qtag=${q/./p}
-  python precision_validation_experiments.py \
-    --input_file ep_dataset/GSE128639/GSE128639_MNC_RNA_umi.h5ad \
-    --disease MNC --tissue MNC \
-    --methods raw,gene_median,svd_impute,graph_smooth,MAGIC,scVI,latent_truth_scvi_select \
-    --markers_file output/markers/mnc_curated_markers.json \
-    --validation_panels ep_dataset/GSE128639/mnc_cite_panel.csv \
-    --latent_prob_eps 1.0 --latent_score_mode z \
-    --max_cells 40000 \
-    --output_dir results/q_sweep/mnc_q${qtag} \
-    --safe_fusion_method latent_truth_scvi_select \
-    --safe_fusion_teachers scVI,MAGIC,graph_smooth,svd_impute \
-    --safe_fusion_conf_quantile $q \
-    --safe_fusion_name safe_latent_truth_scvi_select
-done
-```
+| Experiment | Instructions |
+|---|---|
+| Colon markers and donor-level biology | [Colon evaluation](docs/REPRODUCTION.md#2-colon-donor-level-biology-uses-existing-contracts-no-refit) |
+| Pancreas markers and donor cross-validation | [Pancreas folds](docs/REPRODUCTION.md#3-pancreatic-islet-donor-cross-fit-dense--selective) |
+| Marker recovery, clustering, and differential expression across fill rates | [Downstream benchmark](docs/REPRODUCTION.md#complete-five-task-real-data-downstream-benchmark) |
+| Norman target-expression recovery | [CRISPRa benchmark](docs/REPRODUCTION.md#4-norman-crispra-perturbation-benchmark) |
+| Adamson, Dixit, and Papalexi perturbation responses | [External screens](docs/REPRODUCTION.md#external-crispri-ko-and-eccite-seq-screens) |
+| Zebrafish trajectory preservation | [Trajectory benchmark](docs/REPRODUCTION.md#zebrafish-trajectory) |
+| Simulated and perturbation-based gene-regulatory-network analysis | [GRN entry points](docs/PAPER_EXPERIMENTS.md) |
+| PBMC RNA–protein agreement | [Protein evaluation](docs/REPRODUCTION.md#post-facto-markers-and-pbmc-protein) |
+| Papalexi RNA–protein agreement | [Cross-modal evaluation](docs/REPRODUCTION.md#external-crispri-ko-and-eccite-seq-screens) |
+| Selector architecture and component ablations | [Matched-budget attribution](docs/REPRODUCTION.md#matched-budget-selectorvalue-attribution) |
 
-## Seed sweep
-
-Summary CSV:
-- `results/seed_sweep/seed_summary.csv`
-
-This file reports mean +- std and worst-case over 5 training seeds.
+Use `--architecture mlp --budget-mode apply_topk` for the paper's selector.
+Use the other architectures only for the corresponding ablations. The Slurm
+launchers contain resource requests and fixed artifact paths; adapt these to
+your environment. Submit from the repository root and supply your cluster's
+account and partition with `sbatch --account=YOUR_ACCOUNT --partition=YOUR_PARTITION`.
+Their Python commands can also be run directly from the repository root.
 
 ## Results
 
-Small CSV artifacts are stored under `results/` and are safe to commit.
-Large data (h5ad) and full imputed matrices are **not** included.
+Workflow outputs are saved under `artifacts/<dataset>_runs/<run-id>/`.
+Paper summaries and figures are saved under `artifacts/paper_evidence/`.
+Keep the configuration, seed, run manifest, and `provenance/` files with each
+result so that its inputs and commands can be traced.
+
+Generated data and results are Git-ignored. Local material outside the paper
+is kept in `archive/`, which is also Git-ignored.

@@ -1,0 +1,3 @@
+name: safefusion-grn
+channels: [conda-forge, bioconda]
+dependencies: [python=3.11.11, arboreto=0.1.6, r-base=4.4.2, r-minet=3.64.0]
