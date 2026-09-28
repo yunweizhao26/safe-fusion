@@ -190,7 +190,7 @@ def plot_pdl1_ranges(crossmodal_root: Path, output_dir: Path, paper_dir: Path | 
         "fused_component": FUSED,
         "library_size": LIBRARY,
     }
-    fig, axes = plt.subplots(1, 2, figsize=(8.0, 3.2))
+    fig, axes = plt.subplots(1, 2, figsize=(8.0, 2.4))
     for method in method_order:
         current = thresholds.loc[thresholds["method"] == method].sort_values("protein_threshold_quantile")
         axes[0].plot(
@@ -211,20 +211,18 @@ def plot_pdl1_ranges(crossmodal_root: Path, output_dir: Path, paper_dir: Path | 
     axes[0].axhline(50, color="#A8ADB4", linewidth=0.9, zorder=0)
     axes[0].set_xlabel("PD-L1 threshold percentile")
     axes[0].set_ylabel("AUROC (%)  ↑")
-    axes[0].set_title("PD-L1 threshold")
     axes[0].set_xlim(30, 70)
     axes[0].set_ylim(48, 81)
     axes[1].axhline(0, color="#A8ADB4", linewidth=0.9, zorder=0)
     axes[1].set_xlabel("CD274 RNA zeros filled (%)")
     axes[1].set_ylabel("Mean PD-L1 enrichment  ↑")
-    axes[1].set_title("Fill fraction")
     axes[1].set_xlim(1, 20)
     axes[1].set_xticks([1, 5, 10, 15, 20])
     for ax in axes:
         polish(ax)
     handles, legend_labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, legend_labels, loc="lower center", ncol=6, frameon=False, bbox_to_anchor=(0.5, -0.01))
-    fig.tight_layout(rect=(0.0, 0.13, 1.0, 1.0))
+    fig.tight_layout(rect=(0.0, 0.08, 1.0, 1.0))
     save_figure(fig, "pdl1_range_validation", output_dir, paper_dir)
     plt.close(fig)
 

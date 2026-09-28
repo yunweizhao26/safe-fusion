@@ -63,7 +63,7 @@ def main() -> None:
         "scGPT",
         "Weighted kNN",
     )
-    fig, axes = plt.subplots(1, 3, figsize=(12, 4), sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(12, 3.3), sharey=True)
 
     for axis, dataset in zip(axes, datasets):
         subset = table.loc[table["dataset"] == dataset]
@@ -95,10 +95,10 @@ def main() -> None:
         frameon=False,
         fontsize=8,
         loc="lower center",
-        ncol=4,
+        ncol=len(methods),
         bbox_to_anchor=(0.5, -0.01),
     )
-    fig.tight_layout(rect=(0.0, 0.10, 1.0, 1.0))
+    fig.tight_layout(rect=(0.0, 0.07, 1.0, 1.0))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(args.output, dpi=240, bbox_inches="tight")
 
