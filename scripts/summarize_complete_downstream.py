@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 from pathlib import Path
@@ -55,7 +56,7 @@ TASK_METRICS = {
         "edge_pr_auc_q05": 1,
         "edge_pr_auc_q10": 1,
         "edge_roc_auc_q10": 1,
-        "effect_spearman_development": 1,
+        "effect_spearman_reference": 1,
         "effect_spearman_test_truth": 1,
         "effect_rmse_test_truth": -1,
         "direction_accuracy_q10": 1,
@@ -209,6 +210,7 @@ def write_markdown(conclusions: pd.DataFrame, reports: list[dict]) -> None:
 
 
 def main() -> None:
+    argparse.ArgumentParser(description=__doc__).parse_args()
     OUTPUT.mkdir(parents=True, exist_ok=True)
     summary, comparisons, reports = load_all()
     conclusions = build_range_conclusions(summary, comparisons)

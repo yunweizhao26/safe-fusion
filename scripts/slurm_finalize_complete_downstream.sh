@@ -17,5 +17,5 @@ export MPLBACKEND=Agg
 export MPLCONFIGDIR="/tmp/safefusion-downstream-${SLURM_JOB_ID}"
 
 .venv/bin/python scripts/summarize_complete_downstream.py
-uv run python scripts/plot_complete_downstream.py
+.venv/bin/python scripts/plot_complete_downstream.py
 .venv/bin/python scripts/verify_complete_downstream.py

@@ -14,13 +14,15 @@ export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export OPENBLAS_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export MKL_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 ROOT=artifacts/paper_evidence/papalexi_crossmodal/benchmark
+source scripts/unit_paths.sh
+mapfile -t teacher_args < <(teacher_contract_args "${ROOT}")
 .venv/bin/python scripts/calibrated_selective_fill.py \
   --corrupted "${ROOT}/corrupted.h5ad" \
   --truth external_data/prepared/papalexi_eccite_crossmodal.h5ad \
   --coordinates "${ROOT}/coordinates.parquet" \
   --splits "${ROOT}/splits.parquet" \
   --fusion-contract "${ROOT}/safe_fusion" \
-  --teacher-contract "${ROOT}/graph_smooth" \
+  "${teacher_args[@]}" \
   --output-dir "${ROOT}/mlp_selector" \
   --fit-split development \
   --architecture mlp \

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=sf-down-eval
-#SBATCH --time=02:00:00
+#SBATCH --account=torch_pr_634_general
+#SBATCH --time=06:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=24G
 #SBATCH --array=0-8%3
@@ -21,10 +22,12 @@ CF=artifacts/paper_evidence/pancreas_crossfit
 COL=artifacts/colon_runs/0b2469810675-c0db6f963e94
 COL_METHODS="${COL}/methods/standardized/colon_epithelial/mask_010"
 COL_SELECTOR=artifacts/paper_evidence/selector_mlp_biology_range/colon
-COL_GENE_MEDIAN=artifacts/paper_evidence/downstream_complete/teachers/colon/gene_median
 NORMAN=artifacts/paper_evidence/norman_crispra
 NORMAN_SELECTOR=artifacts/paper_evidence/selector_mlp_biology_range_fullteachers/norman_crispra
-OUT=artifacts/paper_evidence/downstream_complete
+COL_MATCHED=artifacts/paper_evidence/matched_fraction/colon
+OUT="${OUT:-artifacts/paper_evidence/downstream_complete}"
+# Marker panel: "source" (the source studies' annotation markers) or "original".
+MARKER_PANEL="${MARKER_PANEL:-source}"
 
 suffix_for_pct() {
   local pct="$1"
@@ -35,16 +38,29 @@ suffix_for_pct() {
   fi
 }
 
+# SVD and weighted kNN at the Safe Fusion fill fractions, ranked by their own
+# imputed values (scripts/apply_fill_fraction.py).
+matched_methods() {
+  local root="$1"
+  for pct in $(seq 1 10); do
+    suffix="$(suffix_for_pct "${pct}")"
+    methods+=(--method "svd_${pct}pct=${root}/svd_topk_${suffix}")
+    methods+=(--method "weighted_knn_${pct}pct=${root}/weighted_knn_topk_${suffix}")
+  done
+}
+
 if (( SLURM_ARRAY_TASK_ID == 0 )); then
   methods=(
-    --method "gene_median=${COL_GENE_MEDIAN}"
+    --method "gene_median=${COL_METHODS}/gene_median"
     --method "svd=${COL_METHODS}/svd_impute"
     --method "weighted_knn=${COL_METHODS}/graph_smooth"
+    --method "safe_fusion_dense=${COL_METHODS}/safe_fusion"
   )
   for pct in $(seq 1 10); do
     suffix="$(suffix_for_pct "${pct}")"
     methods+=(--method "safe_fusion_${pct}pct=${COL_SELECTOR}/safe_fusion_calibrated_mlp_topk_${suffix}")
   done
+  matched_methods "${COL_MATCHED}"
   "${PY}" scripts/evaluate_unsupervised_clustering.py \
     --truth "${COL}/data/colon_epithelial/preprocessed.h5ad" \
     --corrupted "${COL}/data/colon_epithelial/corrupted/mask_010.h5ad" \
@@ -59,11 +75,13 @@ elif (( SLURM_ARRAY_TASK_ID == 1 )); then
       --method "gene_median=${CF}/fold_${fold}/gene_median"
       --method "svd=${CF}/fold_${fold}/svd_impute"
       --method "weighted_knn=${CF}/fold_${fold}/graph_smooth"
+      --method "safe_fusion_dense=${CF}/fold_${fold}/safe_fusion"
     )
     for pct in $(seq 1 10); do
       suffix="$(suffix_for_pct "${pct}")"
       methods+=(--method "safe_fusion_${pct}pct=${CF}/fold_${fold}/selector_mlp_biology_range_fullteachers/safe_fusion_calibrated_mlp_topk_${suffix}")
     done
+    matched_methods "${CF}/fold_${fold}/matched_fraction"
     fold_output="${OUT}/clustering/pancreas/fold_${fold}"
     fold_outputs+=(--fold "${fold_output}")
     "${PY}" scripts/evaluate_unsupervised_clustering.py \
@@ -79,20 +97,23 @@ elif (( SLURM_ARRAY_TASK_ID == 1 )); then
 
 elif (( SLURM_ARRAY_TASK_ID == 2 )); then
   methods=(
-    --method "gene_median=${COL_GENE_MEDIAN}"
+    --method "gene_median=${COL_METHODS}/gene_median"
     --method "svd=${COL_METHODS}/svd_impute"
     --method "graph_smooth=${COL_METHODS}/graph_smooth"
+    --method "safe_fusion_dense=${COL_METHODS}/safe_fusion"
   )
   for pct in $(seq 1 10); do
     suffix="$(suffix_for_pct "${pct}")"
     methods+=(--method "safe_fusion_${pct}pct=${COL_SELECTOR}/safe_fusion_calibrated_mlp_topk_${suffix}")
   done
+  matched_methods "${COL_MATCHED}"
   "${PY}" scripts/evaluate_colon_donor_biology.py \
     --truth "${COL}/data/colon_epithelial/preprocessed.h5ad" \
     --corrupted "${COL}/data/colon_epithelial/corrupted/mask_010.h5ad" \
     --coordinates "${COL}/data/colon_epithelial/coordinates/mask_010.parquet" \
     --splits "${COL}/data/colon_epithelial/splits.parquet" \
-    "${methods[@]}" --output-dir "${OUT}/markers/colon" --bootstrap 2000 --seed 1729
+    "${methods[@]}" --output-dir "${OUT}/markers/colon" --bootstrap 2000 --seed 1729 \
+    --marker-panel "${MARKER_PANEL}"
 
 elif (( SLURM_ARRAY_TASK_ID == 3 )); then
   extras=(
@@ -102,13 +123,16 @@ elif (( SLURM_ARRAY_TASK_ID == 3 )); then
   for pct in $(seq 1 10); do
     suffix="$(suffix_for_pct "${pct}")"
     extras+=(--extra-method "safe_fusion_${pct}pct=selector_mlp_biology_range_fullteachers/safe_fusion_calibrated_mlp_topk_${suffix}")
+    extras+=(--extra-method "svd_${pct}pct=matched_fraction/svd_topk_${suffix}")
+    extras+=(--extra-method "weighted_knn_${pct}pct=matched_fraction/weighted_knn_topk_${suffix}")
   done
   "${PY}" scripts/evaluate_pancreas_crossfit_biology.py \
     --truth "${PAN}/data/pancreas_islets/preprocessed.h5ad" \
     --corrupted "${PAN}/data/pancreas_islets/corrupted/mask_010.h5ad" \
     --coordinates "${PAN}/data/pancreas_islets/coordinates/mask_010.parquet" \
-    --crossfit-dir "${CF}" --safe-fusion-subdir safe_fusion_b32 \
-    "${extras[@]}" --output-dir "${OUT}/pancreas_biology" --bootstrap 2000 --seed 1729
+    --crossfit-dir "${CF}" --safe-fusion-subdir safe_fusion \
+    "${extras[@]}" --output-dir "${OUT}/pancreas_biology" --bootstrap 2000 --seed 1729 \
+    --marker-panel "${MARKER_PANEL}"
 
 elif (( SLURM_ARRAY_TASK_ID == 4 )); then
   root=artifacts/external_trajectory/zebrafish
@@ -122,6 +146,7 @@ elif (( SLURM_ARRAY_TASK_ID == 4 )); then
     suffix="$(suffix_for_pct "${pct}")"
     methods+=(--method "safe_fusion_${pct}pct=${root}/selector_mlp_biology_range/safe_fusion_calibrated_mlp_topk_${suffix}")
   done
+  matched_methods "${root}/matched_fraction"
   "${PY}" scripts/evaluate_trajectory_preservation.py \
     --truth external_data/prepared/zebrafish_trajectory.h5ad \
     --corrupted "${root}/corrupted.h5ad" --splits "${root}/splits.parquet" \
@@ -167,6 +192,7 @@ else
     suffix="$(suffix_for_pct "${pct}")"
     methods+=(--method "safe_fusion_${pct}pct=${selector}/safe_fusion_calibrated_mlp_topk_${suffix}")
   done
+  matched_methods "${root}/matched_fraction"
   "${PY}" scripts/evaluate_interventional_grn.py \
     --dataset "${dataset}" --intervention "${intervention}" \
     --truth "${truth}" --corrupted "${root}/corrupted.h5ad" --splits "${root}/splits.parquet" \

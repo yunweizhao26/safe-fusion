@@ -14,17 +14,18 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
+# Safe Fusion, SVD, weighted kNN and scVI use the colours of the PD-L1 figure
+# (plot_biological_range_figures.py).
 METHOD_STYLES = {
-    "Safe Fusion": {"color": "#7B2CBF", "linewidth": 0.9, "linestyle": "-", "zorder": 10},
-    "Safe Fusion MLP": {"color": "#7B2CBF", "linewidth": 0.9, "linestyle": "-", "zorder": 10},
+    "Safe Fusion": {"color": "#7B2CBF", "linewidth": 1.1, "linestyle": "-", "zorder": 10},
+    "Safe Fusion MLP": {"color": "#7B2CBF", "linewidth": 1.1, "linestyle": "-", "zorder": 10},
     "scVI": {"color": "#0072B2", "linewidth": 0.9, "linestyle": "-", "zorder": 8},
     "MAGIC": {"color": "#D55E00", "linewidth": 0.9, "linestyle": "-", "zorder": 7},
-    "SVD": {"color": "#E69F00", "linewidth": 0.9, "linestyle": "-", "zorder": 6},
-    "ALRA": {"color": "#009E73", "linewidth": 0.9, "linestyle": "-", "zorder": 9},
+    "SVD": {"color": "#009E73", "linewidth": 0.9, "linestyle": "-", "zorder": 6},
+    "ALRA": {"color": "#E69F00", "linewidth": 0.9, "linestyle": "-", "zorder": 9},
     "SAVER": {"color": "#CC79A7", "linewidth": 0.9, "linestyle": "-", "zorder": 5},
-    "scGCL": {"color": "#56B4E9", "linewidth": 0.9, "linestyle": "-", "zorder": 4},
     "scGPT": {"color": "#8C564B", "linewidth": 0.9, "linestyle": "-", "zorder": 3},
-    "Weighted kNN": {"color": "#4D4D4D", "linewidth": 0.9, "linestyle": "-", "zorder": 2},
+    "Weighted kNN": {"color": "#4D4D4D", "linewidth": 0.9, "linestyle": "--", "zorder": 2},
 }
 
 
@@ -56,6 +57,8 @@ def main() -> None:
         if "Safe Fusion MLP" in set(table["method"])
         else "Safe Fusion"
     )
+    # scGCL is reported in the supplement only; stacked selectors are plotted
+    # separately.
     methods = (
         safe_fusion_method,
         "scVI",
@@ -63,7 +66,6 @@ def main() -> None:
         "SVD",
         "ALRA",
         "SAVER",
-        "scGCL",
         "scGPT",
         "Weighted kNN",
     )
@@ -90,7 +92,7 @@ def main() -> None:
         axis.set_xticklabels(["0.1", "1", "10", "100"])
         axis.grid(alpha=0.22)
 
-    axes[0].set_ylabel("masked positive F1 (%)")
+    axes[0].set_ylabel("masked F1 (%)")
     axes[0].set_ylim(bottom=0.0)
     handles, labels = axes[-1].get_legend_handles_labels()
     fig.legend(
@@ -99,7 +101,7 @@ def main() -> None:
         frameon=False,
         fontsize=8,
         loc="lower center",
-        ncol=5,
+        ncol=4,
         bbox_to_anchor=(0.5, -0.01),
     )
     fig.tight_layout(rect=(0.0, 0.10, 1.0, 1.0))

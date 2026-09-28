@@ -12,7 +12,7 @@ SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")
 cd "$SAFE_FUSION_ROOT"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 
-uv run python scripts/run_saver_baseline.py \
+.venv/bin/python scripts/run_saver_baseline.py \
   --corrupted artifacts/paper_evidence/norman_crispra/corrupted.h5ad \
   --splits artifacts/paper_evidence/norman_crispra/splits.parquet \
   --output artifacts/paper_evidence/baselines/saver/norman_full_mask_010 \

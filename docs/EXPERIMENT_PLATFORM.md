@@ -52,8 +52,9 @@ For Slurm, submit from the repository root:
 snakemake --snakefile workflow/Snakefile --profile profiles/slurm
 ```
 
-Supply account and partition values through scheduler configuration or
-`sbatch --account=YOUR_ACCOUNT --partition=YOUR_PARTITION` when using a launcher.
+Supply account and partition values through the scheduler configuration.
+For the launchers in `scripts/`, set `SBATCH_ACCOUNT` and, if needed,
+`SBATCH_PARTITION` in the submitting shell (REPRODUCTION.md, Conventions).
 
 ## Scope
 
@@ -62,6 +63,8 @@ reproduce paper results. Paper runs require prepared public data, external
 baseline environments, and configuration files listed in
 [DATA.md](DATA.md) and [REPRODUCTION.md](REPRODUCTION.md).
 
-The paper method uses MLP `apply_topk` selection. Logistic selection, dense
-fusion, alternative selector architectures, and different budget modes are
-ablations or sensitivity analyses.
+The manuscript uses the workflow only to prepare the colon and pancreas
+splits and masks. The method itself uses five teachers, the boosted fused
+value and the MLP selector with `apply_topk` selection (REPRODUCTION.md,
+section 3.2). The other selector architectures and budget modes of
+`scripts/calibrated_selective_fill.py` are not used in the manuscript.

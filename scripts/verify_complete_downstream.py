@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 from pathlib import Path
@@ -32,6 +33,7 @@ def require_report(path: Path) -> dict:
 
 
 def main() -> None:
+    argparse.ArgumentParser(description=__doc__).parse_args()
     result_folders = {
         "clustering_pancreas": ROOT / "clustering/pancreas/combined",
         "clustering_colon": ROOT / "clustering/colon",

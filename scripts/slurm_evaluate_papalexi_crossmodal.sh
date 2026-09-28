@@ -19,6 +19,7 @@ ROOT=artifacts/paper_evidence/papalexi_crossmodal/benchmark
   --selector-scores "${ROOT}/mlp_selector/selected_gene_scores.parquet" \
   --fusion-mean "${ROOT}/safe_fusion/mean.npy" \
   --graph-mean "${ROOT}/graph_smooth/mean.npy" \
+  --svd-mean "${ROOT}/svd_impute/mean.npy" \
   --scvi-mean "${ROOT}/scvi/mean.npy" \
   --output-dir "${ROOT}/evaluation" \
   --bootstrap 1000 \

@@ -39,21 +39,26 @@ def log2fc(matrix: np.ndarray, condition: np.ndarray, control: np.ndarray) -> np
 
 
 def robust_edge_labels(
-    development_effect: np.ndarray,
+    reference_effect: np.ndarray,
     first_half_effect: np.ndarray,
     second_half_effect: np.ndarray,
     source_index: int,
     fraction: float,
 ) -> np.ndarray:
-    eligible = np.ones(len(development_effect), dtype=bool)
+    eligible = np.ones(len(reference_effect), dtype=bool)
     eligible[source_index] = False
-    threshold = np.quantile(np.abs(development_effect[eligible]), 1.0 - fraction)
+    threshold = np.quantile(np.abs(reference_effect[eligible]), 1.0 - fraction)
     consistent = (
         (np.sign(first_half_effect) == np.sign(second_half_effect))
-        & (np.sign(first_half_effect) == np.sign(development_effect))
+        & (np.sign(first_half_effect) == np.sign(reference_effect))
     )
-    labels = eligible & consistent & (np.abs(development_effect) >= threshold)
+    labels = eligible & consistent & (np.abs(reference_effect) >= threshold)
     return labels
+
+
+def split_halves(cells: np.ndarray, rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray]:
+    reference, scored = np.array_split(rng.permutation(cells), 2)
+    return np.sort(reference), np.sort(scored)
 
 
 def jaccard(first: np.ndarray, second: np.ndarray) -> float:
@@ -165,11 +170,17 @@ def main() -> None:
     if not all(item["passed"] for item in leakage):
         raise ValueError("one or more method contracts failed leakage checks")
 
-    control_development = np.flatnonzero(development & controls)
+    # Response edges come from held-out cells that no method can use: the
+    # held-out cells of each target and the held-out controls are split into a
+    # reference half, which defines the edges from unmasked counts, and a scored
+    # half, on which every processed matrix is evaluated. Teachers borrow only
+    # from development cells, so neither half enters any method's fit.
     control_test = np.flatnonzero(test & controls)
-    if len(control_development) < 20 or len(control_test) < 20:
-        raise ValueError("at least twenty control cells are required in each split")
-    control_halves = np.array_split(control_development, 2)
+    if len(control_test) < 20:
+        raise ValueError("at least twenty held-out control cells are required")
+    rng = np.random.default_rng(args.seed)
+    control_reference, control_scored = split_halves(control_test, rng)
+    control_halves = np.array_split(control_reference, 2)
     unit_rows: list[dict] = []
     edge_rows: list[dict] = []
     retained_targets: list[str] = []
@@ -183,16 +194,17 @@ def main() -> None:
             or len(test_condition) < args.min_cells_per_split
         ):
             continue
-        condition_halves = np.array_split(dev_condition, 2)
+        condition_reference, condition_scored = split_halves(test_condition, rng)
+        condition_halves = np.array_split(condition_reference, 2)
         source_index = gene_lookup[target]
-        development_effect = log2fc(truth, dev_condition, control_development)
+        reference_effect = log2fc(truth, condition_reference, control_reference)
         first_half_effect = log2fc(truth, condition_halves[0], control_halves[0])
         second_half_effect = log2fc(truth, condition_halves[1], control_halves[1])
         labels_05 = robust_edge_labels(
-            development_effect, first_half_effect, second_half_effect, source_index, 0.05
+            reference_effect, first_half_effect, second_half_effect, source_index, 0.05
         )
         labels_10 = robust_edge_labels(
-            development_effect, first_half_effect, second_half_effect, source_index, 0.10
+            reference_effect, first_half_effect, second_half_effect, source_index, 0.10
         )
         if labels_10.sum() < 10:
             continue
@@ -201,7 +213,7 @@ def main() -> None:
             {
                 "regulator": target,
                 "target_gene": gene,
-                "development_log2fc": float(development_effect[index]),
+                "reference_log2fc": float(reference_effect[index]),
                 "first_half_log2fc": float(first_half_effect[index]),
                 "second_half_log2fc": float(second_half_effect[index]),
                 "robust_edge_q05": bool(labels_05[index]),
@@ -210,27 +222,27 @@ def main() -> None:
             for index, gene in enumerate(genes)
             if index != source_index
         )
-        test_truth_effect = log2fc(truth, test_condition, control_test)
+        scored_truth_effect = log2fc(truth, condition_scored, control_scored)
         eligible = np.ones(len(genes), dtype=bool)
         eligible[source_index] = False
-        top10_threshold = np.quantile(np.abs(development_effect[eligible]), 0.90)
-        development_top10 = eligible & (np.abs(development_effect) >= top10_threshold)
+        top10_threshold = np.quantile(np.abs(reference_effect[eligible]), 0.90)
+        reference_top10 = eligible & (np.abs(reference_effect) >= top10_threshold)
         for method, matrix in matrices.items():
-            predicted = log2fc(matrix, test_condition, control_test)
+            predicted = log2fc(matrix, condition_scored, control_scored)
             score = np.abs(predicted)
             predicted_top10_threshold = np.quantile(score[eligible], 0.90)
             predicted_top10 = eligible & (score >= predicted_top10_threshold)
-            source_error = abs(float(predicted[source_index] - test_truth_effect[source_index]))
+            source_error = abs(float(predicted[source_index] - scored_truth_effect[source_index]))
             metrics = {
                 "edge_pr_auc_q05": average_precision_tie_aware(labels_05[eligible], score[eligible]),
                 "edge_pr_auc_q10": average_precision_tie_aware(labels_10[eligible], score[eligible]),
                 "edge_roc_auc_q05": binary_roc_auc(labels_05[eligible], score[eligible]),
                 "edge_roc_auc_q10": binary_roc_auc(labels_10[eligible], score[eligible]),
-                "effect_spearman_development": spearman(development_effect[eligible], predicted[eligible]),
-                "effect_spearman_test_truth": spearman(test_truth_effect[eligible], predicted[eligible]),
-                "effect_rmse_test_truth": float(np.sqrt(np.mean(np.square(predicted[eligible] - test_truth_effect[eligible])))),
-                "direction_accuracy_q10": float(np.mean(np.sign(predicted[labels_10]) == np.sign(development_effect[labels_10]))),
-                "top10_edge_jaccard": jaccard(development_top10, predicted_top10),
+                "effect_spearman_reference": spearman(reference_effect[eligible], predicted[eligible]),
+                "effect_spearman_test_truth": spearman(scored_truth_effect[eligible], predicted[eligible]),
+                "effect_rmse_test_truth": float(np.sqrt(np.mean(np.square(predicted[eligible] - scored_truth_effect[eligible])))),
+                "direction_accuracy_q10": float(np.mean(np.sign(predicted[labels_10]) == np.sign(reference_effect[labels_10]))),
+                "top10_edge_jaccard": jaccard(reference_top10, predicted_top10),
                 "source_log2fc_abs_error": source_error,
             }
             unit_rows.extend(
@@ -245,7 +257,7 @@ def main() -> None:
     output = Path(args.output_dir)
     output.mkdir(parents=True, exist_ok=True)
     unit_metrics.to_parquet(output / "unit_metrics.parquet", index=False)
-    pd.DataFrame(edge_rows).to_parquet(output / "development_edges.parquet", index=False)
+    pd.DataFrame(edge_rows).to_parquet(output / "reference_edges.parquet", index=False)
     summary.to_parquet(output / "bootstrap_summary.parquet", index=False)
     comparisons.to_parquet(output / "paired_comparisons.parquet", index=False)
     pd.DataFrame(leakage).to_parquet(output / "leakage_checks.parquet", index=False)
@@ -253,14 +265,18 @@ def main() -> None:
         "dataset": args.dataset,
         "intervention": args.intervention,
         "publication_doi": args.publication_doi,
-        "design": "development-cell interventions define robust response edges; held-out cells evaluate edge recovery",
-        "edge_definition": "top 5 or 10 percent absolute development log2 fold changes with matching signs in two development halves",
+        "design": "held-out cells of each target and the held-out controls are split in half; the reference half defines robust response edges from unmasked counts and every method is scored on the other half",
+        "edge_definition": "top 5 or 10 percent absolute reference-half log2 fold changes with matching signs in two subsets of the reference half",
+        "edge_cells_used_by_any_method": False,
+        "half_split_seed": args.seed,
         "edge_scope": "causal perturbation-response edges, not necessarily direct molecular binding",
         "source_gene_excluded_from_edge_metrics": True,
         "n_regulators": int(len(retained_targets)),
         "regulators": retained_targets,
         "n_development_cells": int(development.sum()),
         "n_test_cells": int(test.sum()),
+        "n_reference_half_control_cells": int(len(control_reference)),
+        "n_scored_half_control_cells": int(len(control_scored)),
         "bootstrap_unit": "perturbed regulator",
         "bootstrap_replicates": args.bootstrap,
         "minimum_cells_per_condition_split": args.min_cells_per_split,

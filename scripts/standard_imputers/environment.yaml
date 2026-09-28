@@ -1,0 +1,33 @@
+# One environment for the six standard imputers of run_standard_imputers.py.
+# Versions of the imputer packages follow the requirements file of the original
+# analysis; the numerical libraries are pinned to the build that produced the
+# seeded outputs.
+#   SAUCIE, scScope: tensorflow (tf.compat.v1 graph mode); scScope also phenograph
+#   DeepImpute: tensorflow and keras 2.15
+#   MAGIC: magic-impute 3.0.0 with scprep and graphtools
+#   scVI: scvi-tools 1.2.2.post2 (PyTorch)
+#   kNN smoothing: scikit-learn
+name: safefusion-standard-imputers
+channels: [conda-forge]
+dependencies:
+  - python=3.11.16
+  - pip
+  - pip:
+      - tensorflow==2.15.0
+      - keras==2.15.0
+      - numpy==1.26.4
+      - pandas==2.0.3
+      - scipy==1.17.1
+      - anndata==0.11.3
+      - scprep==1.2.3
+      - graphtools==1.5.3
+      - magic-impute==3.0.0
+      - phenograph==1.5.7
+      - scvi-tools==1.2.2.post2
+      - torch==2.14.0
+      - lightning==2.6.6
+      - jax==0.4.34
+      - jaxlib==0.4.34
+      - scikit-learn==1.9.1
+      - matplotlib==3.11.2
+      - tqdm==4.70.1

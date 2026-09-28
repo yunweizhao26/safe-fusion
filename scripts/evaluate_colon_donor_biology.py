@@ -19,21 +19,9 @@ REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
 from safefusion_benchmark.downstream import randomized_pca_embedding  # noqa: E402
+from safefusion_benchmark.marker_panels import PANELS  # noqa: E402
 from safefusion_benchmark.metrics import average_precision_tie_aware, log1p_mae, spearman  # noqa: E402
 
-
-CELL_MARKERS = {
-    "BEST4": "Enterocytes BEST4", "OTOP2": "Enterocytes BEST4",
-    "CA7": "Enterocytes BEST4", "GUCA2A": "Enterocytes BEST4", "GUCA2B": "Enterocytes BEST4",
-    "CA1": "Enterocytes CA1", "CA2": "Enterocytes CA1",
-    "TMIGD1": "Enterocytes TMIGD1", "MEP1A": "Enterocytes TMIGD1",
-    "MUC2": "Goblet", "TFF3": "Goblet", "AGR2": "Goblet", "SPDEF": "Goblet",
-    "TFF1": "Goblet cells MUC2 TFF1", "SPINK4": "Goblet cells SPINK4",
-    "POU2F3": "Tuft", "DCLK1": "Tuft", "CHGA": "Enteroendocrine",
-    "GCG": "Enteroendocrine", "GIP": "Enteroendocrine", "CCK": "Enteroendocrine",
-    "LYZ": "Paneth", "DEFA5": "Paneth", "MKI67": "Cycling", "PCNA": "Cycling",
-    "OLFM4": "Stem", "LGR5": "Stem", "ASCL2": "Stem", "SOX9": "Stem",
-}
 
 INFLAMMATION_MARKERS = {
     "REG1A", "REG3A", "DUOX2", "NOS2", "CXCL1", "CXCL2", "CXCL3", "CXCL8",
@@ -41,7 +29,6 @@ INFLAMMATION_MARKERS = {
     "STAT1", "IRF1", "IFITM1", "IFITM3",
 }
 
-SELECTED_MARKERS = sorted(set(CELL_MARKERS) | INFLAMMATION_MARKERS)
 
 
 def dense(value) -> np.ndarray:
@@ -79,27 +66,24 @@ def centroid_predictions(
     return classes[np.argmin(cdist(embedding[test], centroids), axis=1)]
 
 
-def marker_target(labels: np.ndarray, target: str) -> np.ndarray:
-    return np.char.find(labels.astype(str), target) >= 0
-
-
 def canonical_marker_metrics(
     matrix: np.ndarray,
     truth: np.ndarray,
     labels: np.ndarray,
     rows: np.ndarray,
     gene_lookup: dict[str, int],
+    panel: dict[str, tuple[str, ...]],
 ) -> dict[str, float]:
     average_precisions: list[float] = []
     true_effects: list[float] = []
     predicted_effects: list[float] = []
     ectopic_filled = 0
     ectopic_total = 0
-    for marker in SELECTED_MARKERS:
+    for marker, cell_types in panel.items():
         if marker not in gene_lookup:
             continue
         gene = gene_lookup[marker]
-        target = marker_target(labels[rows], CELL_MARKERS[marker]) if marker in CELL_MARKERS else np.zeros(len(rows), dtype=bool)
+        target = np.isin(labels[rows], np.asarray(cell_types, dtype=str))
         if not target.any() or target.all():
             continue
         true_values = truth[rows, gene]
@@ -208,7 +192,10 @@ def main() -> None:
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--bootstrap", type=int, default=2000)
     parser.add_argument("--seed", type=int, default=1729)
+    parser.add_argument("--marker-panel", choices=["source", "original"], default="source")
     args = parser.parse_args()
+    panel = PANELS["colon"][args.marker_panel]
+    selected_markers = sorted(set(panel) | INFLAMMATION_MARKERS)
 
     truth_adata = ad.read_h5ad(args.truth)
     corrupted_adata = ad.read_h5ad(args.corrupted)
@@ -265,7 +252,7 @@ def main() -> None:
     coordinate_rows = coordinates["cell_index"].to_numpy(dtype=int)
     coordinate_genes = coordinates["gene_index"].to_numpy(dtype=int)
     coordinate_symbols = feature_names[coordinate_genes]
-    marker_coordinates = coordinates[np.isin(coordinate_symbols, SELECTED_MARKERS)].copy()
+    marker_coordinates = coordinates[np.isin(coordinate_symbols, selected_markers)].copy()
     marker_coordinate_rows = marker_coordinates["cell_index"].to_numpy(dtype=int)
     marker_coordinate_genes = marker_coordinates["gene_index"].to_numpy(dtype=int)
     marker_original = marker_coordinates["original_value"].to_numpy(dtype=float)
@@ -290,7 +277,7 @@ def main() -> None:
                 "cell_identity_macro_f1": macro_f1(labels[rows], detailed_prediction[local_test]),
                 "broad_cell_identity_macro_f1": macro_f1(broad_labels[rows], broad_prediction[local_test]),
                 "masked_canonical_marker_log1p_mae": masked_mae,
-                **canonical_marker_metrics(matrix, truth, labels, rows, gene_lookup),
+                **canonical_marker_metrics(matrix, truth, labels, rows, gene_lookup, panel),
                 **development_marker_metrics(matrix, truth, labels, train, rows),
             }
             for metric, value in metrics.items():

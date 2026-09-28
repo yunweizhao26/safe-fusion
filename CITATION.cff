@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Safe Fusion: Selective Zero Imputation for Single-Cell RNA Sequencing"
+type: software
+repository-code: "https://github.com/yunweizhao26/safe-fusion"
+authors:
+  - family-names: Zhao
+    given-names: Yunwei
+    orcid: "https://orcid.org/0000-0001-8315-9591"
+    affiliation: New York University
+  - family-names: Balasubramanian
+    given-names: Preetha
+    orcid: "https://orcid.org/0000-0002-1751-8661"
+    affiliation: Revvity Inc
+  - family-names: Subramanian
+    given-names: Lakshminarayanan
+    orcid: "https://orcid.org/0000-0001-8101-1243"
+    affiliation: New York University
+keywords:
+  - single-cell RNA sequencing
+  - zero imputation
+  - dropout
+  - perturbation screens

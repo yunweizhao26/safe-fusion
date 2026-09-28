@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=sf-pap-xm-scvi
+#SBATCH --account=torch_pr_634_general
 #SBATCH --time=01:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
-#SBATCH --gres=gpu:h200:1
+#SBATCH --gres=gpu:l40s:1
 #SBATCH --output=logs/slurm-pap-xm-scvi-%j.out
 #SBATCH --error=logs/slurm-pap-xm-scvi-%j.err
 
+# Standard (transductive) scVI comparator. The fitted values differ between GPU
+# models, so every scVI fit runs on an L40S.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

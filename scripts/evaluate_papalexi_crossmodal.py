@@ -87,6 +87,7 @@ def main() -> None:
     parser.add_argument("--selector-scores", required=True)
     parser.add_argument("--fusion-mean", required=True)
     parser.add_argument("--graph-mean", required=True)
+    parser.add_argument("--svd-mean", required=True)
     parser.add_argument("--scvi-mean", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument(
@@ -118,8 +119,9 @@ def main() -> None:
     library_size = np.log1p(corrupted_counts.sum(axis=1))
     fused = np.load(args.fusion_mean, mmap_mode="r")
     graph = np.load(args.graph_mean, mmap_mode="r")
+    svd = np.load(args.svd_mean, mmap_mode="r")
     scvi = np.load(args.scvi_mean, mmap_mode="r")
-    for name, matrix in {"fusion": fused, "graph": graph, "scvi": scvi}.items():
+    for name, matrix in {"fusion": fused, "graph": graph, "svd": svd, "scvi": scvi}.items():
         if matrix.shape != truth.shape:
             raise ValueError(f"{name} matrix shape {matrix.shape} differs from {truth.shape}")
 
@@ -174,13 +176,17 @@ def main() -> None:
         subset["mlp_safe_fusion"] = subset["selector_score"].astype(float)
         subset["fused_component"] = np.asarray(fused[ci, gi], dtype=float)
         subset["weighted_knn"] = np.asarray(graph[ci, gi], dtype=float)
+        subset["svd"] = np.asarray(svd[ci, gi], dtype=float)
         subset["scvi"] = np.asarray(scvi[ci, gi], dtype=float)
         subset["library_size"] = library_size[ci]
         subset = subset.loc[
             (subset["truth_count"] == 0) & (subset["masked_positive"].astype(int) == 0)
         ].copy()
         subset.reset_index(drop=True, inplace=True)
-        methods = ["mlp_safe_fusion", "scvi", "weighted_knn", "fused_component", "library_size"]
+        # SVD is last so the random draws for the other methods do not change.
+        methods = [
+            "mlp_safe_fusion", "scvi", "weighted_knn", "fused_component", "library_size", "svd"
+        ]
         scopes = [("all_test_rna_zeros", subset)]
         if gene in {"CD86", "PDCD1LG2"}:
             scopes.append(

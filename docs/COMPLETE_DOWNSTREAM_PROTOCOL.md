@@ -1,57 +1,77 @@
-# Complete downstream validation protocol
+# Downstream evaluation protocol
 
 ## Scope
 
-This protocol evaluates five downstream tasks with real biological
-data. SERGIO is not part of the evidence. Every learned imputation model is fit
-without its test cells. Artificially masked nonzero counts are used only to fit
-and evaluate the zero selector. Biological labels, conditions, stages, and
-perturbation responses are reserved for downstream evaluation.
+This protocol defines the downstream analyses of the manuscript (main Table 4
+and Supplementary Table S10). Every learned model is fitted without the
+held-out cells. Artificially masked nonzero counts fit and evaluate the zero
+selector only. Cell-type labels, disease status, developmental stages and
+perturbation responses are reserved for evaluation.
 
-## Common method comparison
+## Compared matrices
 
-The primary comparison includes the corrupted count matrix, gene median, SVD,
-weighted nearest-neighbor regression, dense Safe Fusion, and the MLP
-`apply_topk` selector at every integer selected fraction from 1 through 10 percent.
-The selector receives the same three teacher outputs in every dataset. Dense
-Safe Fusion is retained as a safety control rather than as the proposed method.
+- The masked input and, on the masked benchmark, the unmasked held-out matrix
+  as a reference.
+- Safe Fusion at every integer fill fraction from 1% to 10%. Five teachers
+  (gene median, SVD, weighted kNN, MAGIC and scVI, all inductive and
+  cross-fitted for training cells) propose counts, a gradient-boosted
+  regression gives the inserted value, and the MLP selector ranks the zeros.
+- SVD and weighted kNN at the same fill fractions, each ranking zeros by its
+  own imputed value.
+- Dense SVD, dense weighted kNN and the dense fused value, which replace every
+  entry.
 
-## Tasks and biological units
+## Tasks and resampling units
 
-| Task | Data | Held-out unit | Primary metrics |
+| Task | Data | Resampling unit | Endpoints |
 |---|---|---|---|
-| Unsupervised clustering | Pancreatic islets and Crohn colon epithelium | Donor | Cell-type ARI, cell-type NMI, agreement with clustering from unmasked counts, neighborhood purity |
-| Marker recovery | Pancreatic islets and Crohn colon epithelium | Donor | Canonical marker PR AUC, marker-effect rank correlation, off-target marker-zero filling |
-| Differential expression | Pancreatic islets, T1D and autoantibody-positive versus control | Donor | Pseudobulk log-fold-change Spearman correlation, RMSE, top-effect direction preservation |
-| Trajectory reconstruction | Experimental zebrafish axial mesoderm time course | Developmental stage | Stage-order Spearman and MAE, lineage balanced accuracy, adjacent-stage neighborhoods, dynamic-gene and stage-pseudobulk correlation |
-| Interventional GRN | Norman CRISPRa, Adamson CRISPRi, Dixit knockout, Papalexi ECCITE-seq | Perturbed regulator | Response-edge PR AUC and ROC AUC, effect-size correlation, direction accuracy, top-edge Jaccard, source-effect error |
+| Marker recovery | Pancreatic islets, Crohn colon epithelium | Donor | Marker AUPRC, off-target fill |
+| Clustering | Pancreatic islets, Crohn colon epithelium | Donor | Adjusted Rand index, neighbor purity |
+| Reference mapping | Pancreatic islets, Crohn colon epithelium | Donor | Macro F1 |
+| Disease effects | Pancreatic islets, autoantibody-positive and type 1 diabetes donors against controls | Donor | Spearman correlation of pseudobulk log fold changes |
+| Developmental dynamics | Zebrafish axial mesoderm time course | Stage | Dynamic-gene stage-mean Spearman correlation, stage-rank error |
+| Perturbation response edges | Norman CRISPRa, Adamson CRISPRi, Dixit knockout, Papalexi ECCITE-seq | Perturbed gene | Edge AUPRC |
 
-## Real interventional GRN definition
+Supplementary Section S7 of the manuscript defines each endpoint.
 
-Each genetic intervention defines a regulator-to-response experiment. Norman
-CRISPRa supplies gain-of-function interventions. Adamson CRISPRi, Dixit Cas9
-knockout, and Papalexi ECCITE-seq supply loss-of-function interventions.
+## Perturbation response edges
 
-For every perturbed regulator, unmasked development cells are divided into two
-halves. A response edge is retained when its absolute development log2 fold
-change is in the top 5 or 10 percent and its direction agrees in both halves.
-The perturbed source gene is excluded. Held-out perturbation and control cells
-then test whether each processed matrix recovers these response edges. Thus the
-benchmark uses experimentally induced transcriptional responses rather than a
-simulated network. These edges represent causal perturbation responses and are
-not asserted to be direct physical binding interactions.
+For each perturbed gene, the held-out perturbed cells and the held-out control
+cells are each divided at random into a reference half and a scoring half. In
+the reference half, the log2 fold change of each gene is computed from unmasked
+counts. A gene other than the perturbed gene forms a response edge when its
+absolute fold change is in the top 10% and its sign agrees in two random
+subsets of the reference half and in the whole reference half. Each processed
+matrix ranks genes by their absolute log2 fold change in the scoring half, and
+edge AUPRC is the average precision of this ranking for the reference edges. A
+perturbed gene is kept when it is measured, has at least 10 perturbed
+development cells and 10 perturbed held-out cells, and yields at least 10
+edges. No model sees the cells that define the edges. The edges are
+perturbation responses and are not claimed to be direct regulatory
+interactions.
 
-The available processed objects do not contain independent biological replicate
-fields for every perturbation screen. Perturbed regulators are therefore the
-bootstrap units, and this limitation must accompany any manuscript claim.
+## Restored hidden counts and filled recorded zeros
 
-## Failure and leakage checks
+On the masked benchmark, each Safe Fusion fill is split into its selected
+masked positives and its selected recorded zeros, and each part is evaluated
+alone (`scripts/decompose_fills.py`). For the analysis of recorded zeros, the
+training cells keep the benchmark mask, the held-out cells carry their
+recorded counts, every model is refitted, and each filled matrix is compared
+with the unfilled recorded matrix (`scripts/build_deployment_inputs.py` and
+the `scripts/slurm_deployment_*.sh` chain).
 
-- Cell and gene order must agree across the truth, corrupted, and method outputs.
-- Every learned method contract must state that test cells were not used for fitting.
-- No test masking label may fit a selector or choose an operating fraction.
-- Clustering uses no cell-type labels during PCA or K-means fitting.
-- Marker panels are specified before examining test outputs.
-- DE uncertainty resamples donors, trajectory uncertainty resamples stages, and GRN uncertainty resamples perturbed regulators.
-- Results are reported across the complete 1 to 10 percent selected range rather than at one chosen point.
-- The unmasked test matrix is reported as a reference ceiling, not as an available imputation method.
+## Leakage checks
+
+- Cell and gene order agree across the unmasked, masked and method matrices.
+- Every learned method contract states that held-out cells were not used for
+  fitting.
+- No masking label of a held-out cell fits a selector or chooses a fill
+  fraction.
+- Clustering uses no cell-type labels during PCA or k-means fitting.
+- Marker panels come from the source studies (`src/safefusion_benchmark/marker_panels.py`).
+- Results are reported for every fill fraction from 1% to 10%.
+- The unmasked held-out matrix is a reference and is not an available
+  imputation method.
+
+Commands are in [REPRODUCTION.md](REPRODUCTION.md), sections 9 (recorded
+zeros, Table 4) and 13 (masked benchmark, Table S10).

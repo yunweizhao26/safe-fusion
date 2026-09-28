@@ -1,16 +1,23 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #SBATCH --job-name=sf_alra
+#SBATCH --account=torch_pr_634_general
 #SBATCH --output=logs/sf_alra_%j.log
 #SBATCH --error=logs/sf_alra_%j.err
 #SBATCH --time=02:00:00
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=8
 #SBATCH --mem=24G
 
-set -e
+# ALRA baseline on the Norman CRISPRa masked benchmark. The randomized SVD
+# result depends on the number of BLAS threads, so every ALRA launcher fixes it
+# at 8.
+set -euo pipefail
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$SAFE_FUSION_ROOT"
+export OMP_NUM_THREADS=8
+export OPENBLAS_NUM_THREADS=8
+export MKL_NUM_THREADS=8
 
-uv run python -u scripts/run_alra_baseline.py \
+.venv/bin/python -u scripts/run_alra_baseline.py \
   --corrupted artifacts/paper_evidence/norman_crispra/corrupted.h5ad \
   --splits artifacts/paper_evidence/norman_crispra/splits.parquet \
   --output artifacts/paper_evidence/baselines/alra/norman_mask_010 \

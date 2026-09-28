@@ -19,21 +19,9 @@ REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
 from safefusion_benchmark.downstream import randomized_pca_embedding  # noqa: E402
+from safefusion_benchmark.marker_panels import PANELS  # noqa: E402
 from safefusion_benchmark.metrics import average_precision_tie_aware, log1p_mae, spearman  # noqa: E402
 
-
-PANCREAS_CELL_MARKERS = {
-    **{gene: ("beta_major", "beta_minor") for gene in ("INS", "IAPP", "PCSK1", "PCSK2", "MAFA", "NKX6-1", "PDX1")},
-    **{gene: ("alpha",) for gene in ("GCG", "TTR")},
-    "SST": ("delta",),
-    "PPY": ("pp",),
-    "GHRL": ("epsilon",),
-    **{gene: ("acinar", "acinar_minor_mhcclassII", "duct_acinar_related") for gene in ("PRSS1", "PRSS2", "REG1A", "REG1B", "CPA1", "CTRB2")},
-    **{gene: ("duct_major", "duct_acinar_related") for gene in ("KRT8", "KRT18", "KRT19", "MUC1", "KRT17", "KRT7")},
-    **{gene: ("stellates", "immune_stellates") for gene in ("COL1A1", "COL1A2", "COL3A1", "SPARC", "DCN")},
-    **{gene: ("endothelial",) for gene in ("KDR", "EMCN", "PLVAP", "VWF")},
-    **{gene: ("immune_stellates",) for gene in ("PTPRC", "CD74", "HLA-DRA", "HLA-DPA1", "HLA-DPB1")},
-}
 
 DISEASE_MARKERS = {"CXCL10", "STAT1", "B2M", "IFITM1", "IFITM3"}
 
@@ -79,13 +67,14 @@ def canonical_marker_metrics(
     labels: np.ndarray,
     rows: np.ndarray,
     gene_lookup: dict[str, int],
+    panel: dict[str, tuple[str, ...]],
 ) -> dict[str, float]:
     average_precisions: list[float] = []
     true_effects: list[float] = []
     predicted_effects: list[float] = []
     ectopic_filled = 0
     ectopic_total = 0
-    for marker, targets in PANCREAS_CELL_MARKERS.items():
+    for marker, targets in panel.items():
         if marker not in gene_lookup:
             continue
         gene = gene_lookup[marker]
@@ -366,7 +355,9 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=1729)
     parser.add_argument("--safe-fusion-subdir", default="safe_fusion")
     parser.add_argument("--extra-method", action="append", default=[], help="name=fold_subdirectory")
+    parser.add_argument("--marker-panel", choices=["source", "original"], default="source")
     args = parser.parse_args()
+    panel = PANELS["pancreas"][args.marker_panel]
 
     truth_adata = ad.read_h5ad(args.truth)
     corrupted_adata = ad.read_h5ad(args.corrupted)
@@ -445,12 +436,12 @@ def main() -> None:
                 metrics = {
                     "cell_identity_macro_f1": macro_f1(labels[rows], detailed_prediction[local_test]),
                     "broad_cell_identity_macro_f1": macro_f1(broad_labels[rows], broad_prediction[local_test]),
-                    **canonical_marker_metrics(matrix, truth, labels, rows, gene_lookup),
+                    **canonical_marker_metrics(matrix, truth, labels, rows, gene_lookup, panel),
                     **development_marker_metrics(matrix, truth, labels, train, rows),
                 }
                 donor_coordinates = fold_coordinates[fold_coordinates["cell_index"].isin(rows)]
                 marker_mask = feature_names[donor_coordinates["gene_index"].to_numpy(dtype=int)]
-                donor_coordinates = donor_coordinates[np.isin(marker_mask, sorted(PANCREAS_CELL_MARKERS))]
+                donor_coordinates = donor_coordinates[np.isin(marker_mask, sorted(panel))]
                 if len(donor_coordinates):
                     coordinate_row = donor_coordinates["cell_index"].to_numpy(dtype=int)
                     coordinate_gene = donor_coordinates["gene_index"].to_numpy(dtype=int)

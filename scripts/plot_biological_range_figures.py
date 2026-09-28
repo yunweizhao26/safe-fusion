@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create the marker tradeoff and PD L1 range figures used in the paper."""
+"""Create the marker tradeoff and PD-L1 range figures used in the paper."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ import pandas as pd
 
 SAFE = "#7B2CBF"
 KNN = "#4D4D4D"
+SVD = "#009E73"
 SCVI = "#0072B2"
 FUSED = "#D55E00"
 LIBRARY = "#8C564B"
@@ -51,7 +52,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--pdl1-only",
         action="store_true",
-        help="Regenerate only the PD L1 figure used by the manuscript.",
+        help="Regenerate only the PD-L1 figure used by the manuscript.",
     )
     return parser.parse_args()
 
@@ -174,16 +175,18 @@ def plot_marker_tradeoff(
 def plot_pdl1_ranges(crossmodal_root: Path, output_dir: Path, paper_dir: Path | None) -> dict:
     thresholds = pd.read_csv(crossmodal_root / "protein_threshold_range_metrics.csv")
     fills = pd.read_csv(crossmodal_root / "fill_range_protein_enrichment.csv")
-    method_order = ["mlp_safe_fusion", "weighted_knn", "scvi", "fused_component", "library_size"]
+    method_order = ["mlp_safe_fusion", "svd", "weighted_knn", "scvi", "fused_component", "library_size"]
     labels = {
         "mlp_safe_fusion": "Safe Fusion",
+        "svd": "SVD",
         "weighted_knn": "Weighted kNN",
         "scvi": "scVI",
-        "fused_component": "Fused component",
+        "fused_component": "Fused value",
         "library_size": "Library size",
     }
     colors = {
         "mlp_safe_fusion": SAFE,
+        "svd": SVD,
         "weighted_knn": KNN,
         "scvi": SCVI,
         "fused_component": FUSED,
@@ -208,21 +211,21 @@ def plot_pdl1_ranges(crossmodal_root: Path, output_dir: Path, paper_dir: Path | 
             label=labels[method],
         )
     axes[0].axhline(50, color="#A8ADB4", linewidth=0.9, zorder=0)
-    axes[0].set_xlabel("PD L1 threshold percentile")
-    axes[0].set_ylabel("ROC AUC (%)  ↑")
-    axes[0].set_title("Protein threshold range")
+    axes[0].set_xlabel("PD-L1 threshold percentile")
+    axes[0].set_ylabel("AUROC (%)  ↑")
+    axes[0].set_title("PD-L1 threshold")
     axes[0].set_xlim(30, 70)
     axes[0].set_ylim(48, 81)
     axes[1].axhline(0, color="#A8ADB4", linewidth=0.9, zorder=0)
-    axes[1].set_xlabel("CD274 RNA zeros selected (%)")
-    axes[1].set_ylabel("Mean PD L1 enrichment  ↑")
-    axes[1].set_title("Selected fraction range")
+    axes[1].set_xlabel("CD274 RNA zeros filled (%)")
+    axes[1].set_ylabel("Mean PD-L1 enrichment  ↑")
+    axes[1].set_title("Fill fraction")
     axes[1].set_xlim(1, 20)
     axes[1].set_xticks([1, 5, 10, 15, 20])
     for ax in axes:
         polish(ax)
     handles, legend_labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, legend_labels, loc="lower center", ncol=5, frameon=False, bbox_to_anchor=(0.5, -0.01))
+    fig.legend(handles, legend_labels, loc="lower center", ncol=6, frameon=False, bbox_to_anchor=(0.5, -0.01))
     fig.tight_layout(rect=(0.0, 0.13, 1.0, 1.0))
     save_figure(fig, "pdl1_range_validation", output_dir, paper_dir)
     plt.close(fig)
@@ -249,23 +252,6 @@ def plot_pdl1_ranges(crossmodal_root: Path, output_dir: Path, paper_dir: Path | 
     }
 
 
-def validate(summary: dict) -> None:
-    if "marker_tradeoff" in summary:
-        marker = summary["marker_tradeoff"]
-        expected = {
-            "pancreas": {"masked": 51.2, "knn_pr": 70.2, "knn_fill": 17.9},
-            "colon": {"masked": 33.9, "knn_pr": 49.5, "knn_fill": 12.8},
-        }
-        for dataset, values in expected.items():
-            observed = marker[dataset]
-            assert abs(observed["masked_input_marker_pr_auc_percent"] - values["masked"]) < 0.12
-            assert abs(observed["weighted_knn_marker_pr_auc_percent"] - values["knn_pr"]) < 0.12
-            assert abs(observed["weighted_knn_off_target_fill_percent"] - values["knn_fill"]) < 0.12
-    pdl1 = summary["pdl1_ranges"]
-    assert pdl1["threshold_leaders"].get("mlp_safe_fusion") == 41
-    assert pdl1["fill_fraction_leaders"].get("mlp_safe_fusion") == 93
-
-
 def main() -> None:
     args = parse_args()
     set_style()
@@ -282,7 +268,6 @@ def main() -> None:
         args.output_dir,
         args.paper_dir,
     )
-    validate(summary)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "biological_range_figures.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n"

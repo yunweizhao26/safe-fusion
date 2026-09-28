@@ -32,6 +32,12 @@ def dense(value) -> np.ndarray:
     return value.toarray() if sparse.issparse(value) else np.asarray(value)
 
 
+def saver_size_factors(counts: np.ndarray) -> np.ndarray:
+    """SAVER's default size factors: each cell's library over the mean library."""
+    library = counts.sum(axis=1, dtype=np.float64)
+    return library / library.mean()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--corrupted", required=True)
@@ -67,8 +73,11 @@ def main() -> None:
     )
     estimate = np.asarray(mmread(estimate_path).todense())
     variance = np.asarray(mmread(se_path).todense()) ** 2
-    estimate = np.clip(estimate, 0.0, None).astype(np.float32)
-    variance = np.clip(variance, 0.0, None).astype(np.float32)
+    # SAVER's default size factors (library / mean library) return estimates
+    # on the normalized scale; multiply back to the count scale of the input.
+    size_factor = saver_size_factors(counts)
+    estimate = np.clip(estimate * size_factor[:, None], 0.0, None).astype(np.float32)
+    variance = np.clip(variance * np.square(size_factor)[:, None], 0.0, None).astype(np.float32)
 
     output = Path(args.output)
     metadata = {
@@ -82,6 +91,8 @@ def main() -> None:
             "heldout_test_cells": int(np.sum(split == "test")),
             "test_used_for_fit": True,
             "ncores": args.ncores,
+            "count_scale_rescaled": True,
+            "size_factor": "SAVER default (library / mean library); estimates multiplied by it",
             "disclosure": "SAVER has no held-out projection API; run on the full corrupted matrix (standard usage). Reported only as a standard-usage baseline and excluded from leakage-audited primary comparisons.",
         },
     }
