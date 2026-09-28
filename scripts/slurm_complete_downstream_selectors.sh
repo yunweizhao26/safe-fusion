@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=sf-down-selectors
+#SBATCH --account=torch_pr_634_general
 #SBATCH --time=01:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --array=0-7%4
+#SBATCH --array=0-8%4
 #SBATCH --output=logs/slurm-complete-downstream-selectors-%A_%a.out
 #SBATCH --error=logs/slurm-complete-downstream-selectors-%A_%a.err
 
+# Fit the MLP selector for one dataset per task and write the filled outputs at
+# 1% to 10% and the 1000-point masked F1 curve. Every dataset fits the selector
+# on development cells, except colon, which fits it on the validation donors.
+# The teachers and the stacked value are fitted on all model-fitting cells, and
+# every fitting-cell teacher proposal excludes that cell's own counts.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
@@ -14,85 +20,37 @@ cd "$SAFE_FUSION_ROOT"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export OPENBLAS_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export MKL_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
+source scripts/unit_paths.sh
 
-PY=.venv/bin/python
-PAN=artifacts/pancreas_runs/0b2469810675-45c81b160d78
-CF=artifacts/paper_evidence/pancreas_crossfit
-NORMAN=artifacts/paper_evidence/norman_crispra
 BUDGETS=(0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.10)
-keys=(pancreas_0 pancreas_1 pancreas_2 norman_crispra adamson_crispri dixit_ko papalexi_eccite zebrafish)
+keys=(pancreas_0 pancreas_1 pancreas_2 norman_crispra adamson_crispri dixit_ko papalexi_eccite zebrafish colon)
 key="${keys[SLURM_ARRAY_TASK_ID]}"
-
+unit_paths "${key}"
+fit=(--fit-split development)
 case "${key}" in
-  pancreas_*)
-    fold="${key##*_}"
-    corrupted="${PAN}/data/pancreas_islets/corrupted/mask_010.h5ad"
-    truth="${PAN}/data/pancreas_islets/preprocessed.h5ad"
-    coordinates="${PAN}/data/pancreas_islets/coordinates/mask_010.parquet"
-    splits="${CF}/fold_${fold}/splits.parquet"
-    fusion="${CF}/fold_${fold}/safe_fusion_b32"
-    gene_median="${CF}/fold_${fold}/gene_median"
-    svd="${CF}/fold_${fold}/svd_impute"
-    graph="${CF}/fold_${fold}/graph_smooth"
-    output="${CF}/fold_${fold}/selector_mlp_biology_range_fullteachers"
+  colon)
+    output=artifacts/paper_evidence/selector_mlp_biology_range/colon
+    fit=(--fit-split validation --fit-cells 3852)
     ;;
-  norman_crispra)
-    root="${NORMAN}"
-    corrupted="${root}/corrupted.h5ad"
-    truth=external_data/prepared/norman_crispra.h5ad
-    coordinates="${root}/coordinates.parquet"
-    splits="${root}/splits.parquet"
-    fusion="${root}/methods/safe_fusion"
-    gene_median="${root}/methods/gene_median"
-    svd="${root}/methods/svd_impute"
-    graph="${root}/methods/graph_smooth"
-    output=artifacts/paper_evidence/selector_mlp_biology_range_fullteachers/norman_crispra
-    ;;
-  adamson_crispri|dixit_ko|papalexi_eccite)
-    root="artifacts/external_perturbseq/${key}"
-    corrupted="${root}/corrupted.h5ad"
-    truth="external_data/prepared/${key}.h5ad"
-    coordinates="${root}/coordinates.parquet"
-    splits="${root}/splits.parquet"
-    fusion="${root}/safe_fusion"
-    gene_median="${root}/gene_median"
-    svd="${root}/svd_impute"
-    graph="${root}/graph_smooth"
-    output="${root}/selector_mlp_biology_range"
-    ;;
-  zebrafish)
-    root=artifacts/external_trajectory/zebrafish
-    corrupted="${root}/corrupted.h5ad"
-    truth=external_data/prepared/zebrafish_trajectory.h5ad
-    coordinates="${root}/coordinates.parquet"
-    splits="${root}/splits.parquet"
-    fusion="${root}/safe_fusion"
-    gene_median="${root}/gene_median"
-    svd="${root}/svd_impute"
-    graph="${root}/graph_smooth"
-    output="${root}/selector_mlp_biology_range"
-    ;;
-  *)
-    echo "unknown dataset ${key}" >&2
-    exit 2
-    ;;
+  pancreas_*) output="${methods_root}/selector_mlp_biology_range_fullteachers" ;;
+  norman_crispra) output=artifacts/paper_evidence/selector_mlp_biology_range_fullteachers/norman_crispra ;;
+  *) output="${methods_root}/selector_mlp_biology_range" ;;
 esac
+mapfile -t teacher_args < <(teacher_contract_args "${methods_root}")
 
-"${PY}" scripts/calibrated_selective_fill.py \
-  --corrupted "${corrupted}" \
+.venv/bin/python scripts/calibrated_selective_fill.py \
+  --corrupted "${input}" \
   --truth "${truth}" \
   --coordinates "${coordinates}" \
   --splits "${splits}" \
-  --fusion-contract "${fusion}" \
-  --teacher-contract "${gene_median}" \
-  --teacher-contract "${svd}" \
-  --teacher-contract "${graph}" \
+  --fusion-contract "${methods_root}/safe_fusion" \
+  "${teacher_args[@]}" \
   --output-dir "${output}" \
-  --fit-split development \
+  "${fit[@]}" \
   --architecture mlp \
   --budget-mode apply_topk \
   --budgets "${BUDGETS[@]}" \
   --curve-min-budget 0.001 \
-  --curve-max-budget 0.10 \
-  --curve-points 100 \
+  --curve-max-budget 1.0 \
+  --curve-points 1000 \
   --seed 1729

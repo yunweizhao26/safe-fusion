@@ -39,34 +39,47 @@ REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
 
-FEATURE_NAMES = (
-    "fused_mean",
-    "confidence",
-    "teacher_max",
-    "teacher_mean",
-    "teacher_std",
-    "gene_mean",
-    "gene_dropout",
-    "library_size",
-)
+# The selector sees each teacher's proposal (log1p count scale) and three
+# context features. Teacher columns are named "teacher:<name>".
+CONTEXT_FEATURES = ("gene_mean", "gene_dropout", "library_size")
 
-LEARNED_VARIANTS = {
-    "full": FEATURE_NAMES,
-    "fusion_only": ("fused_mean", "confidence"),
-    "teacher_only": ("teacher_max", "teacher_mean", "teacher_std"),
-    "context_only": ("gene_mean", "gene_dropout", "library_size"),
-    "no_fusion": (
-        "teacher_max", "teacher_mean", "teacher_std",
-        "gene_mean", "gene_dropout", "library_size",
-    ),
-    "no_context": (
-        "fused_mean", "confidence", "teacher_max", "teacher_mean", "teacher_std",
-    ),
-    "confidence_only": ("confidence",),
-    "fused_mean_only": ("fused_mean",),
-    "gene_mean_only": ("gene_mean",),
-    "gene_dropout_only": ("gene_dropout",),
-}
+LEARNED_VARIANTS = ("full", "teacher_only", "context_only", "gene_mean_only", "gene_dropout_only")
+
+
+CONDITION_FEATURES = ("condition_gene_mean", "condition_gene_dropout")
+
+
+def teacher_feature_names(teacher_names, condition: bool = False) -> tuple[str, ...]:
+    return tuple(f"teacher:{name}" for name in teacher_names) + CONTEXT_FEATURES + (CONDITION_FEATURES if condition else ())
+
+
+def variant_columns(variant: str, feature_names) -> list[int]:
+    names = list(feature_names)
+    if variant == "full":
+        return list(range(len(names)))
+    if variant == "teacher_only":
+        return [i for i, name in enumerate(names) if name.startswith("teacher:")]
+    if variant == "context_only":
+        return [i for i, name in enumerate(names) if not name.startswith("teacher:")]
+    if variant == "gene_mean_only":
+        return [names.index("gene_mean")]
+    if variant == "gene_dropout_only":
+        return [names.index("gene_dropout")]
+    raise ValueError(f"unknown selector variant: {variant}")
+
+
+def selector_features(teacher_values: np.ndarray, gene_mean: np.ndarray, gene_dropout: np.ndarray, library_size: np.ndarray,
+                      condition_context: tuple[np.ndarray, np.ndarray] | None = None) -> np.ndarray:
+    """Stack log1p teacher proposals (one row per teacher) with the context features.
+
+    ``condition_context`` optionally adds the gene's mean and zero fraction within
+    the cell's condition (for example its perturbation).
+    """
+    columns = [np.log1p(np.maximum(teacher_values, 0.0)).T, gene_mean, gene_dropout, library_size]
+    if condition_context is not None:
+        columns += list(condition_context)
+    return np.column_stack(columns).astype(np.float32)
+
 
 DEFAULT_VARIANTS = tuple(LEARNED_VARIANTS) + ("random",)
 
@@ -123,8 +136,9 @@ class Candidates:
     labels: np.ndarray
     features: np.ndarray
     fused_values: np.ndarray
-    teacher_values: np.ndarray
+    teacher_values: np.ndarray  # one row per teacher contract
     truth_values: np.ndarray
+    feature_names: tuple = ()
 
 
 def candidate_frame(
@@ -133,8 +147,8 @@ def candidate_frame(
     split_name: str,
     coordinates: pd.DataFrame,
     fused_mean: np.ndarray,
-    variance: np.ndarray,
     teachers: list[np.ndarray],
+    teacher_names: list[str],
     gene_mean: np.ndarray,
     gene_dropout: np.ndarray,
     library_size: np.ndarray,
@@ -184,24 +198,16 @@ def candidate_frame(
     truth_values[labels] = positive_values[locations[labels]]
     labels = labels.astype(np.int8)
     teacher_stack = np.stack([matrix[rows, cols] for matrix in teachers])
-    features = np.column_stack([
-        fused_mean[rows, cols],
-        -np.log(np.clip(variance[rows, cols], 1e-8, None)),
-        teacher_stack.max(axis=0),
-        teacher_stack.mean(axis=0),
-        teacher_stack.std(axis=0),
-        gene_mean[cols],
-        gene_dropout[cols],
-        library_size[rows],
-    ]).astype(np.float32)
+    features = selector_features(teacher_stack, gene_mean[cols], gene_dropout[cols], library_size[rows])
     return Candidates(
         rows=rows,
         cols=cols,
         labels=labels,
         features=features,
         fused_values=fused_mean[rows, cols].astype(np.float32, copy=False),
-        teacher_values=teacher_stack.max(axis=0).astype(np.float32, copy=False),
+        teacher_values=teacher_stack.astype(np.float32, copy=False),
         truth_values=truth_values,
+        feature_names=teacher_feature_names(teacher_names),
     )
 
 
@@ -267,8 +273,8 @@ def fit_scores(
         }
     if variant not in LEARNED_VARIANTS:
         raise ValueError(f"unknown selector variant: {variant}")
-    names = LEARNED_VARIANTS[variant]
-    indices = np.asarray([FEATURE_NAMES.index(name) for name in names], dtype=int)
+    indices = np.asarray(variant_columns(variant, fit.feature_names), dtype=int)
+    names = [fit.feature_names[i] for i in indices]
     if architecture not in ARCHITECTURES:
         raise ValueError(f"unknown selector architecture: {architecture}")
     fit_index = stratified_fit_indices(fit.labels, max_fit_rows, seed)
@@ -529,23 +535,23 @@ def main() -> None:
 
     fusion_path = Path(args.fusion_contract)
     fused_mean = np.load(fusion_path / "mean.npy", allow_pickle=False, mmap_mode="r")
-    variance = np.load(fusion_path / "variance.npy", allow_pickle=False, mmap_mode="r")
     teachers = [
         np.load(Path(path) / "mean.npy", allow_pickle=False, mmap_mode="r")
         for path in args.teacher_contract
     ]
+    teacher_names = [Path(path).name for path in args.teacher_contract]
     gene_mean = np.log1p(np.mean(counts[fit_mask], axis=0))
     gene_dropout = np.mean(counts[fit_mask] <= 0, axis=0)
     library_size = np.log1p(counts.sum(axis=1))
 
     fit = candidate_frame(
-        counts, fit_mask, args.fit_split, coordinates, fused_mean, variance,
-        teachers, gene_mean, gene_dropout, library_size,
+        counts, fit_mask, args.fit_split, coordinates, fused_mean,
+        teachers, teacher_names, gene_mean, gene_dropout, library_size,
         args.max_fit_rows, args.seed,
     )
     test = candidate_frame(
-        counts, test_mask, "test", coordinates, fused_mean, variance,
-        teachers, gene_mean, gene_dropout, library_size,
+        counts, test_mask, "test", coordinates, fused_mean,
+        teachers, teacher_names, gene_mean, gene_dropout, library_size,
         None, args.seed + 1,
     )
     if not fit.labels.any() or not test.labels.any():
@@ -571,7 +577,7 @@ def main() -> None:
             jobs.append((variant, architecture, selector_id))
 
     reference_variant = (
-        "full" if args.architectures == ["logistic"] else "full__logistic"
+        "full" if args.architectures == ["logistic"] else f"full__{args.architectures[0]}"
     )
 
     def record_selector(
@@ -596,9 +602,12 @@ def main() -> None:
         })
         for budget in args.budgets:
             selected = exact_topk(test_score, round(float(budget) * len(test_score)))
+            # The reference selector also inserts each teacher's own value into
+            # the same selected zeros, which isolates the value from the ranking.
             value_sources = {"fusion_value": test.fused_values}
             if selector_id == reference_variant:
-                value_sources["teacher_value"] = test.teacher_values
+                for name, values in zip(teacher_names, test.teacher_values):
+                    value_sources[f"teacher_{name}"] = values
             for value_source, candidate_values in value_sources.items():
                 predicted = np.where(selected, np.maximum(candidate_values, 0.0), 0.0)
                 for unit in np.unique(unit_values):
@@ -649,7 +658,7 @@ def main() -> None:
         ensemble_seconds = time.perf_counter() - ensemble_started
         model_reports[ensemble_id] = {
             "kind": "rank_ensemble",
-            "features": list(FEATURE_NAMES),
+            "features": list(fit.feature_names),
             "members": list(score_cache),
             "score_seconds": float(ensemble_seconds),
         }
@@ -678,7 +687,7 @@ def main() -> None:
         "architectures": list(args.architectures),
         "rank_ensemble": bool(args.rank_ensemble),
         "reference_selector": reference_variant,
-        "feature_names": list(FEATURE_NAMES),
+        "feature_names": list(fit.feature_names),
         "value_ablation": "all selectors use fused values; full also evaluated with max-teacher values",
         "non_masked_zero_label": "unlabelled, not certified biological zero",
         "bootstrap_replicates": int(args.bootstrap),

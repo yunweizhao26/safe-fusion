@@ -109,9 +109,19 @@ def train_latent_truth(
     pca_features: np.ndarray = None,
     pca_proj_dim: int = 8,
     seed: int = 42,
+    epoch_inputs=None,
 ) -> Tuple[LatentTruthModel, Dict[str, float]]:
+    """Fit the latent-truth fusion model.
+
+    When ``epoch_inputs`` is given, it is called once per epoch as
+    ``epoch_inputs(epoch)`` and returns ``(masked_counts, mask, teacher_stack,
+    pca_features)`` for all rows of ``counts``. The loss targets are the entries
+    in ``mask``, and every input, including the teacher proposals, is computed
+    from ``masked_counts``, so no input contains a target.
+    """
     teacher_names = list(teachers.keys())
     teacher_stack = np.stack([teachers[name] for name in teacher_names], axis=0)
+    epoch_masked = epoch_mask = None
     train_loader, val_loader, train_idx, val_idx = build_dataloaders(
         counts.shape[0], seed, config.batch_size
     )
@@ -143,6 +153,10 @@ def train_latent_truth(
                 likelihood_mask[idx] = 0.0
 
     for epoch in range(config.epochs):
+        if epoch_inputs is not None:
+            epoch_masked, epoch_mask, teacher_stack, epoch_pca = epoch_inputs(epoch)
+            if epoch_pca is not None:
+                pca_feat_t = torch.from_numpy(epoch_pca).to(config.device)
         model.train()
         train_losses = []
         teacher_lambda = scheduled_weight(
@@ -161,7 +175,12 @@ def train_latent_truth(
             x, t = _get_batch(counts, teacher_stack, train_idx, batch_idx.numpy())
             x = x.to(config.device)
             t = t.to(config.device)
-            x_masked, mask = _mask_nonzero(x, config.mask_fraction)
+            if epoch_inputs is not None:
+                cells = train_idx[batch_idx.numpy()]
+                x_masked = torch.from_numpy(epoch_masked[cells]).to(config.device)
+                mask = torch.from_numpy(epoch_mask[cells]).to(config.device)
+            else:
+                x_masked, mask = _mask_nonzero(x, config.mask_fraction)
             x_log = torch.log1p(x_masked)
             mu, pi = model(x_log)
             mu_log = torch.log1p(mu)
@@ -237,7 +256,12 @@ def train_latent_truth(
                 x, t = _get_batch(counts, teacher_stack, val_idx, batch_idx.numpy())
                 x = x.to(config.device)
                 t = t.to(config.device)
-                x_masked, mask = _mask_nonzero(x, config.mask_fraction)
+                if epoch_inputs is not None:
+                    cells = val_idx[batch_idx.numpy()]
+                    x_masked = torch.from_numpy(epoch_masked[cells]).to(config.device)
+                    mask = torch.from_numpy(epoch_mask[cells]).to(config.device)
+                else:
+                    x_masked, mask = _mask_nonzero(x, config.mask_fraction)
                 x_log = torch.log1p(x_masked)
                 mu, pi = model(x_log)
                 mu_log = torch.log1p(mu)

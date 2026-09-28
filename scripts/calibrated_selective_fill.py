@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Validation-calibrated selective zero filling for Safe Fusion.
 
-Ranks zero entries by a calibrated probability of being a technical dropout
-(a masked positive in the corruption benchmark), fit only on validation
-coordinates. Writes one output contract per fill budget: raw counts plus the
-top-budget zeros replaced by the fused mean.
+Ranks zero entries by a selector trained to recognise masked positives in the
+selector-fitting cells, using the teacher proposals and gene and cell context.
+Writes one output contract per fill budget: raw counts plus the top-budget
+zeros replaced by the Safe Fusion stacked value.
 """
 
 from __future__ import annotations
@@ -31,6 +31,8 @@ from selector_attribution import (  # noqa: E402
     ENSEMBLE_ARCHITECTURES,
     exact_topk,
     fit_scores,
+    selector_features,
+    teacher_feature_names,
 )
 
 
@@ -47,6 +49,76 @@ def score_percentile_from_fit(
     return (
         np.searchsorted(ordered, values, side="right") / max(1, len(ordered))
     ).astype(np.float32)
+
+
+def detection_probability(p: np.ndarray, mask_rate: float) -> np.ndarray:
+    """Probability that a candidate zero was a detected entry before masking.
+
+    Each detected entry is hidden with probability ``mask_rate``, and a
+    candidate zero is either a hidden detection or an undetected entry, so
+    p = rho*d / (rho*d + 1 - d) and d = p / (p + rho*(1 - p)).
+    """
+    p = np.clip(np.asarray(p, dtype=np.float64), 0.0, 1.0)
+    return p / np.maximum(p + mask_rate * (1.0 - p), 1e-12)
+
+
+def cross_fitted_calibration(
+    architecture: str,
+    fit_rows: np.ndarray,
+    fit_labels: np.ndarray,
+    fit_features: np.ndarray,
+    negative_weight: float,
+    folds: int,
+    max_fit_rows: int,
+    score_batch_rows: int,
+    seed: int,
+    make_candidates,
+):
+    """Isotonic map from selector score to P(masked positive).
+
+    The selector is refitted ``folds`` times, each time without one group of
+    fitting cells, and scores the held-out cells. The isotonic map is fitted
+    on these out-of-fold scores. Negatives are weighted by ``negative_weight``
+    to undo any subsampling of fitting candidates. No test entry is used.
+    """
+    from sklearn.isotonic import IsotonicRegression
+
+    cells = np.unique(fit_rows)
+    fold_of_cell = np.random.default_rng(seed).permutation(len(cells)) % folds
+    fold = fold_of_cell[np.searchsorted(cells, fit_rows)]
+    out_of_fold = np.empty(len(fit_labels), dtype=np.float32)
+    for index in range(folds):
+        held = fold == index
+        _, held_score, _ = fit_scores(
+            "full", architecture,
+            make_candidates(fit_labels[~held], fit_features[~held]),
+            make_candidates(fit_labels[held], fit_features[held]),
+            max_fit_rows, score_batch_rows, seed + 1000 + index,
+        )
+        out_of_fold[held] = held_score
+    weight = np.where(fit_labels == 1, 1.0, negative_weight)
+    isotonic = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip")
+    isotonic.fit(out_of_fold, fit_labels.astype(np.float64), sample_weight=weight)
+    return isotonic, out_of_fold, weight
+
+
+def reliability_table(probability: np.ndarray, labels: np.ndarray, weight: np.ndarray | None = None, bins: int = 10) -> list[dict]:
+    weight = np.ones(len(labels)) if weight is None else weight
+    edges = np.quantile(probability, np.linspace(0.0, 1.0, bins + 1))
+    index = np.clip(np.searchsorted(edges, probability, side="right") - 1, 0, bins - 1)
+    table = []
+    for b in range(bins):
+        keep = index == b
+        if not keep.any():
+            continue
+        w = weight[keep]
+        table.append({
+            "bin": b,
+            "n": int(keep.sum()),
+            "mean_predicted": float(np.average(probability[keep], weights=w)),
+            "observed_rate": float(np.average(labels[keep], weights=w)),
+        })
+    return table
 
 
 def main() -> None:
@@ -91,7 +163,25 @@ def main() -> None:
             "target-score budget without using target labels."
         ),
     )
+    parser.add_argument(
+        "--detection-rule-mask-rate",
+        type=float,
+        default=None,
+        help=(
+            "Design masking rate rho of the corruption. When given, also write "
+            "an output that fills every test zero whose calibrated detection "
+            "probability d = p / (p + rho (1 - p)) exceeds 1/2. The calibration "
+            "is cross-fitted on fitting cells; no test label or test score "
+            "quantile sets the fill fraction."
+        ),
+    )
+    parser.add_argument("--calibration-folds", type=int, default=5)
     parser.add_argument("--seed", type=int, default=1729)
+    parser.add_argument(
+        "--condition-column",
+        default=None,
+        help="Add each gene's mean and zero fraction within the cell's condition (obs column) as selector features.",
+    )
     args = parser.parse_args()
 
     corrupted_adata = ad.read_h5ad(args.corrupted)
@@ -116,13 +206,26 @@ def main() -> None:
 
     fusion = Path(args.fusion_contract)
     fused_mean = np.load(fusion / "mean.npy", allow_pickle=False)
-    variance = np.load(fusion / "variance.npy", allow_pickle=False)
     teachers = {str(Path(path).name): np.load(Path(path) / "mean.npy", allow_pickle=False) for path in args.teacher_contract}
+    feature_names = teacher_feature_names(list(teachers), condition=args.condition_column is not None)
 
     coordinates = pd.read_parquet(args.coordinates)
     gene_mean = np.log1p(np.mean(counts[fit], axis=0))
     gene_dropout = np.mean(counts[fit] <= 0, axis=0)
     library = np.log1p(counts.sum(axis=1))
+    condition_mean = condition_dropout = condition_code = None
+    if args.condition_column is not None:
+        # Per-condition gene statistics from the selector-fitting cells of each condition.
+        labels = corrupted_adata.obs[args.condition_column].astype(str).to_numpy()
+        condition_names, condition_code = np.unique(labels, return_inverse=True)
+        condition_mean = np.zeros((len(condition_names), counts.shape[1]), dtype=np.float32)
+        condition_dropout = np.zeros((len(condition_names), counts.shape[1]), dtype=np.float32)
+        for index in range(len(condition_names)):
+            members = fit & (condition_code == index)
+            if not members.any():
+                raise ValueError(f"condition {condition_names[index]} has no selector-fitting cells")
+            condition_mean[index] = np.log1p(counts[members].mean(axis=0))
+            condition_dropout[index] = (counts[members] <= 0).mean(axis=0)
 
     def feature_frame(split_mask: np.ndarray, split_name: str, max_rows: int | None = None, seed: int = 0) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         rows, cols = np.where((counts == 0) & split_mask[:, None])
@@ -148,16 +251,10 @@ def main() -> None:
         masked_keys = set(zip(split_coordinates["cell_index"].astype(int), split_coordinates["gene_index"].astype(int)))
         labels = np.asarray([1 if (int(r), int(c)) in masked_keys else 0 for r, c in zip(rows, cols)], dtype=np.int8)
         teacher_stack = np.stack([teachers[name][rows, cols] for name in teachers])
-        features = np.column_stack([
-            fused_mean[rows, cols],
-            -np.log(np.clip(variance[rows, cols], 1e-8, None)),
-            teacher_stack.max(axis=0),
-            teacher_stack.mean(axis=0),
-            teacher_stack.std(axis=0),
-            gene_mean[cols],
-            gene_dropout[cols],
-            library[rows],
-        ]).astype(np.float32)
+        condition_context = None
+        if condition_code is not None:
+            condition_context = (condition_mean[condition_code[rows], cols], condition_dropout[condition_code[rows], cols])
+        features = selector_features(teacher_stack, gene_mean[cols], gene_dropout[cols], library[rows], condition_context)
         return rows, cols, labels, features
 
     fit_rows, fit_cols, fit_labels, fit_features = feature_frame(fit, args.fit_split, max_rows=args.max_fit_rows, seed=args.seed)
@@ -174,6 +271,7 @@ def main() -> None:
             fused_values=zeros,
             teacher_values=zeros,
             truth_values=zeros,
+            feature_names=feature_names,
         )
 
     fit_candidates = candidates(fit_labels, fit_features)
@@ -240,18 +338,25 @@ def main() -> None:
             }
         )
 
+    def ranking_metrics(labels: np.ndarray, scores: np.ndarray) -> dict:
+        # Deployment inputs have no masked positives among test zeros.
+        if labels.min() == labels.max():
+            return {"roc_auc": None, "pr_auc": None}
+        return {
+            "roc_auc": float(roc_auc_score(labels, scores)),
+            "pr_auc": float(average_precision_score(labels, scores)),
+        }
+
     report = {
         args.fit_split: {
             "n_zeros": int(len(fit_labels)),
             "n_masked_positives": int(fit_labels.sum()),
-            "roc_auc": float(roc_auc_score(fit_labels, fit_score)),
-            "pr_auc": float(average_precision_score(fit_labels, fit_score)),
+            **ranking_metrics(fit_labels, fit_score),
         },
         "test": {
             "n_zeros": int(len(test_labels)),
             "n_masked_positives": int(test_labels.sum()),
-            "roc_auc": float(roc_auc_score(test_labels, test_score)),
-            "pr_auc": float(average_precision_score(test_labels, test_score)),
+            **ranking_metrics(test_labels, test_score),
         },
         "budgets": {},
         "architecture": args.architecture,
@@ -272,16 +377,6 @@ def main() -> None:
         gene_lookup = {gene: index for index, gene in enumerate(gene_ids)}
         missing = sorted(set(requested) - set(gene_lookup))
         scored_frames = []
-        feature_names = [
-            "fused_mean",
-            "confidence",
-            "teacher_max",
-            "teacher_mean",
-            "teacher_std",
-            "gene_mean",
-            "gene_dropout",
-            "library_size",
-        ]
         for split_name, rows, cols, labels, features, scores in [
             (args.fit_split, fit_rows, fit_cols, fit_labels, fit_features, fit_score),
             ("test", test_rows, test_cols, test_labels, test_features, test_score),
@@ -356,10 +451,10 @@ def main() -> None:
             ),
             0.0,
         )
-        raw_masked_mae = float(np.log1p(positive_truth).mean())
+        raw_masked_mae = float(np.log1p(positive_truth).mean()) if test_positive.any() else float("nan")
         method_masked_mae = float(np.abs(
             np.log1p(positive_truth) - np.log1p(positive_prediction)
-        ).mean())
+        ).mean()) if test_positive.any() else float("nan")
         report["budgets"][str(budget)] = {
             "threshold": float(threshold),
             "calibration_threshold": calibration_threshold,
@@ -399,7 +494,7 @@ def main() -> None:
             "decision_layer": {
                 "calibrator": f"{args.architecture}_on_{args.fit_split}_masked_positives",
                 "architecture": args.architecture,
-                "features": ["fused_mean", "confidence", "teacher_max", "teacher_mean", "teacher_std", "gene_mean", "gene_dropout", "library"],
+                "features": list(feature_names),
                 "budget_mode": args.budget_mode,
                 "thresholds_fit_on": (
                     [args.fit_split]
@@ -415,12 +510,94 @@ def main() -> None:
                 "calibration_threshold": calibration_threshold,
             },
         }
-        write_output_contract(
-            output_root / method_name,
-            output_counts,
-            metadata,
-            variance=variance,
+        write_output_contract(output_root / method_name, output_counts, metadata)
+
+    if args.detection_rule_mask_rate is not None:
+        if args.architecture == "rank_ensemble":
+            raise ValueError("the detection rule needs a single calibrated selector")
+        rho = float(args.detection_rule_mask_rate)
+        fit_zero_total = int(((counts == 0) & fit[:, None]).sum())
+        coordinate_rows = coordinates["cell_index"].to_numpy(dtype=int)
+        coordinate_cols = coordinates["gene_index"].to_numpy(dtype=int)
+        fit_positive_total = int(np.sum(fit[coordinate_rows] & (counts[coordinate_rows, coordinate_cols] == 0)))
+        frame_negatives = int((fit_labels == 0).sum())
+        negative_weight = (fit_zero_total - fit_positive_total) / max(frame_negatives, 1)
+        isotonic, out_of_fold, fit_weight = cross_fitted_calibration(
+            args.architecture, fit_rows, fit_labels, fit_features, negative_weight,
+            args.calibration_folds, args.max_fit_rows, args.score_batch_rows,
+            args.seed, candidates,
         )
+        fit_probability = isotonic.predict(out_of_fold)
+        fit_detection = detection_probability(fit_probability, rho)
+        test_probability = isotonic.predict(test_score)
+        test_detection = detection_probability(test_probability, rho)
+        fill_rule = test_detection > 0.5
+        n_rule = int(fill_rule.sum())
+        rule_tp = int(test_labels[fill_rule].sum())
+        rule_precision = rule_tp / n_rule if n_rule else 0.0
+        rule_recall = rule_tp / total_test_positives if total_test_positives else 0.0
+        rule_f1 = (
+            2 * rule_precision * rule_recall / (rule_precision + rule_recall)
+            if rule_precision + rule_recall else 0.0
+        )
+        quantiles = [0.5, 0.75, 0.9, 0.95, 0.975, 0.99, 0.995, 0.999]
+        rule_report = {
+            "mask_rate": rho,
+            "probability_threshold": rho / (1.0 + rho),
+            "calibration": "isotonic on cross-fitted fitting-cell scores",
+            "calibration_folds": int(args.calibration_folds),
+            "fit_candidates_total": fit_zero_total,
+            "fit_positives_total": fit_positive_total,
+            "fit_negative_weight": float(negative_weight),
+            "fit_fill_fraction": float(np.average(fit_detection > 0.5, weights=fit_weight)),
+            "fit_expected_positive_share": float(np.average(fit_probability, weights=fit_weight)),
+            "fit_observed_positive_share": float(np.average(fit_labels, weights=fit_weight)),
+            "fit_out_of_fold_reliability": reliability_table(fit_probability, fit_labels, fit_weight),
+            "isotonic_map": [
+                {"score_quantile": q, "score": float(s), "probability": float(isotonic.predict([s])[0])}
+                for q, s in zip(quantiles, np.quantile(out_of_fold, quantiles))
+            ],
+            "test_fill_fraction": float(fill_rule.mean()),
+            "test_n_selected": n_rule,
+            "test_expected_positive_share": float(test_probability.mean()),
+            "test_labels_used": False,
+            "test_score_quantiles_used": False,
+        }
+        if total_test_positives:
+            best = max(exact_budget_curve, key=lambda row: row["masked_f1"])
+            rule_report.update({
+                "test_masked_precision": rule_precision,
+                "test_masked_recall": rule_recall,
+                "test_masked_f1": rule_f1,
+                "test_observed_positive_share": float(test_labels.mean()),
+                "test_reliability": reliability_table(test_probability, test_labels.astype(np.float64)),
+                "best_fill_fraction_in_hindsight": best["realized_fill_fraction"],
+                "best_masked_f1_in_hindsight": best["masked_f1"],
+            })
+        report["detection_rule"] = rule_report
+        output_counts = counts.copy()
+        output_counts[test_rows[fill_rule], test_cols[fill_rule]] = fused_mean[test_rows[fill_rule], test_cols[fill_rule]]
+        method_name = f"safe_fusion_calibrated_{args.architecture}_detection_rule"
+        metadata = dict(fusion_metadata)
+        metadata["method"] = method_name
+        metadata["parameters"] = {
+            **fusion_metadata.get("parameters", {}),
+            "fit_cells": fit_cells,
+            "heldout_test_cells": int(test.sum()),
+            "test_used_for_fit": False,
+            "decision_layer": {
+                "calibrator": f"{args.architecture}_on_{args.fit_split}_masked_positives",
+                "architecture": args.architecture,
+                "features": list(feature_names),
+                "budget_mode": "detection_rule",
+                "rule": "fill when p / (p + rho (1 - p)) > 1/2",
+                "mask_rate": rho,
+                "test_values_used_for_thresholds": False,
+                "test_labels_used_for_thresholds": False,
+                "fill_fraction": float(fill_rule.mean()),
+            },
+        }
+        write_output_contract(output_root / method_name, output_counts, metadata)
 
     (output_root / "calibration_report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps(report, indent=2, sort_keys=True))
