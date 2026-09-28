@@ -75,7 +75,6 @@ def randomized_pca_embedding(
     seed: int,
     components: int = 50,
 ) -> np.ndarray:
-    """Library-normalize and fit a deterministic randomized PCA on train cells."""
     library = matrix.sum(axis=1, dtype=np.float64)
     scale = np.divide(1e4, library, out=np.zeros_like(library), where=library > 0)
     normalized = np.log1p(np.clip(matrix, 0, None) * scale[:, None]).astype(np.float32)

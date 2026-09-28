@@ -26,7 +26,6 @@ NORMAN=artifacts/paper_evidence/norman_crispra
 NORMAN_SELECTOR=artifacts/paper_evidence/selector_mlp_biology_range_fullteachers/norman_crispra
 COL_MATCHED=artifacts/paper_evidence/matched_fraction/colon
 OUT="${OUT:-artifacts/paper_evidence/downstream_complete}"
-# Marker panel: "source" (the source studies' annotation markers) or "original".
 MARKER_PANEL="${MARKER_PANEL:-source}"
 
 suffix_for_pct() {
@@ -38,8 +37,6 @@ suffix_for_pct() {
   fi
 }
 
-# SVD and weighted kNN at the Safe Fusion fill fractions, ranked by their own
-# imputed values (scripts/apply_fill_fraction.py).
 matched_methods() {
   local root="$1"
   for pct in $(seq 1 10); do

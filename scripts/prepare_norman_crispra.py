@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Prepare a locked Norman CRISPRa perturbation-preservation benchmark."""
-
 from __future__ import annotations
 
 import argparse
@@ -43,7 +41,6 @@ def main() -> None:
         singles = [value for value in sorted(set(conditions)) if re.fullmatch(r"[^+]+\+ctrl", value)]
         control_positions = np.flatnonzero(control_flag == 1)
 
-        # Target-effect QC with bounded block reads (dense HDF5, row blocks).
         qc_rows: list[dict] = []
         target_gene_set = {gene_lookup[condition[:-5]] for condition in singles if condition[:-5] in gene_lookup}
         control_values: dict[int, list[float]] = {gene: [] for gene in target_gene_set}

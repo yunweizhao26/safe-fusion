@@ -1,20 +1,4 @@
 #!/usr/bin/env python3
-"""Build the inputs for the deployment analysis.
-
-The deployment analysis applies the fitted pipeline to recorded data, as a user
-would. The model-fitting cells keep the benchmark mask, because the selector
-learns from their masked positives. The held-out test cells use their recorded
-counts, so every test candidate is a recorded zero.
-
-Outputs in ``--output-dir``:
-  hybrid.h5ad          fitting cells masked, test cells recorded (model input)
-  recorded.h5ad        every cell recorded (the unfilled reference for evaluation)
-  coordinates.parquet  masked positives of the fitting cells only
-  empty_coordinates.parquet  no masked positives (evaluators of test cells)
-  splits.parquet       copy of the split file
-  manifest.json        provenance
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -31,7 +15,7 @@ from scipy import sparse
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
-from safefusion_benchmark.hashing import sha256_file  # noqa: E402
+from safefusion_benchmark.hashing import sha256_file
 
 
 def dense(value) -> np.ndarray:
@@ -68,8 +52,6 @@ def main() -> None:
     if not test.any() or test.all():
         raise ValueError("the split file needs fitting and test cells")
 
-    # The mask only removes counts, so the recorded matrix agrees with the
-    # masked matrix wherever the masked matrix is nonzero.
     nonzero = corrupted > 0
     if not np.array_equal(corrupted[nonzero], recorded[nonzero]):
         raise ValueError("masked input is not a masked copy of the recorded counts")

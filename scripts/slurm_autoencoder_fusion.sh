@@ -8,9 +8,6 @@
 #SBATCH --output=logs/slurm-autoencoder-%A_%a.out
 #SBATCH --error=logs/slurm-autoencoder-%A_%a.err
 
-# Fit the autoencoder fusion network as a comparison value model: task
-# 2 * unit + mode, with units pancreas folds, colon and Norman, and modes
-# resampled (three recomputed teachers) and masked_positives (five teachers).
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

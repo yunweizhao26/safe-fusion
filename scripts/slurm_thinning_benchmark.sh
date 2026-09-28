@@ -7,28 +7,13 @@
 #SBATCH --output=logs/slurm-thinning-%x-%A_%a.out
 #SBATCH --error=logs/slurm-thinning-%x-%A_%a.err
 
-# Binomial-thinning benchmark. The positives are held-out entries that are
-# nonzero in the recorded counts and zero after thinning, so their chance of
-# becoming zero depends on the count. Every model is fitted on the thinned
-# model-fitting cells, exactly as in the masked benchmark: the five teachers,
-# the stacked value, and the MLP selector trained on the fitting cells' thinned
-# entries against their recorded zeros. MAGIC and scVI are also run as
-# comparators on all cells. Outputs go to artifacts/paper_evidence/thinning/.
-#
-# Submit every stage from the repository root with
-#   bash scripts/slurm_thinning_benchmark.sh submit
-# Stages: prepare (array 0-2), cpu (0-22), gpu (0-7, on an L40S GPU like every
-# scVI fit, because the fitted values differ between GPU models),
-# selector (0-4), evaluate. The stage stack (0-4) refits only the fused value
-# with VALUE_MODEL: boosted (default) or linear, the linear combination of the
-# teachers written to <unit>/safe_fusion_linear.
 set -euo pipefail
 
 stage="${1:?stage: submit | prepare | cpu | gpu | stack | selector | evaluate}"
 SCRIPT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/$(basename -- "${BASH_SOURCE[0]}")"
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$SAFE_FUSION_ROOT"
-source scripts/unit_paths.sh  # fused_value_contract; the units are defined below
+source scripts/unit_paths.sh
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-8}"
 export OPENBLAS_NUM_THREADS="${OMP_NUM_THREADS}"
 export MKL_NUM_THREADS="${OMP_NUM_THREADS}"
@@ -43,7 +28,6 @@ CPU_TEACHERS=(gene_median svd_impute graph_smooth magic_inductive)
 TEACHERS=(gene_median svd_impute graph_smooth magic_inductive scvi_inductive)
 BUDGETS=(0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.10)
 
-# Set input, coordinates, splits, truth, methods_root and fit for a unit.
 unit_paths() {
   local key="$1"
   case "${key}" in
@@ -67,7 +51,6 @@ unit_paths() {
   esac
 }
 
-# Fit the fused value of the current unit from its five teachers with value model $1.
 fit_value() {
   local teacher_args=() name
   for name in "${TEACHERS[@]}"; do teacher_args+=(--teacher-contract "${methods_root}/${name}"); done
@@ -77,7 +60,6 @@ fit_value() {
     --seed 1729 "${teacher_args[@]}"
 }
 
-# Set input, coordinates and splits for a whole dataset (all-cell comparators).
 dataset_paths() {
   case "$1" in
     colon_*) unit_paths "$1" ;;
@@ -105,8 +87,6 @@ case "${stage}" in
     .venv/bin/python scripts/prepare_thinning_benchmark.py "${source_args[@]}" --output-dir "${T}/data/${key}"
     ;;
   cpu)
-    # Tasks 0-19: the four CPU teachers for each unit. Tasks 20-22: MAGIC on
-    # all cells of each dataset as a comparator.
     if (( SLURM_ARRAY_TASK_ID >= 20 )); then
       key="${DATASETS[SLURM_ARRAY_TASK_ID - 20]}"
       dataset_paths "${key}"
@@ -128,8 +108,6 @@ case "${stage}" in
     fi
     ;;
   gpu)
-    # Tasks 0-4: the inductive scVI teacher for each unit. Tasks 5-7: scVI on
-    # all cells of each dataset as a comparator.
     if (( SLURM_ARRAY_TASK_ID >= 5 )); then
       key="${DATASETS[SLURM_ARRAY_TASK_ID - 5]}"
       dataset_paths "${key}"

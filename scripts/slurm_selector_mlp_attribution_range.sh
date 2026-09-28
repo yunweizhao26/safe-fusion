@@ -51,4 +51,3 @@ mapfile -t teacher_args < <(teacher_contract_args "${methods_root}")
   --output-dir "${output}" \
   "${fit[@]}" \
   "${common[@]}"
-

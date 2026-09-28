@@ -12,7 +12,6 @@ SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")
 cd "$SAFE_FUSION_ROOT"
 export MPLCONFIGDIR="$PWD/.matplotlib-cache"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
-# The pinned scGCL trainer uses CPU execution.
 
 case "${SLURM_ARRAY_TASK_ID}" in
   0)

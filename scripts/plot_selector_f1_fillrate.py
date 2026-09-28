@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Plot masked-positive F1 against exact zero fill fraction."""
-
 from __future__ import annotations
 
 import argparse
@@ -14,8 +12,6 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
-# Safe Fusion, SVD, weighted kNN and scVI use the colours of the PD-L1 figure
-# (plot_biological_range_figures.py).
 METHOD_STYLES = {
     "Safe Fusion": {"color": "#7B2CBF", "linewidth": 1.1, "linestyle": "-", "zorder": 10},
     "Safe Fusion MLP": {"color": "#7B2CBF", "linewidth": 1.1, "linestyle": "-", "zorder": 10},
@@ -57,8 +53,6 @@ def main() -> None:
         if "Safe Fusion MLP" in set(table["method"])
         else "Safe Fusion"
     )
-    # scGCL is reported in the supplement only; stacked selectors are plotted
-    # separately.
     methods = (
         safe_fusion_method,
         "scVI",

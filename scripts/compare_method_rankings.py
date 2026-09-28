@@ -1,16 +1,4 @@
 #!/usr/bin/env python3
-"""Compare which recorded zeros Safe Fusion, SVD, and weighted kNN fill.
-
-Tissues: the matched outputs at fill fractions 1% to 10% are nested, so each
-candidate zero gets the smallest fraction at which a method fills it. The
-filled sets are compared by overlap, masked precision, gene detection rate,
-and off-target marker fill for each marker gene.
-
-Papalexi CD274: the selector score is compared with the teacher values among
-held-out cells with recorded zero CD274 RNA, including partial Spearman
-correlations with surface PD-L1.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -27,7 +15,7 @@ REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 sys.path.insert(0, str(REPOSITORY / "scripts"))
 
-from safefusion_benchmark.marker_panels import PANELS  # noqa: E402
+from safefusion_benchmark.marker_panels import PANELS
 
 FRACTIONS = range(1, 11)
 COLON = "artifacts/colon_runs/0b2469810675-c0db6f963e94"
@@ -45,7 +33,6 @@ def suffix(pct: int) -> str:
 
 
 def fill_level(directory, rows: np.ndarray, cols: np.ndarray, cell_ids: list[str]) -> np.ndarray:
-    """Smallest fill fraction in percent at which each candidate is filled, 11 if never."""
     level = np.full(len(rows), 11, dtype=np.int8)
     for pct in sorted(FRACTIONS, reverse=True):
         path = Path(directory(pct))

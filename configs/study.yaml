@@ -7,13 +7,6 @@ study:
   minimum_relative_improvement: 0.05
   fill_budgets: [0.02, 0.05, 0.081, 0.10]
 
-# The checked-in target is deliberately small and fully executable. Production
-# datasets are locked below and become runnable only after their source paths
-# and expected SHA-256 values are supplied in a site-specific config overlay.
-# External Perturb-seq and trajectory reviewer analyses use specialized,
-# split-first preparation scripts rather than these legacy generic stubs. Their
-# completed local sources and artifact roots are recorded alongside the stubs
-# so `enabled: false` is not mistaken for missing data or unfinished analysis.
 datasets:
   synthetic_smoke:
     enabled: true

@@ -16,8 +16,6 @@ from fusion.models import (
 
 
 class IndexDataset(Dataset):
-    """Simple dataset that yields indices for batching."""
-
     def __init__(self, size: int):
         self.size = size
 
@@ -111,14 +109,6 @@ def train_latent_truth(
     seed: int = 42,
     epoch_inputs=None,
 ) -> Tuple[LatentTruthModel, Dict[str, float]]:
-    """Fit the latent-truth fusion model.
-
-    When ``epoch_inputs`` is given, it is called once per epoch as
-    ``epoch_inputs(epoch)`` and returns ``(masked_counts, mask, teacher_stack,
-    pca_features)`` for all rows of ``counts``. The loss targets are the entries
-    in ``mask``, and every input, including the teacher proposals, is computed
-    from ``masked_counts``, so no input contains a target.
-    """
     teacher_names = list(teachers.keys())
     teacher_stack = np.stack([teachers[name] for name in teacher_names], axis=0)
     epoch_masked = epoch_mask = None
@@ -335,7 +325,6 @@ def train_mixture_of_experts(
             theta = model.dispersion()
             zinb = zinb_negative_log_likelihood(x, mu, theta, pi, mask)
 
-            # Agreement-aware entropy penalty: higher disagreement -> lower entropy
             teacher_log = torch.log1p(torch.clamp(t, min=0.0))
             disagreement = torch.std(teacher_log, dim=0)
             entropy = -torch.sum(alpha * torch.log(alpha + 1e-8), dim=0)

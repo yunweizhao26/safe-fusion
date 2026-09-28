@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Donor-level colon biology evaluation on the locked test donors with bootstrap inference."""
-
 from __future__ import annotations
 
 import argparse
@@ -18,9 +16,9 @@ from scipy.spatial.distance import cdist
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
-from safefusion_benchmark.downstream import randomized_pca_embedding  # noqa: E402
-from safefusion_benchmark.marker_panels import PANELS  # noqa: E402
-from safefusion_benchmark.metrics import average_precision_tie_aware, log1p_mae, spearman  # noqa: E402
+from safefusion_benchmark.downstream import randomized_pca_embedding
+from safefusion_benchmark.marker_panels import PANELS
+from safefusion_benchmark.metrics import average_precision_tie_aware, log1p_mae, spearman
 
 
 INFLAMMATION_MARKERS = {
@@ -28,7 +26,6 @@ INFLAMMATION_MARKERS = {
     "CCL20", "IL32", "HLA-DRA", "HLA-DPA1", "HLA-DPB1", "HLA-A", "HLA-B",
     "STAT1", "IRF1", "IFITM1", "IFITM3",
 }
-
 
 
 def dense(value) -> np.ndarray:

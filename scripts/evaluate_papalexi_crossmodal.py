@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Evaluate held-out Safe Fusion zero scores against matched ADT measurements."""
-
 from __future__ import annotations
 
 import argparse
@@ -183,7 +181,6 @@ def main() -> None:
             (subset["truth_count"] == 0) & (subset["masked_positive"].astype(int) == 0)
         ].copy()
         subset.reset_index(drop=True, inplace=True)
-        # SVD is last so the random draws for the other methods do not change.
         methods = [
             "mlp_safe_fusion", "scvi", "weighted_knn", "fused_component", "library_size", "svd"
         ]

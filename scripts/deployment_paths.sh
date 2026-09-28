@@ -1,11 +1,3 @@
-# Paths for the deployment analysis. Source after scripts/unit_paths.sh and call
-# `deployment_paths <key>` to set the unit_paths variables plus:
-#   out            deployment directory of the unit
-#   deploy_methods teacher and stacked-value contracts fitted on the hybrid input
-#   fit            selector-fitting split arguments
-# The model input is ${out}/hybrid.h5ad: fitting cells keep the benchmark mask
-# and test cells hold their recorded counts.
-
 DEPLOY_KEYS=(pancreas_0 pancreas_1 pancreas_2 colon norman_crispra adamson_crispri dixit_ko papalexi_eccite zebrafish)
 DEPLOY_ROOT="${DEPLOY_ROOT:-artifacts/paper_evidence/downstream_deployment}"
 

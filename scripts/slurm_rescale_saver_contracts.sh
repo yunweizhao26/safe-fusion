@@ -7,8 +7,6 @@
 #SBATCH --output=logs/slurm-saver-rescale-%j.out
 #SBATCH --error=logs/slurm-saver-rescale-%j.err
 
-# Put the existing SAVER contracts on the count scale of their input. The
-# script skips contracts that are already rescaled.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

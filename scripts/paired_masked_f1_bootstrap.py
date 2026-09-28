@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""Paired bootstrap of masked F1: Safe Fusion minus each comparator.
-
-Resamples biological units (donors in pancreas and colon, perturbation targets
-in CRISPRa) with replacement. Each draw recomputes pooled masked F1 for Safe
-Fusion and the comparator on the same units, so the interval is for the paired
-difference. Reported statistics are the difference at 1%, 2%, 5% and 10% fill
-and the mean difference over the ten fractions 1%, 2%, ..., 10%.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -34,7 +25,6 @@ def unit_arrays(frame: pd.DataFrame, units: list[str]) -> dict[str, np.ndarray]:
 
 
 def pooled_f1(selected: np.ndarray, true_positive: np.ndarray, positives: np.ndarray) -> np.ndarray:
-    """Masked F1 per fraction from unit counts (rows are units)."""
     return 2.0 * true_positive.sum(axis=0) / (selected.sum(axis=0) + positives.sum(axis=0))
 
 
@@ -109,7 +99,6 @@ def main() -> None:
                 "upper_pp": 100 * np.quantile(mean_boot, 0.975),
                 "n_units": len(units),
             })
-            # Units in which Safe Fusion has the higher unit-level F1 at 5%.
             column = UNIT_FRACTIONS.index(0.05)
             unit_reference = 2 * reference["n_true_positive"][:, column] / (reference["n_selected"][:, column] + reference["n_masked_positives"][:, column])
             unit_other = 2 * other["n_true_positive"][:, column] / (other["n_selected"][:, column] + other["n_masked_positives"][:, column])

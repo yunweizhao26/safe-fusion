@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Create deterministic condition-stratified donor cross-fitting splits."""
-
 from __future__ import annotations
 
 import argparse

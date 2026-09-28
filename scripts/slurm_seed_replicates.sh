@@ -7,21 +7,6 @@
 #SBATCH --output=logs/slurm-seed-rep-%x-%A_%a.out
 #SBATCH --error=logs/slurm-seed-rep-%x-%A_%a.err
 
-# Replicates of the masked benchmark with a new mask and new model seeds.
-# Seed 1729 is the production run; this launcher runs the other seeds.
-# Submit one stage at a time with --export=STAGE=<stage> and the array size
-# printed below:
-#   mask      4 seeds x 3 datasets                           --array=0-11
-#   teachers  4 seeds x 5 units x 4 CPU teachers             --array=0-79
-#   scvi_teacher  4 seeds x 5 units (GPU)                    --array=0-19
-#   stack     4 seeds x 5 units                              --array=0-19
-#             (VALUE_MODEL=linear writes the linear combination of the
-#             teachers to <unit>/safe_fusion_linear)
-#   selector  4 seeds x 5 units                              --array=0-19
-#   magic     4 seeds x 3 datasets (transductive comparator) --array=0-11
-#   scvi      4 seeds x 3 datasets (transductive, GPU)       --array=0-11
-# Submit the two GPU stages with --gres=gpu:l40s:1. The fitted scVI values
-# differ between GPU models, so every scVI fit runs on an L40S.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
@@ -44,7 +29,6 @@ CPU_TEACHERS=(gene_median svd_impute graph_smooth magic_inductive)
 task="${SLURM_ARRAY_TASK_ID}"
 
 dataset_paths() {
-  # Sets truth, workflow_splits, unit_column for dataset $1.
   case "$1" in
     pancreas) truth="${PAN}/data/pancreas_islets/preprocessed.h5ad"; workflow_splits="${PAN}/data/pancreas_islets/splits.parquet"; unit_column=donor ;;
     colon) truth="${COL}/data/colon_epithelial/preprocessed.h5ad"; workflow_splits="${COL}/data/colon_epithelial/splits.parquet"; unit_column=donor ;;
@@ -53,7 +37,6 @@ dataset_paths() {
 }
 
 replicate_paths() {
-  # Sets dataset, splits, fit, data, out for unit $1 of seed $2.
   case "$1" in
     pancreas_*) dataset=pancreas; splits="${CF}/fold_${1##*_}/splits.parquet"; fit=(--fit-split development) ;;
     colon) dataset=colon; splits="${COL}/data/colon_epithelial/splits.parquet"; fit=(--fit-split validation --fit-cells 3852) ;;

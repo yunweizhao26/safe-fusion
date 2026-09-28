@@ -8,12 +8,6 @@
 #SBATCH --output=logs/slurm-stack-%A_%a.out
 #SBATCH --error=logs/slurm-stack-%A_%a.err
 
-# Fit the Safe Fusion fused value from all five teachers for one dataset per
-# task (units from scripts/unit_paths.sh). VALUE_MODEL selects the value model
-# of run_leakage_safe_method.py: boosted (default) writes the production value
-# to <methods_root>/safe_fusion, and linear writes the linear combination of
-# the teachers (one least-squares weight per teacher) to
-# <methods_root>/safe_fusion_linear.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

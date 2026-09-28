@@ -1,18 +1,4 @@
 #!/usr/bin/env python3
-"""Run the pinned official scGCL architecture on a corrupted count matrix.
-
-The upstream implementation is transductive and saves the target-node
-embedding as its reconstructed expression matrix.  This adapter keeps the
-published AFGRL graph encoder, neighbor selection, ZINB decoder, and losses,
-but supplies project H5AD input and current PyTorch device handling.  No cell
-labels, split labels, masked coordinates, or reference counts enter fitting.
-
-For compatibility with the benchmark's count-scale contract, the nonnegative
-unit-norm scGCL reconstruction is rescaled to each corrupted cell's observed
-library size.  The unscaled reconstruction and selected-gene indices are also
-retained so that this deterministic post-processing is auditable.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -30,7 +16,7 @@ import numpy as np
 try:
     import torch
     import torch.nn.functional as F
-except ModuleNotFoundError:  # Helpers remain testable in the lightweight project env.
+except ModuleNotFoundError:
     torch = None
     F = None
 from scipy import sparse
@@ -108,7 +94,6 @@ def preprocess(
     genes: np.ndarray,
     target_sum: float | None = None,
 ) -> np.ndarray:
-    """Match upstream normalize_per_cell -> log1p, then subset genes."""
     expressed = np.flatnonzero(np.sum(counts, axis=0) > 0)
     target = normalization_target(counts, expressed) if target_sum is None else target_sum
     if target <= 0:
@@ -119,14 +104,10 @@ def preprocess(
 
 
 def choose_genes(counts: np.ndarray, maximum: int) -> np.ndarray:
-    """Match upstream filtering and Scanpy highly-variable-gene selection."""
     expressed = np.flatnonzero(np.sum(counts, axis=0) > 0)
     if len(expressed) <= maximum:
         return expressed.astype(np.int64)
-    # The pinned repository calls scanpy.pp.highly_variable_genes after
-    # normalize_per_cell and log1p. Import lazily so lightweight helper tests
-    # do not require Scanpy unless selection is actually needed.
-    import scanpy as sc  # noqa: PLC0415
+    import scanpy as sc
 
     normalized = preprocess(counts, expressed)
     work = ad.AnnData(normalized)
@@ -152,22 +133,12 @@ def rescale_embedding(
     genes: np.ndarray,
     normalized_input: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Invert the official unit log-embedding to an auditable count scale.
-
-    Upstream saves an L2-normalized embedding although the encoder is trained
-    against log1p normalized expression. Restore the corrupted input's L2
-    magnitude, invert log1p, and then match the selected-gene library mass.
-    """
     embedding = np.maximum(np.asarray(embedding, dtype=np.float32), 0.0)
     if normalized_input is None:
         normalized_input = preprocess(corrupted_counts, genes)
     log_norm = np.linalg.norm(normalized_input, axis=1, keepdims=True)
     reconstructed_log1p = embedding * log_norm
-    # Use float64 for expm1 because a unit embedding times a high-dimensional
-    # log-expression norm can exceed float32's safe exponent range.
     relative_counts = np.expm1(reconstructed_log1p.astype(np.float64))
-    # The embedding spans only ``genes``. Match that block's observed mass so
-    # preserving untouched genes also preserves the whole-cell library.
     library = corrupted_counts[:, genes].sum(axis=1, keepdims=True).astype(np.float64)
     denominator = relative_counts.sum(axis=1, keepdims=True)
     selected = np.divide(
@@ -193,10 +164,6 @@ def graph_tensors(
     adjacency = kneighbors_graph(
         representation, k, mode="connectivity", metric="cosine", include_self=True
     ).tocsr()
-    # Upstream computes a normalized adjacency only to obtain its nonzero
-    # indices, removes self loops, makes the graph undirected, and then assigns
-    # unit edge attributes in Dataset.process. Reproduce that effective graph
-    # directly instead of feeding normalization weights to the encoder.
     undirected = (adjacency + adjacency.T).astype(bool).astype(np.float32).tocsr()
     undirected.setdiag(0.0)
     undirected.eliminate_zeros()
@@ -241,8 +208,6 @@ def zinb_loss(
     )
     zero_nb = torch.pow(theta / (theta + mu + eps), theta)
     zero = -torch.log(pi + (1.0 - pi) * zero_nb + eps)
-    # The pinned ZINB implementation returns the sum when masking=False. This
-    # scale is unusual but is part of the official training objective.
     return torch.where(counts < 1e-8, zero, nb).sum()
 
 
@@ -253,8 +218,7 @@ def device_safe_neighbor_indices(
     teacher: torch.Tensor,
     top_k: int,
 ) -> torch.Tensor:
-    """Reproduce upstream Neighbor.forward without its CPU/GPU index mismatch."""
-    import faiss  # noqa: PLC0415
+    import faiss
 
     n_data, dimension = student.shape
     device = student.device
@@ -263,9 +227,6 @@ def device_safe_neighbor_indices(
     _, knn = similarity.topk(k=top_k, dim=1, largest=True, sorted=True)
 
     cell_index = torch.arange(n_data, device=device)
-    # Keep upstream's sparse construction and multiplication exactly. In the
-    # pinned Torch build it retains explicit zero-valued locality entries, and
-    # upstream subsequently consumes their indices in the contrastive loss.
     knn_graph = neighbor.create_sparse(knn)
     locality = knn_graph * adjacency
 
@@ -282,8 +243,6 @@ def device_safe_neighbor_indices(
         kmeans.train(teacher_numpy)
         _, assignment = kmeans.index.search(teacher_numpy, 1)
         labels.append(assignment[:, 0])
-    # This `.to(device)` is the sole compatibility fix: upstream leaves the
-    # labels on CPU and then indexes them with CUDA tensors.
     cluster_labels = torch.as_tensor(np.stack(labels), device=device).float()
     close = None
     for each_k_idx in range(neighbor.num_kmeans):
@@ -309,10 +268,6 @@ def forward_loss(
     prediction = model.student_predictor(student)
     decoded = model.ZINB_Encoder(student)
     dropout = model.pi_Encoder(decoded)
-    # Upstream clip_by_tensor constructs fresh tensors from these two heads,
-    # which detaches them from autograd. Preserve that effective optimization
-    # behavior while keeping the tensors on the active device. The pi head
-    # remains differentiable, exactly as in the pinned implementation.
     dispersion = torch.clamp(model.disp_Encoder(decoded), 1e-4, 1e4).detach()
     mean = torch.clamp(torch.exp(model.mean_Encoder(decoded)), 1e-5, 1e6).detach()
     with torch.no_grad():
@@ -445,11 +400,8 @@ def main() -> None:
     if not (repo / "models" / "AFGRL.py").exists():
         raise FileNotFoundError(f"official scGCL checkout is incomplete: {repo}")
     sys.path.insert(0, str(repo))
-    from models.AFGRL import AFGRL  # noqa: PLC0415
+    from models.AFGRL import AFGRL
 
-    # The upstream module seeds NumPy/Torch at import time. Reapply the
-    # explicit CLI seed afterward so metadata and effective initialization
-    # cannot diverge; the default remains upstream's seed 0.
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)

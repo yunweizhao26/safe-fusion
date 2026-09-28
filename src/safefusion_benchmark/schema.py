@@ -53,7 +53,6 @@ def validate_protein_keys(panel: pd.DataFrame) -> dict[str, int]:
     duplicates = int(panel.duplicated(["cell_id", "reagent_id", "gene_id"]).sum())
     if duplicates:
         raise SchemaError(f"duplicate protein proxy keys: {duplicates}")
-    # Multiple reagent IDs for a cell/gene are legal and must remain distinct.
     return {"rows": len(panel), "distinct_reagents": panel["reagent_id"].nunique()}
 
 

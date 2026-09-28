@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""Validation-calibrated selective zero filling for Safe Fusion.
-
-Ranks zero entries by a selector trained to recognise masked positives in the
-selector-fitting cells, using the teacher proposals and gene and cell context.
-Writes one output contract per fill budget: raw counts plus the top-budget
-zeros replaced by the Safe Fusion stacked value.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -24,8 +16,8 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
-from safefusion_benchmark.contracts import write_output_contract  # noqa: E402
-from selector_attribution import (  # noqa: E402
+from safefusion_benchmark.contracts import write_output_contract
+from selector_attribution import (
     ARCHITECTURES,
     Candidates,
     ENSEMBLE_ARCHITECTURES,
@@ -44,7 +36,6 @@ def score_percentile_from_fit(
     fit_scores_value: np.ndarray,
     values: np.ndarray,
 ) -> np.ndarray:
-    """Map values through the empirical fit-score CDF without test fitting."""
     ordered = np.sort(np.asarray(fit_scores_value, dtype=np.float32))
     return (
         np.searchsorted(ordered, values, side="right") / max(1, len(ordered))
@@ -52,12 +43,6 @@ def score_percentile_from_fit(
 
 
 def detection_probability(p: np.ndarray, mask_rate: float) -> np.ndarray:
-    """Probability that a candidate zero was a detected entry before masking.
-
-    Each detected entry is hidden with probability ``mask_rate``, and a
-    candidate zero is either a hidden detection or an undetected entry, so
-    p = rho*d / (rho*d + 1 - d) and d = p / (p + rho*(1 - p)).
-    """
     p = np.clip(np.asarray(p, dtype=np.float64), 0.0, 1.0)
     return p / np.maximum(p + mask_rate * (1.0 - p), 1e-12)
 
@@ -74,13 +59,6 @@ def cross_fitted_calibration(
     seed: int,
     make_candidates,
 ):
-    """Isotonic map from selector score to P(masked positive).
-
-    The selector is refitted ``folds`` times, each time without one group of
-    fitting cells, and scores the held-out cells. The isotonic map is fitted
-    on these out-of-fold scores. Negatives are weighted by ``negative_weight``
-    to undo any subsampling of fitting candidates. No test entry is used.
-    """
     from sklearn.isotonic import IsotonicRegression
 
     cells = np.unique(fit_rows)
@@ -215,7 +193,6 @@ def main() -> None:
     library = np.log1p(counts.sum(axis=1))
     condition_mean = condition_dropout = condition_code = None
     if args.condition_column is not None:
-        # Per-condition gene statistics from the selector-fitting cells of each condition.
         labels = corrupted_adata.obs[args.condition_column].astype(str).to_numpy()
         condition_names, condition_code = np.unique(labels, return_inverse=True)
         condition_mean = np.zeros((len(condition_names), counts.shape[1]), dtype=np.float32)
@@ -229,10 +206,6 @@ def main() -> None:
 
     def feature_frame(split_mask: np.ndarray, split_name: str, max_rows: int | None = None, seed: int = 0) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         rows, cols = np.where((counts == 0) & split_mask[:, None])
-        # ``coordinates.split`` records the split used when the corruption was
-        # first created.  Cross-fitting supplies a new split file per fold, so
-        # that stored label can be stale.  Select masked positives by the
-        # current split's cell indices instead.
         split_cells = np.flatnonzero(split_mask)
         split_coordinates = coordinates.loc[
             coordinates["cell_index"].astype(int).isin(split_cells)
@@ -339,7 +312,6 @@ def main() -> None:
         )
 
     def ranking_metrics(labels: np.ndarray, scores: np.ndarray) -> dict:
-        # Deployment inputs have no masked positives among test zeros.
         if labels.min() == labels.max():
             return {"roc_auc": None, "pr_auc": None}
         return {

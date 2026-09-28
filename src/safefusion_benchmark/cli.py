@@ -157,8 +157,6 @@ def cmd_corrupt(args: argparse.Namespace) -> None:
         )
         output = adata.copy()
         output.X = sparse.csr_matrix(corrupted)
-        # Raw counts remain immutable in the separate preprocessed artifact; this
-        # corruption artifact deliberately excludes them from method inputs.
         for layer in list(output.layers):
             del output.layers[layer]
         output.layers["corrupted_counts"] = sparse.csr_matrix(corrupted)

@@ -10,4 +10,3 @@ dependencies:
       - faiss-cpu==1.9.0.post1
       - torch-geometric==2.6.1
       - tensorboardX==2.6.2.2
-# The official scGCL checkout is pinned in the adapter metadata.

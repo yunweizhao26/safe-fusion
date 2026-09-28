@@ -1,42 +1,4 @@
 #!/usr/bin/env python3
-"""Run a standard imputer on disease and tissue subsets of a CELLxGENE H5AD.
-
-This script reproduces the imputer runs behind the fill-decision analysis of
-the Crohn's disease colon data (Supplementary Table S1). The imputer functions
-are those of the original analysis script, with its parameters unchanged:
-
-* SAUCIE: 1,000 training steps with the package defaults.
-* MAGIC: genes detected in fewer than five cells are removed, values are
-  library-size normalized and square-root transformed, then MAGIC runs with
-  t = 7 and 20 principal components. The output keeps only the modeled genes.
-* DeepImpute: ``MultiNet`` defaults, ``minVMR = 0.5``.
-* scScope: 15 latent dimensions, masked loss, batch size 64, 500 epochs,
-  T = 2, learning rate 1e-4, beta1 = 0.05.
-* scVI: default model and training, normalized expression as output.
-* kNN smoothing: the mean of each cell's ten nearest cells (Euclidean
-  distance, the cell included) on the recorded values.
-
-As in the original analysis, cells are restricted to ``is_primary_data`` and
-every (disease, tissue) subset is imputed separately from its recorded matrix
-``X``. The output of a subset is written to
-``<output-root>/<method>/<dataset-id>/<disease>/<tissue>.npy`` and existing
-outputs are kept.
-
-``--seed`` makes the runs repeatable. Before each subset, the Python, NumPy,
-TensorFlow and PyTorch generators are seeded with it and a new TensorFlow
-graph is started, so the output of a subset does not depend on the other
-subsets of the run. The seed is also the graph seed of SAUCIE and scScope, the
-seed of DeepImpute, the ``random_state`` of MAGIC and the scVI seed.
-TensorFlow and PyTorch run with deterministic kernels. The original analysis
-set no seed except the DeepImpute default of 1234.
-
-SAUCIE, DeepImpute and scScope are imported from ``vendor/``, which holds the
-copies used in the original analysis (edited for TensorFlow 2). MAGIC is
-``magic-impute`` 3.0.0. The environment is ``environment.yaml`` in this
-directory. All imputer packages are imported at start-up in the original
-order, because SAUCIE and scScope switch TensorFlow to graph mode on import.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -52,15 +14,15 @@ from anndata import read_h5ad
 from pandas import DataFrame
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "vendor"))
-import SAUCIE  # noqa: E402
-import magic  # noqa: E402
-import scprep  # noqa: E402
-from deepimpute import multinet  # noqa: E402
-import scscope as scScope  # noqa: E402
-import anndata  # noqa: E402
-import scvi  # noqa: E402
-import tensorflow  # noqa: E402
-import torch  # noqa: E402
+import SAUCIE
+import magic
+import scprep
+from deepimpute import multinet
+import scscope as scScope
+import anndata
+import scvi
+import tensorflow
+import torch
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -127,7 +89,6 @@ def _run_scvi(y, seed):
 
 
 def _run_knn_smoothing(y, seed, k=10):
-    # Deterministic; the seed is not used.
     from sklearn.neighbors import NearestNeighbors
 
     nbrs = NearestNeighbors(n_neighbors=k, algorithm="auto").fit(y)
@@ -138,7 +99,6 @@ def _run_knn_smoothing(y, seed, k=10):
     return smoothed
 
 
-# Output directory names are those of the original analysis.
 METHODS = {
     "SAUCIE": _run_saucie,
     "MAGIC": _run_magic,
@@ -150,7 +110,6 @@ METHODS = {
 
 
 def reset_random_state(seed: int) -> None:
-    """Seed every random generator and start a new TensorFlow graph."""
     random.seed(seed)
     np.random.seed(seed)
     tensorflow.keras.backend.clear_session()
@@ -189,7 +148,7 @@ def main() -> None:
     method = METHODS[args.method]
 
     adata = read_h5ad(input_path)
-    adata = adata[adata.obs["is_primary_data"] == True]  # noqa: E712
+    adata = adata[adata.obs["is_primary_data"] == True]
     subsets = [tuple(pair) for pair in adata.obs[["disease", "tissue"]].drop_duplicates().to_numpy()]
     if args.subset:
         missing = sorted(set(args.subset) - set(subsets))

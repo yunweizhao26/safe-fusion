@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""Prepare a binomial-thinning benchmark input.
-
-Writes ``corrupted.h5ad`` (thinned counts in ``layers["corrupted_counts"]``)
-and ``coordinates.parquet``. The coordinates list only the entries that are
-nonzero in the unthinned counts and zero after thinning; these are the
-positives of the benchmark, and ``original_value`` holds the unthinned count.
-Either reuse an existing thinned matrix (``--corrupted``) or thin the counts
-with ``--retained-fraction`` and ``--seed``.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -24,8 +14,8 @@ from scipy import sparse
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
-from safefusion_benchmark.corruption import corrupt_counts  # noqa: E402
-from safefusion_benchmark.hashing import sha256_file  # noqa: E402
+from safefusion_benchmark.corruption import corrupt_counts
+from safefusion_benchmark.hashing import sha256_file
 
 
 def dense(value) -> np.ndarray:

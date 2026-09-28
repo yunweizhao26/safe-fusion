@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""Split a sparse fill into its masked-positive part and its recorded-zero part.
-
-In the masked benchmark, the candidate zeros of test cells are either masked
-positives (recorded nonzero counts hidden by the benchmark) or recorded zeros.
-For each sparse output, this script writes two contracts with the same
-selected entries restricted to one of the two groups. Every other entry keeps
-the value of the source contract, so the two parts add up to the source fill.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -23,7 +14,7 @@ from scipy import sparse
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
-from safefusion_benchmark.contracts import write_output_contract  # noqa: E402
+from safefusion_benchmark.contracts import write_output_contract
 
 PARTS = ("masked_only", "zeros_only")
 
@@ -57,9 +48,6 @@ def main() -> None:
     )
     test = split == "test"
     candidate = (counts == 0) & test[:, None]
-    # The coordinates file stores the split used when the mask was created;
-    # cross-fitting changes the split, so masked positives of test cells are
-    # selected by the current split's cell indices.
     coordinates = pd.read_parquet(args.coordinates)
     masked = np.zeros(counts.shape, dtype=bool)
     masked[

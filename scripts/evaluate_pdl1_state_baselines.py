@@ -1,27 +1,4 @@
 #!/usr/bin/env python3
-"""Perturbation-state baselines and partial correlations for CD274 RNA zeros and PD-L1.
-
-The Papalexi screen perturbs interferon-gamma pathway genes that control PD-L1,
-so a ranking of recorded CD274 zeros can agree with surface PD-L1 by tracking
-perturbation state. This evaluation adds two state rankings to the rankings of
-scripts/evaluate_papalexi_crossmodal.py, on the same held-out cells with a
-recorded CD274 count of zero:
-
-* target baseline: the mean centered log ratio PD-L1 of the development cells
-  with the same perturbation target;
-* interferon-gamma score: the mean log count per ten thousand of 23 response
-  genes in the masked RNA.
-
-Each ranking is compared with centered log ratio PD-L1 by Spearman correlation
-and by the mean AUROC for separating cells above and below 41 PD-L1 thresholds
-(30th to 70th percentile). A paired bootstrap gives intervals for Safe Fusion
-minus every other ranking, resampling cells within replicates or perturbation
-targets as clusters. The same draws give intervals for the Spearman partial
-correlation of Safe Fusion with PD-L1 given the SVD ranking, and of SVD given
-the Safe Fusion ranking. No protein measurement of a held-out cell is used to
-build a ranking.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -40,14 +17,12 @@ IFNG_RESPONSE_GENES = (
     "STAT1", "IRF1", "GBP1", "GBP2", "GBP4", "GBP5", "CXCL9", "CXCL10", "CXCL11", "IDO1", "TAP1", "PSMB8",
     "PSMB9", "WARS", "SOCS1", "HLA-DRA", "B2M", "HLA-A", "HLA-B", "HLA-C", "IFITM1", "ISG15", "APOL6",
 )
-# Imputed CD274 values, by ranking name and benchmark contract.
 VALUE_RANKINGS = {"fused_value": "safe_fusion", "weighted_knn": "graph_smooth", "svd": "svd_impute", "scvi": "scvi"}
 RANKINGS = ("safe_fusion", "svd", "weighted_knn", "scvi", "fused_value", "library_size", "target_baseline", "ifng_score")
 QUANTILES = np.linspace(0.30, 0.70, 41)
 
 
 def mean_threshold_auroc(score: np.ndarray, protein: np.ndarray) -> float:
-    """Mean AUROC of the score for protein above each quantile threshold (ties count one half)."""
     ranks = rankdata(score)
     aurocs = []
     for quantile in QUANTILES:
@@ -60,7 +35,6 @@ def mean_threshold_auroc(score: np.ndarray, protein: np.ndarray) -> float:
 
 
 def partial_spearman(y: np.ndarray, x: np.ndarray, covariate: np.ndarray) -> float:
-    """Spearman correlation of x with y after regressing both ranks on the covariate's ranks."""
     design = np.column_stack([np.ones(len(y)), rankdata(covariate)])
     residuals = []
     for values in (rankdata(y), rankdata(x)):
@@ -69,7 +43,6 @@ def partial_spearman(y: np.ndarray, x: np.ndarray, covariate: np.ndarray) -> flo
 
 
 def pdl1_frame(prepared: Path, benchmark: Path, panel_path: Path) -> pd.DataFrame:
-    """Held-out cells with a recorded CD274 zero, their PD-L1 and every ranking score."""
     truth = ad.read_h5ad(prepared)
     corrupted = ad.read_h5ad(benchmark / "corrupted.h5ad")
     if not np.array_equal(truth.obs_names.astype(str), corrupted.obs_names.astype(str)):

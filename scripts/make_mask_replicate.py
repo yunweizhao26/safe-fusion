@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""Draw one replicate of the stratified 10% nonzero mask with a new seed.
-
-The replicate uses the production corruption (``corrupt_counts`` with the
-stratified nonzero mask) and writes a masked input with the same layout as the
-production files: ``layers["corrupted_counts"]`` holds the masked counts, and
-the coordinates parquet lists every hidden entry. Only the seed differs.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -22,7 +14,7 @@ from scipy import sparse
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
-from safefusion_benchmark.corruption import corrupt_counts  # noqa: E402
+from safefusion_benchmark.corruption import corrupt_counts
 
 SPEC = {"kind": "stratified_nonzero_mask", "fraction": 0.10, "gene_bins": 4, "library_bins": 4}
 

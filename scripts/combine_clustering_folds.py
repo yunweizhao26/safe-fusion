@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Combine donor-disjoint clustering folds and recompute donor bootstrap intervals."""
-
 from __future__ import annotations
 
 import argparse

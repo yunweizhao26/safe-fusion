@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Aggregate all five downstream evaluations into range-based conclusions."""
-
 from __future__ import annotations
 
 import argparse

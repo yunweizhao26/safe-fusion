@@ -77,9 +77,6 @@ def evaluate_core(
         })
     else:
         zero_labels, zero_scores = labels, scores
-        # Controlled real-data corruptions provide known positives but no
-        # defensible biological-zero negatives. Do not report a one-class PR
-        # value of 1.0 as zero-selection evidence.
         if np.unique(labels).size < 2:
             metrics.update({"roc_auc": np.nan, "pr_auc": np.nan, "prevalence": float(labels.mean())})
         else:

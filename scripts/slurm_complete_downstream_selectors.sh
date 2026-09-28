@@ -8,11 +8,6 @@
 #SBATCH --output=logs/slurm-complete-downstream-selectors-%A_%a.out
 #SBATCH --error=logs/slurm-complete-downstream-selectors-%A_%a.err
 
-# Fit the MLP selector for one dataset per task and write the filled outputs at
-# 1% to 10% and the 1000-point masked F1 curve. Every dataset fits the selector
-# on development cells, except colon, which fits it on the validation donors.
-# The teachers and the stacked value are fitted on all model-fitting cells, and
-# every fitting-cell teacher proposal excludes that cell's own counts.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

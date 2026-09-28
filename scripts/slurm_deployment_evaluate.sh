@@ -8,14 +8,6 @@
 #SBATCH --output=logs/slurm-deployment-evaluate-%A_%a.out
 #SBATCH --error=logs/slurm-deployment-evaluate-%A_%a.err
 
-# Deployment analysis, step 2. Evaluates the filled recorded test cells with the
-# downstream evaluators of the masked benchmark. The unfilled baseline
-# ("corrupted_raw" in the evaluator output) is the recorded matrix itself, so
-# every difference is the effect of filling recorded zeros. Endpoints with a
-# reference outside the filled RNA: cell-type labels (clustering, reference
-# mapping), marker specificity, stage labels and response edges. Disease
-# effects, dynamic genes and pseudobulk correlations measure distortion of the
-# recorded matrix.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
@@ -32,7 +24,6 @@ OUT="${ROOT}/evaluation"
 PCTS="${PCTS:-1 2 3 4 5 6 7 8 9 10}"
 MARKER_PANEL="${MARKER_PANEL:-source}"
 
-# methods_for <unit dir>: dense outputs plus the three sparse fills.
 methods_for() {
   local unit="$1" pct
   methods=(
@@ -88,8 +79,6 @@ case "${SLURM_ARRAY_TASK_ID}" in
       extras+=(--extra-method "svd_${pct}pct=svd_${pct}pct")
       extras+=(--extra-method "weighted_knn_${pct}pct=weighted_knn_${pct}pct")
     done
-    # Every donor is a test donor in one fold, so the recorded matrix of any
-    # fold is the unfilled reference for all donors.
     "${PY}" scripts/evaluate_pancreas_crossfit_biology.py \
       --truth "${PAN}/data/pancreas_islets/preprocessed.h5ad" \
       --corrupted "${ROOT}/pancreas/fold_0/recorded.h5ad" \

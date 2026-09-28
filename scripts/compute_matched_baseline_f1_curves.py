@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""Compute exact-fill masked-positive F1 curves for the comparison methods.
-
-Each comparator ranks the zeros of the held-out cells by its own value on the
-count scale of the masked input (``masked_f1_units.count_scale_values``). The
-script also writes, per biological unit and per fill fraction from 1% to 10%,
-the selected, true-positive and masked-positive counts of every comparator and
-of the Safe Fusion selector, which the paired bootstrap uses.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -35,8 +26,6 @@ from masked_f1_units import (
 
 
 def tie_broken_order(scores: np.ndarray, seed: int) -> np.ndarray:
-    # Random tie breaking is independent of the labels and prevents the stored
-    # cell or gene order from deciding large ALRA zero ties.
     rng = np.random.default_rng(seed)
     return np.lexsort((rng.random(len(scores)), -np.nan_to_num(scores, nan=-np.inf)))
 
@@ -135,8 +124,6 @@ def main() -> None:
                 frame.insert(0, "group", unit.key)
                 frame.insert(0, "dataset", unit.dataset)
                 unit_rows.append(frame)
-        # The Safe Fusion selector's filled entries at each fraction, read from
-        # the output contracts written by calibrated_selective_fill.py.
         for fraction in UNIT_FRACTIONS:
             contract = unit.selector_dir / f"safe_fusion_calibrated_mlp_topk_{fraction_name(fraction)}"
             filled = np.asarray(np.load(contract / "mean.npy", mmap_mode="r")[rows, cols])

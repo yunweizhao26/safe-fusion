@@ -1,22 +1,4 @@
 #!/usr/bin/env python3
-"""Masked F1 on the four perturbation screens, with and without perturbation labels.
-
-The candidates of each masked screen benchmark (Norman, Adamson, Dixit and
-Papalexi) are the zeros of the held-out cells in the masked input, and the
-positives are the masked entries among them. At each fill fraction b from 1% to
-10%, a comparator fills the top round(b * |Z|) candidates ranked by its own
-value on the count scale (masked_f1_units.count_scale_values, ties broken at
-random), and Safe Fusion fills the entries of its selector output contract at
-b. Masked F1 is 2 TP / (filled + masked positives). The report gives, for every
-method, the mean over the ten fill fractions in each screen and the average of
-these means over the four screens.
-
-Label methods use the perturbation labels (scripts/slurm_condition_aware_screens.sh):
-the weighted kNN teacher borrows only from cells with the same perturbation, the
-scVI teacher conditions on it, and the Safe Fusion selector adds the gene's
-mean and zero fraction within the cell's perturbation.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -30,8 +12,6 @@ from compute_matched_baseline_f1_curves import tie_broken_order
 from masked_f1_units import EVIDENCE, ROOT, UNIT_FRACTIONS, Unit, count_scale_values, fraction_name, load_unit
 
 SCREENS = ("norman_crispra", "adamson_crispri", "dixit_ko", "papalexi_eccite")
-# Comparator contracts, relative to the screen's methods directory. Each ranks
-# the candidates by its own imputed value.
 VALUE_METHODS = {
     "svd": "svd_impute",
     "weighted_knn": "graph_smooth",
@@ -46,7 +26,6 @@ METHOD_ORDER = ("safe_fusion", "svd", "weighted_knn", "magic", "scvi",
 
 
 def screen_unit(dataset: str, evidence: Path, external: Path, seed: int) -> tuple[Unit, dict[str, Path]]:
-    """Masked benchmark paths of one screen and the selector directory of each Safe Fusion variant."""
     if dataset == "norman_crispra":
         root = evidence / "norman_crispra"
         methods = root / "methods"

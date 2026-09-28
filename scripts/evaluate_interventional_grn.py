@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Validate regulatory-response edges with real gain- or loss-of-function data."""
-
 from __future__ import annotations
 
 import argparse
@@ -18,7 +16,7 @@ from sklearn.metrics import roc_auc_score
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
-from safefusion_benchmark.metrics import average_precision_tie_aware, spearman  # noqa: E402
+from safefusion_benchmark.metrics import average_precision_tie_aware, spearman
 
 
 def dense(value) -> np.ndarray:
@@ -170,11 +168,6 @@ def main() -> None:
     if not all(item["passed"] for item in leakage):
         raise ValueError("one or more method contracts failed leakage checks")
 
-    # Response edges come from held-out cells that no method can use: the
-    # held-out cells of each target and the held-out controls are split into a
-    # reference half, which defines the edges from unmasked counts, and a scored
-    # half, on which every processed matrix is evaluated. Teachers borrow only
-    # from development cells, so neither half enters any method's fit.
     control_test = np.flatnonzero(test & controls)
     if len(control_test) < 20:
         raise ValueError("at least twenty held-out control cells are required")

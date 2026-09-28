@@ -7,15 +7,6 @@
 #SBATCH --output=logs/slurm-value-accuracy-%j.out
 #SBATCH --error=logs/slurm-value-accuracy-%j.err
 
-# Accuracy of the inserted value (Table 2, Supplementary Table S7). The units of
-# Table 2 are the pancreas folds, colon and Norman CRISPRa of unit_paths.sh, with
-# the value contracts of slurm_safe_fusion_stack.sh (VALUE_MODEL boosted and
-# linear) and slurm_autoencoder_fusion.sh and the selectors of
-# slurm_complete_downstream_selectors.sh. The replicate units are these five
-# units, the mask replicates of slurm_seed_replicates.sh (stages stack and
-# selector, with VALUE_MODEL boosted and linear) and the thinning units of
-# slurm_thinning_benchmark.sh (stages selector and stack with VALUE_MODEL=linear).
-# Outputs go to artifacts/paper_evidence/value_accuracy/.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
@@ -27,7 +18,6 @@ REP=artifacts/paper_evidence/seed_replicates
 T=artifacts/paper_evidence/thinning
 SEEDS=(1730 1731 1732 1733)
 
-# Selector output directory of slurm_complete_downstream_selectors.sh.
 selector_dir() {
   case "$1" in
     colon) echo artifacts/paper_evidence/selector_mlp_biology_range/colon ;;
@@ -36,7 +26,6 @@ selector_dir() {
   esac
 }
 
-# Unit and data directory names of a dataset key in slurm_seed_replicates.sh.
 replicate_unit() {
   case "$1" in
     norman_crispra) echo norman ;;

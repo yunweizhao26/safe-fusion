@@ -8,13 +8,6 @@
 #SBATCH --output=logs/slurm-deployment-prepare-%A_%a.out
 #SBATCH --error=logs/slurm-deployment-prepare-%A_%a.err
 
-# Deployment analysis, step 1 of 3. Builds the hybrid input, in which the
-# fitting cells keep the benchmark mask and the test cells use their recorded
-# counts, and fits the CPU teachers on it exactly as in the masked benchmark:
-# gene median, SVD, weighted kNN and inductive MAGIC. The fitting rows are
-# identical to the masked benchmark, so only the test rows differ. The scVI
-# teacher runs on a GPU (slurm_deployment_scvi.sh); the stacked value, the
-# selector and the filled outputs follow in slurm_deployment_fill.sh.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

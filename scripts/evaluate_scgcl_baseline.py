@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Evaluate a completed scGCL output on locked masked entries and test zeros."""
-
 from __future__ import annotations
 
 import argparse

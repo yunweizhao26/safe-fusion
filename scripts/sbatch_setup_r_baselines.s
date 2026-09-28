@@ -6,9 +6,6 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=24G
 
-# Build a conda R environment with ALRA and SAVER for the official
-# zero-preserving and uncertainty-aware baselines.
-
 set -e
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$SAFE_FUSION_ROOT"

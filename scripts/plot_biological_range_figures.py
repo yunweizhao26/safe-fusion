@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Create the marker tradeoff and PD-L1 range figures used in the paper."""
-
 from __future__ import annotations
 
 import argparse

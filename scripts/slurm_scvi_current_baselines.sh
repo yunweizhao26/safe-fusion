@@ -9,8 +9,6 @@
 #SBATCH --output=logs/slurm-scvi-current-%A_%a.out
 #SBATCH --error=logs/slurm-scvi-current-%A_%a.err
 
-# Standard (transductive) scVI comparator. The fitted values differ between GPU
-# models, so every scVI fit runs on an L40S.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

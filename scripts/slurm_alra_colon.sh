@@ -7,11 +7,6 @@
 #SBATCH --output=logs/slurm-alra-colon-%j.out
 #SBATCH --error=logs/slurm-alra-colon-%j.err
 
-# ALRA baseline on the colon masked benchmark, read by scripts/masked_f1_units.py.
-# The pancreas folds run in slurm_alra_pancreas_crossfit.sh and Norman CRISPRa
-# in sbatch_run_alra_norman.s, with the same settings. Set OUT to write the
-# contract elsewhere. The randomized SVD result depends on the number of BLAS
-# threads, so every ALRA launcher fixes it at 8.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

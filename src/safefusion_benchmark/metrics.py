@@ -56,7 +56,6 @@ def roc_auc_tie_aware(labels: np.ndarray, scores: np.ndarray) -> float:
 
 
 def average_precision_tie_aware(labels: np.ndarray, scores: np.ndarray) -> float:
-    """Threshold-group AP; an all-tied score equals prevalence exactly."""
     labels = np.asarray(labels, dtype=int)
     scores = np.asarray(scores, dtype=float)
     positives = int(labels.sum())
@@ -74,7 +73,6 @@ def average_precision_tie_aware(labels: np.ndarray, scores: np.ndarray) -> float
 
 
 def expected_budget_metrics(labels: np.ndarray, scores: np.ndarray, budget: float) -> dict[str, float]:
-    """Expected metrics when the cutoff intersects a tie group."""
     labels = np.asarray(labels, dtype=int)
     scores = np.asarray(scores, dtype=float)
     n_select = min(len(labels), max(0, int(round(float(budget) * len(labels)))))

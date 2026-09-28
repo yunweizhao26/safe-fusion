@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Evaluate developmental-order and lineage preservation on held-out cells."""
-
 from __future__ import annotations
 
 import argparse

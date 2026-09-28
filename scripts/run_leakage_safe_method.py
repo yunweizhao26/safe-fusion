@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Run the leakage-safe teachers or the Safe Fusion fused value."""
-
 from __future__ import annotations
 
 import argparse
@@ -20,21 +18,15 @@ from sklearn.neighbors import NearestNeighbors
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
-from safefusion_benchmark.contracts import order_hash, write_output_contract  # noqa: E402
-from safefusion_benchmark.hashing import sha256_file  # noqa: E402
-from safefusion_benchmark.splits import FOLDS, training_folds  # noqa: E402
+from safefusion_benchmark.contracts import order_hash, write_output_contract
+from safefusion_benchmark.hashing import sha256_file
+from safefusion_benchmark.splits import FOLDS, training_folds
 
 
 def log1p_cpm(counts: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     library = counts.sum(axis=1, dtype=np.float64)
     scale = np.divide(1e4, library, out=np.zeros_like(library), where=library > 0)
     return np.log1p(counts * scale[:, None]).astype(np.float32), library.astype(np.float32)
-
-
-# Every teacher proposal for a model-fitting cell is computed without that
-# cell's own counts, as it is for a held-out test cell: the SVD teacher is
-# cross-fitted over FOLDS partitions of the fitting cells, and the kNN teacher
-# excludes the cell from its own neighbour set.
 
 
 def gene_medians(counts: np.ndarray, training: np.ndarray) -> np.ndarray:
@@ -82,7 +74,6 @@ class SVDTeacher:
         ]
 
     def training_proposals(self, fit_counts: np.ndarray) -> np.ndarray:
-        """Proposals for the fitting cells, each from a model fitted without it."""
         output = np.empty_like(fit_counts, dtype=np.float32)
         for fold, model in enumerate(self.fold_models):
             rows = self.folds == fold
@@ -131,7 +122,6 @@ class GraphTeacher:
         return output
 
     def training_proposals(self, fit_counts: np.ndarray) -> np.ndarray:
-        """Proposals for the fitting cells, each excluded from its own neighbour set."""
         return self.smooth(fit_counts, np.arange(len(fit_counts)))
 
     def proposals(self, counts: np.ndarray) -> np.ndarray:
@@ -141,12 +131,6 @@ class GraphTeacher:
 
 
 class ConditionGraphTeacher:
-    """Weighted kNN restricted to model-fitting cells of the same condition.
-
-    In a perturbation screen the condition is the perturbation, so a cell borrows
-    expression only from cells that received the same perturbation.
-    """
-
     def __init__(self, counts: np.ndarray, training: np.ndarray, conditions: np.ndarray, pca: PCA, neighbors: int):
         conditions = np.asarray(conditions).astype(str)
         self.groups = {}
@@ -169,7 +153,6 @@ MAX_VALUE_FIT_ENTRIES = 600_000
 
 def value_features(teacher_logs: np.ndarray, gene_mean: np.ndarray, detection: np.ndarray,
                    library_log: np.ndarray, rows: np.ndarray, cols: np.ndarray) -> np.ndarray:
-    """Per-entry inputs of the value model: log1p teacher proposals, their spread, and context."""
     return np.column_stack(
         [teacher_logs, teacher_logs.std(axis=1), gene_mean[cols], detection[cols], library_log[rows]]
     ).astype(np.float32)
@@ -208,18 +191,6 @@ def fused_value(
     kind: str,
     seed: int,
 ) -> tuple[np.ndarray, dict]:
-    """Fuse the teacher proposals into one value per entry on the log1p scale.
-
-    The value model is fitted on the masked positives of the model-fitting
-    cells, whose teacher proposals exclude the cell's own counts, and it
-    estimates the expression of a detected entry. The selector decides which
-    zeros receive the value. ``boosted`` is a gradient-boosted regression of the
-    mean log1p count (squared-error loss) on the log1p teacher proposals, their
-    spread, gene mean, gene detection rate and log library size, so the teacher
-    weighting depends on gene and cell context. ``linear`` is one least-squares
-    weight per teacher. Both models are also compared by cross-validation over
-    partitions of the model-fitting cells.
-    """
     names = list(teachers)
     rows = coordinates["cell_index"].to_numpy(dtype=np.int64)
     cols = coordinates["gene_index"].to_numpy(dtype=np.int64)
@@ -237,7 +208,6 @@ def fused_value(
     teacher_logs = np.column_stack([np.log1p(teachers[name][rows, cols]) for name in names]).astype(np.float32)
     features = value_features(teacher_logs, gene_mean, detection, library_log, rows, cols)
 
-    # Cross-validated comparison of the value models on the model-fitting cells.
     training_rows = np.flatnonzero(training)
     fold_of_row = np.full(len(counts), -1)
     fold_of_row[training_rows] = training_folds(len(training_rows), seed)

@@ -8,12 +8,6 @@
 #SBATCH --output=logs/slurm-standard-imputers-%A_%a.out
 #SBATCH --error=logs/slurm-standard-imputers-%A_%a.err
 
-# Run one standard imputer per task (SAUCIE, MAGIC, DeepImpute, scScope, scVI,
-# kNN smoothing) on the Crohn's disease colon subsets of Supplementary Table S1.
-# The first task to start creates the imputer environment and downloads the
-# CELLxGENE source file; the other tasks wait for it. All imputers run on CPU
-# with seed SEED, so a second run reproduces the outputs. Evaluate the outputs
-# with scripts/slurm_evaluate_fill_decisions.sh.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

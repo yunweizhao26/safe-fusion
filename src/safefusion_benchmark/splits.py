@@ -39,9 +39,4 @@ FOLDS = 5
 
 
 def training_folds(n_training: int, seed: int, folds: int = FOLDS) -> np.ndarray:
-    """Assign model-fitting cells to cross-fitting partitions.
-
-    Every teacher proposal for a model-fitting cell comes from a model fitted
-    without the cell's partition, as proposals for held-out cells do.
-    """
     return np.random.default_rng(seed).permutation(n_training) % folds

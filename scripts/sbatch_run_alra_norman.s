@@ -7,9 +7,6 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=24G
 
-# ALRA baseline on the Norman CRISPRa masked benchmark. The randomized SVD
-# result depends on the number of BLAS threads, so every ALRA launcher fixes it
-# at 8.
 set -euo pipefail
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$SAFE_FUSION_ROOT"

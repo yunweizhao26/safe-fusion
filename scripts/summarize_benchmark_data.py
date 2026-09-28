@@ -1,17 +1,4 @@
 #!/usr/bin/env python3
-"""Size of each masked benchmark (Supplementary Table S2).
-
-For every dataset this counts the cells and genes of the masked input, the
-held-out test cells, the test candidates and the masked positives among them.
-The definitions follow ``calibrated_selective_fill.py``: the candidates of a
-cell are its entries that are zero in the masked counts
-(``layers["corrupted_counts"]``), and a candidate is a masked positive when its
-cell and gene appear in the mask coordinates. Prevalence is the percentage of
-test candidates that are masked positives. The launcher
-``slurm_summarize_benchmark_data.sh`` passes the paths of every dataset in
-``unit_paths.sh``.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -25,7 +12,6 @@ from scipy import sparse
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "artifacts" / "paper_evidence" / "benchmark_data" / "benchmark_data.csv"
 
-# Row names of Table S2 for the dataset keys of unit_paths.sh.
 LABELS = {
     "pancreas_0": "Pancreas, fold 1",
     "pancreas_1": "Pancreas, fold 2",
@@ -55,7 +41,6 @@ def summarize(key: str, corrupted: Path, coordinates: Path, splits: Path) -> dic
     test_rows = np.flatnonzero(split == "test")
     candidates = dense(adata.layers["corrupted_counts"][test_rows]) == 0
 
-    # Mask coordinates index rows of the masked input; keep those of test cells.
     mask = pd.read_parquet(coordinates, columns=["cell_index", "gene_index"])
     position = np.full(adata.n_obs, -1, dtype=np.int64)
     position[test_rows] = np.arange(len(test_rows))

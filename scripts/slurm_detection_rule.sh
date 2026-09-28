@@ -8,21 +8,6 @@
 #SBATCH --output=logs/slurm-detection-rule-%A_%a.out
 #SBATCH --error=logs/slurm-detection-rule-%A_%a.err
 
-# Fill-fraction rule. The selector is refitted with the production settings;
-# its scores are calibrated by isotonic regression on cross-fitted scores of
-# the fitting cells, and every held-out zero whose detection probability
-# p / (p + rho (1 - p)) exceeds 1/2 is filled, with rho = 0.10, the masking rate
-# of every stratum. No held-out label or held-out score quantile sets the fill
-# fraction.
-#
-# Tasks 0-4 apply the rule to the masked benchmark; the top-k output at 5% is a
-# reproducibility check against the production selector. Tasks 5-9 apply it to
-# the deployment input of the same units (scripts/deployment_paths.sh), in
-# which the fitting cells keep the benchmark mask and the held-out cells hold
-# their recorded counts, with the teachers and the stacked value refitted on
-# that input by slurm_deployment_{prepare,scvi,fill}.sh. There every held-out
-# candidate is a recorded zero, and detection_rule.test_fill_fraction is the
-# share of those recorded zeros that the rule fills.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

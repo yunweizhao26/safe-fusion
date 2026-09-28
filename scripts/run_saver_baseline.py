@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""Run official SAVER on a corrupted count matrix and emit a contract.
-
-SAVER has no held-out projection API, so it is run on the full matrix in its
-standard usage; the contract metadata declares test cells were used for
-fitting, and SAVER is reported only as a standard-usage baseline, excluded
-from leakage-audited primary comparisons.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -25,7 +17,7 @@ from scipy.io import mmread, mmwrite
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
-from safefusion_benchmark.contracts import write_output_contract  # noqa: E402
+from safefusion_benchmark.contracts import write_output_contract
 
 
 def dense(value) -> np.ndarray:
@@ -33,7 +25,6 @@ def dense(value) -> np.ndarray:
 
 
 def saver_size_factors(counts: np.ndarray) -> np.ndarray:
-    """SAVER's default size factors: each cell's library over the mean library."""
     library = counts.sum(axis=1, dtype=np.float64)
     return library / library.mean()
 
@@ -73,8 +64,6 @@ def main() -> None:
     )
     estimate = np.asarray(mmread(estimate_path).todense())
     variance = np.asarray(mmread(se_path).todense()) ** 2
-    # SAVER's default size factors (library / mean library) return estimates
-    # on the normalized scale; multiply back to the count scale of the input.
     size_factor = saver_size_factors(counts)
     estimate = np.clip(estimate * size_factor[:, None], 0.0, None).astype(np.float32)
     variance = np.clip(variance * np.square(size_factor)[:, None], 0.0, None).astype(np.float32)

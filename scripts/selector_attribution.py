@@ -1,19 +1,4 @@
 #!/usr/bin/env python3
-"""Attribute calibrated zero-selection performance to its feature families.
-
-This is an attribution analysis, not a replacement for the deployable
-calibration protocol in ``calibrated_selective_fill.py``.  Every learned
-ranker is fit on the requested calibration split.  On the locked test split,
-rankers are compared at exactly matched score coverage without consulting the
-test labels.  All selected entries are filled with the same fused posterior
-mean unless the explicit ``teacher_value`` value ablation is requested.
-
-The output contains pooled ranking diagnostics, biological-unit metrics,
-cluster-bootstrap summaries, and paired comparisons against the full
-selector.  It deliberately calls non-masked test zeros "unlabelled" rather
-than biological negatives: the artificial mask certifies positives only.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -39,8 +24,6 @@ REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
 
-# The selector sees each teacher's proposal (log1p count scale) and three
-# context features. Teacher columns are named "teacher:<name>".
 CONTEXT_FEATURES = ("gene_mean", "gene_dropout", "library_size")
 
 LEARNED_VARIANTS = ("full", "teacher_only", "context_only", "gene_mean_only", "gene_dropout_only")
@@ -70,11 +53,6 @@ def variant_columns(variant: str, feature_names) -> list[int]:
 
 def selector_features(teacher_values: np.ndarray, gene_mean: np.ndarray, gene_dropout: np.ndarray, library_size: np.ndarray,
                       condition_context: tuple[np.ndarray, np.ndarray] | None = None) -> np.ndarray:
-    """Stack log1p teacher proposals (one row per teacher) with the context features.
-
-    ``condition_context`` optionally adds the gene's mean and zero fraction within
-    the cell's condition (for example its perturbation).
-    """
     columns = [np.log1p(np.maximum(teacher_values, 0.0)).T, gene_mean, gene_dropout, library_size]
     if condition_context is not None:
         columns += list(condition_context)
@@ -104,7 +82,6 @@ def dense(value) -> np.ndarray:
 
 
 def exact_topk(scores: np.ndarray, k: int) -> np.ndarray:
-    """Return an exact-size deterministic top-k mask, including under ties."""
     scores = np.asarray(scores, dtype=float)
     k = max(0, min(int(k), len(scores)))
     selected = np.zeros(len(scores), dtype=bool)
@@ -123,7 +100,6 @@ def exact_topk(scores: np.ndarray, k: int) -> np.ndarray:
 
 
 def normalized_ranks(scores: np.ndarray) -> np.ndarray:
-    """Map scores to average percentile ranks for scale-free ensembling."""
     if not len(scores):
         return np.asarray(scores, dtype=np.float32)
     return (rankdata(scores, method="average") / len(scores)).astype(np.float32)
@@ -136,7 +112,7 @@ class Candidates:
     labels: np.ndarray
     features: np.ndarray
     fused_values: np.ndarray
-    teacher_values: np.ndarray  # one row per teacher contract
+    teacher_values: np.ndarray
     truth_values: np.ndarray
     feature_names: tuple = ()
 
@@ -156,8 +132,6 @@ def candidate_frame(
     seed: int,
 ) -> Candidates:
     rows, cols = np.where((counts == 0) & split_mask[:, None])
-    # The coordinate table can carry labels from an earlier locked split.
-    # Cross-fit folds must derive membership from their current split file.
     split_cells = np.flatnonzero(split_mask)
     split_coordinates = coordinates.loc[
         coordinates["cell_index"].astype(int).isin(split_cells)
@@ -229,7 +203,6 @@ def predict_scores_in_batches(
 
 
 def stratified_fit_indices(labels: np.ndarray, maximum: int, seed: int) -> np.ndarray:
-    """Keep every positive when possible and sample negatives deterministically."""
     labels = np.asarray(labels)
     if len(labels) <= maximum:
         return np.arange(len(labels))
@@ -432,8 +405,6 @@ def summarize_with_bootstrap(
         if frame["n_zero_candidates"].isna().any():
             raise ValueError(f"selector attribution is missing biological units for {key}")
         grouped[key] = frame
-    # Every variant is evaluated on the same locked units.  Reusing the exact
-    # bootstrap indices is required for valid paired differences.
     shared_indices = rng.integers(0, len(unit_order), size=(bootstrap, len(unit_order)))
     bootstrap_cache: dict[tuple[str, str, float], dict[str, np.ndarray]] = {}
     for key, frame in grouped.items():
@@ -467,7 +438,6 @@ def summarize_with_bootstrap(
         observed = aggregate_metrics(grouped[key])
         reference_observed = aggregate_metrics(grouped[reference_key])
         for metric in observed:
-            # Positive means the candidate variant is larger than full.
             difference = samples[metric] - reference_samples[metric]
             comparisons.append({
                 "variant": variant,
@@ -602,8 +572,6 @@ def main() -> None:
         })
         for budget in args.budgets:
             selected = exact_topk(test_score, round(float(budget) * len(test_score)))
-            # The reference selector also inserts each teacher's own value into
-            # the same selected zeros, which isolates the value from the ranking.
             value_sources = {"fusion_value": test.fused_values}
             if selector_id == reference_variant:
                 for name, values in zip(teacher_names, test.teacher_values):

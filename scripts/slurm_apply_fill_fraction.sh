@@ -8,9 +8,6 @@
 #SBATCH --output=logs/slurm-apply-fill-fraction-%A_%a.out
 #SBATCH --error=logs/slurm-apply-fill-fraction-%A_%a.err
 
-# Derive SVD and weighted kNN outputs at the fill fractions used for Safe Fusion
-# (1% to 10% of held-out recorded zeros), ranking zeros by each method's own value.
-
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

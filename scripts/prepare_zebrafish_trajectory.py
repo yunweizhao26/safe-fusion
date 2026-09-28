@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Prepare the CellRank zebrafish axial-mesoderm trajectory benchmark."""
-
 from __future__ import annotations
 
 import argparse

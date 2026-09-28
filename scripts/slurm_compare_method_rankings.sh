@@ -7,7 +7,6 @@
 #SBATCH --output=logs/slurm-rank-compare-%j.out
 #SBATCH --error=logs/slurm-rank-compare-%j.err
 
-# Compare the zeros filled by Safe Fusion, SVD, and weighted kNN at matched fill fractions.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""Masked F1 across mask and model seed replicates.
-
-Each replicate draws a new 10% mask and refits every model with its seed
-(``slurm_seed_replicates.sh``); seed 1729 is the production run. For every
-replicate, the Safe Fusion selector and the comparators (SVD, weighted kNN,
-MAGIC and scVI) rank the zeros of the held-out cells, the comparators on the
-count scale of the masked input with random tie breaking, and masked F1 is
-pooled over the pancreas folds.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -26,8 +16,8 @@ COL = Path("artifacts/colon_runs/0b2469810675-c0db6f963e94")
 CF = EVIDENCE / "pancreas_crossfit"
 NORMAN = EVIDENCE / "norman_crispra"
 REP = EVIDENCE / "seed_replicates"
-GRID = np.linspace(0.001, 1.0, 1000)[:100]  # 0.1% to 10% in steps of 0.1%
-INTEGER = np.arange(9, 100, 10)  # grid indices of 1%, 2%, ..., 10%
+GRID = np.linspace(0.001, 1.0, 1000)[:100]
+INTEGER = np.arange(9, 100, 10)
 COMPARATORS = ["SVD", "Weighted kNN", "MAGIC", "scVI"]
 COUNT_SCALE = {
     "counts": lambda value, library: value,
@@ -75,7 +65,6 @@ def units(seed: int) -> list[dict]:
 
 
 def unit_curves(unit: dict) -> dict[str, np.ndarray]:
-    """Return, per method, an array of (selected, true positives, positives, zeros) over GRID."""
     source = ad.read_h5ad(unit["corrupted"])
     matrix = source.layers["corrupted_counts"]
     counts = (matrix.toarray() if sparse.issparse(matrix) else np.asarray(matrix)).astype(np.float32)

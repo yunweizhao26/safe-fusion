@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Prepare a donor-resolved colon epithelial benchmark without test leakage."""
-
 from __future__ import annotations
 
 import argparse
@@ -67,8 +65,6 @@ def feature_selection(
     mean_sq = np.asarray(fit.power(2).mean(axis=0)).ravel()
     variance = np.maximum(mean_sq - mean**2, 0.0)
     detected = np.asarray((fit > 0).sum(axis=0)).ravel()
-    # Pearson-like excess variance ranks genuinely variable count features while
-    # avoiding dominance by a few very highly expressed genes.
     score = np.divide(variance - mean, mean + 1e-8)
     score[detected < max(5, int(0.005 * fit.shape[0]))] = -np.inf
     ranked = np.argsort(-score, kind="stable")
@@ -93,8 +89,6 @@ def main() -> None:
     source_path = Path(args.input).resolve()
     output_path = Path(args.output).resolve()
     report_path = Path(args.report).resolve()
-    # Keep the 97k x 27k source on disk; only the deterministic cell subset is
-    # materialized below.
     source = ad.read_h5ad(source_path, backed="r")
     required = {"donor_id", "biosample_id", "Type", "Celltype", "cell_type", "disease", "tissue"}
     missing = required - set(source.obs)

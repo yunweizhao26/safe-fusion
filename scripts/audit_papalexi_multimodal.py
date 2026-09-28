@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""Audit the Papalexi ECCITE-seq RNA and antibody measurements.
-
-The audit reconstructs the four-protein panel from the GEO count files,
-checks it against the public MuData object, joins it to the RNA matrix without
-guessing ambiguous barcodes, and records the biological assumptions used by
-the cross-modal analysis.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -67,7 +59,6 @@ def lane(value: str) -> str:
 
 
 def read_geo_adt(raw_tar: Path) -> pd.DataFrame:
-    """Return GEO ADT counts with lane-prefixed cells as rows."""
     barcode_name = "GSM4633615_ECCITE_ADT_Barcodes.csv.gz"
     count_name = "GSM4633615_ECCITE_ADT_counts.tsv.gz"
     with tarfile.open(raw_tar) as archive:

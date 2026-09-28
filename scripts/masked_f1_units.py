@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""Evaluation units, comparator contracts and ranking scale for the masked-F1 comparison.
-
-Every comparator ranks the candidate zeros of the held-out cells by its own
-value on the count scale of the masked input. A contract's metadata ``scale``
-decides the conversion, so depth-normalized outputs regain the sequencing depth
-that the count-scale methods (and the Safe Fusion selector) see.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -28,33 +20,21 @@ COLON_METHODS = COLON_RUN / "methods" / "standardized" / "colon_epithelial" / "m
 
 DATASETS = ("Pancreas", "Colon", "CRISPRa")
 CURVE_BUDGETS = np.linspace(0.001, 1.0, 1000)
-# Fill fractions at which unit-level counts are kept for paired intervals.
 UNIT_FRACTIONS = tuple(round(0.01 * step, 2) for step in range(1, 11))
 
-# Comparators in the main figure and in the win counts.
 MAIN_COMPARATORS = ("Weighted kNN", "SVD", "ALRA", "SAVER", "MAGIC", "scVI", "scGPT")
-# scGCL is reported only in the supplement: its default learning rate diverged,
-# and the retained run uses a learning rate of 1e-6.
 SUPPLEMENTARY_COMPARATORS = ("scGCL",)
-# Inductive MAGIC and scVI are Safe Fusion teachers, fitted without the test
-# cells. Their untrained rankings are reported apart from the main figure,
-# whose MAGIC and scVI are the standard transductive baselines.
 TEACHER_COMPARATORS = ("MAGIC (inductive)", "scVI (inductive)")
-# Comparators whose values exist for the selector-fitting cells.
 STACKED_COMPARATORS = (
     "Gene median", "SVD", "Weighted kNN", "ALRA", "MAGIC", "scVI", "SAVER", "scGPT",
     *TEACHER_COMPARATORS,
 )
 
-# Conversion from a contract's stored scale to the count scale of the masked
-# input, given each cell's masked library size.
 COUNT_SCALE = {
     "counts": lambda value, library: value,
     "normalized_expression_1e4": lambda value, library: value * (library / 1e4),
     "log1p_cpm": lambda value, library: np.expm1(value) * (library / 1e4),
 }
-# Frozen scGPT scores are within-cell binned expression values with no count
-# scale, so they are ranked as scored.
 NATIVE_SCALES = {"frozen_scgpt_masked_value_score"}
 
 
@@ -192,9 +172,9 @@ def units_from_args(args: argparse.Namespace, seed: int = 1729) -> list[Unit]:
 class UnitData:
     counts: np.ndarray
     split: np.ndarray
-    unit_labels: np.ndarray  # biological unit of each cell
-    library: np.ndarray  # masked library size of each cell
-    masked: np.ndarray  # boolean masked-positive matrix
+    unit_labels: np.ndarray
+    library: np.ndarray
+    masked: np.ndarray
     cell_ids: list[str]
     gene_ids: list[str]
 
@@ -237,15 +217,12 @@ def contract_metadata(contract: Path, data: UnitData) -> dict:
 def stored_scale(metadata: dict) -> str:
     if "scale" in metadata:
         return metadata["scale"]
-    # The scGCL adapter (run_scgcl_baseline.py) writes no scale field; its
-    # postprocessing rescales the reconstruction to the corrupted library mass.
     if str(metadata.get("method", "")).startswith("scgcl") and "library mass" in metadata.get("postprocessing", ""):
         return "counts"
     raise ValueError(f"contract metadata for {metadata.get('method')} records no scale")
 
 
 def count_scale_values(contract: Path, data: UnitData, rows: np.ndarray, cols: np.ndarray) -> tuple[np.ndarray, str]:
-    """Return a contract's values at (rows, cols) on the count scale of the masked input."""
     metadata = contract_metadata(contract, data)
     scale = stored_scale(metadata)
     mean = np.load(contract / "mean.npy", mmap_mode="r", allow_pickle=False)
@@ -262,7 +239,6 @@ def unit_counts(
     labels: np.ndarray,
     unit_labels: np.ndarray,
 ) -> pd.DataFrame:
-    """Selected entries, true positives and masked positives per biological unit."""
     frame = pd.DataFrame({"unit": unit_labels, "selected": selected, "labels": labels})
     frame["true_positive"] = frame["selected"] & frame["labels"].astype(bool)
     grouped = frame.groupby("unit", sort=True).agg(

@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Create the locked Norman CRISPRa splits, corruption, and coordinates."""
-
 from __future__ import annotations
 
 import argparse
@@ -17,7 +15,7 @@ from scipy import sparse
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
-from safefusion_benchmark.corruption import corrupt_counts  # noqa: E402
+from safefusion_benchmark.corruption import corrupt_counts
 
 
 def main() -> None:

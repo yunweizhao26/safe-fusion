@@ -1,5 +1,3 @@
-"""Optional PyTorch selector models used by architecture experiments."""
-
 from __future__ import annotations
 
 import copy
@@ -11,8 +9,6 @@ from torch import nn
 
 
 class ContinuousFTTransformer(nn.Module):
-    """Small FT-Transformer over continuous selector features."""
-
     def __init__(
         self,
         n_features: int,
@@ -48,8 +44,6 @@ class ContinuousFTTransformer(nn.Module):
 
 
 class FTTransformerClassifier:
-    """Scikit-like binary classifier with deterministic early stopping."""
-
     def __init__(
         self,
         token_dim: int = 32,

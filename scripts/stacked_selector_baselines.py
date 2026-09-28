@@ -1,19 +1,4 @@
 #!/usr/bin/env python3
-"""Stacked selector baselines: the Safe Fusion selector trained on one comparator.
-
-For each comparator with values on the selector-fitting cells, the same MLP
-selector as ``calibrated_selective_fill.py`` (same fitting cells, candidate
-subsample, labels, seed, settings and feature construction) is trained with a
-single teacher, the comparator's count-scale value, plus the context features
-(gene mean, gene zero fraction, log library size). The held-out candidates are
-then ranked by the trained score. This separates the benefit of supervised
-ranking from the benefit of combining several teachers.
-
-Outputs per comparator: ``report.json`` with the 1000-point masked-F1 curve in
-the format of ``calibration_report.json``, and ``unit_counts.parquet`` with the
-per-unit selected and true-positive counts at fill fractions 1% to 10%.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -30,7 +15,7 @@ REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 sys.path.insert(0, str(REPOSITORY / "scripts"))
 
-from masked_f1_units import (  # noqa: E402
+from masked_f1_units import (
     CURVE_BUDGETS,
     EVIDENCE,
     NATIVE_SCALES,
@@ -42,7 +27,7 @@ from masked_f1_units import (  # noqa: E402
     unit_counts,
     units_from_args,
 )
-from selector_attribution import (  # noqa: E402
+from selector_attribution import (
     Candidates,
     exact_topk,
     fit_scores,
@@ -52,7 +37,6 @@ from selector_attribution import (  # noqa: E402
 
 
 def candidate_keys(counts: np.ndarray, split_mask: np.ndarray, masked: np.ndarray, max_rows: int | None, seed: int) -> tuple[np.ndarray, np.ndarray]:
-    """Zero entries of a split, subsampled exactly as calibrated_selective_fill.py."""
     rows, cols = np.where((counts == 0) & split_mask[:, None])
     if max_rows is not None and len(rows) > max_rows:
         rng = np.random.default_rng(seed)
@@ -130,9 +114,6 @@ def main() -> None:
         fit_values, scale = count_scale_values(contract, data, fit_rows, fit_cols)
         test_values, _ = count_scale_values(contract, data, test_rows, test_cols)
         if scale in NATIVE_SCALES:
-            # selector_features takes log1p of nonnegative proposals. A native
-            # score with no count scale is shifted by its minimum over the
-            # fitting candidates, which keeps its order and uses no test value.
             offset = float(np.min(fit_values))
             fit_values = fit_values - offset
             test_values = test_values - offset

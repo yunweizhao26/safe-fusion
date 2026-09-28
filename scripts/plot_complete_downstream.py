@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Plot the five downstream tasks across the complete Safe Fusion range."""
-
 from __future__ import annotations
 
 import argparse

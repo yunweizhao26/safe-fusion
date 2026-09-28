@@ -8,10 +8,6 @@
 #SBATCH --output=logs/slurm-decompose-fills-%A_%a.out
 #SBATCH --error=logs/slurm-decompose-fills-%A_%a.err
 
-# Split each sparse fill of the masked benchmark into the selected masked
-# positives and the selected recorded zeros, and evaluate both parts with the
-# downstream evaluators. Task = dataset (colon, pancreas, zebrafish) x
-# source (Safe Fusion, SVD, weighted kNN).
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
@@ -23,7 +19,6 @@ export MKL_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 PY=.venv/bin/python
 PAN=artifacts/pancreas_runs/0b2469810675-45c81b160d78
 COL=artifacts/colon_runs/0b2469810675-c0db6f963e94
-# Fill locations; override to decompose another set of outputs.
 CF="${CF:-artifacts/paper_evidence/pancreas_crossfit}"
 COL_SELECTOR="${COL_SELECTOR:-artifacts/paper_evidence/selector_mlp_biology_range/colon}"
 COL_MATCHED="${COL_MATCHED:-artifacts/paper_evidence/matched_fraction/colon}"
@@ -42,7 +37,6 @@ suffix_for_pct() {
   if (( $1 == 10 )); then echo 0p1; else echo "0p0$1"; fi
 }
 
-# source_dir <fill root> <pct>: the sparse contract of this task's source.
 source_dir() {
   local selector_root="$1" matched_root="$2" pct="$3" suffix
   suffix="$(suffix_for_pct "${pct}")"
@@ -53,8 +47,6 @@ source_dir() {
   esac
 }
 
-# decompose <corrupted> <coordinates> <splits> <selector root> <matched root> <output root>
-# Sets the global array "methods" to the full fills and both parts.
 decompose() {
   local corrupted="$1" coordinates="$2" splits="$3" selector_root="$4" matched_root="$5" out="$6"
   local sources_args=() pct name
@@ -100,7 +92,6 @@ case "${dataset}" in
         "${CF}/fold_${fold}/splits.parquet" \
         "${CF}/fold_${fold}/selector_mlp_biology_range_fullteachers" \
         "${CF}/fold_${fold}/matched_fraction" "${fold_root}"
-      # The cross-fit evaluator reads every method from <crossfit-dir>/fold_k/<subdir>.
       for linked in splits.parquet graph_smooth safe_fusion; do
         ln -sfn "$(realpath "${CF}/fold_${fold}/${linked}")" "${fold_root}/${linked}"
       done

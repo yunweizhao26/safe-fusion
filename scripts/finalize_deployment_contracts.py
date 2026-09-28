@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""Prepare deployment outputs for the downstream evaluators.
-
-A user fills the zeros of their own recorded data. In the deployment analysis
-the fitted models change only the held-out test cells, so every evaluated
-matrix takes the recorded counts in all other cells. The evaluators then build
-their references (cell-type centroids, development marker effects, trajectory
-models) from the same unfilled recorded cells for every method.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -23,7 +14,7 @@ from scipy import sparse
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
-from safefusion_benchmark.contracts import write_output_contract  # noqa: E402
+from safefusion_benchmark.contracts import write_output_contract
 
 
 def dense(value) -> np.ndarray:

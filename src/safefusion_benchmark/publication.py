@@ -63,8 +63,6 @@ def evaluate_publication_gate(metrics: pd.DataFrame, config: dict) -> dict:
         evidence.append({"dataset": dataset, "corruption": corruption, "baseline": baseline, "relative_improvement": improvement, "paired_difference_fusion_minus_baseline": comparison, "passed": passed})
     continuous_passes = len(datasets_passed)
     enough_continuous = continuous_passes >= 2
-    # Downstream and perturbation gates default closed: missing evidence can
-    # never be interpreted as success.
     downstream = metrics[(metrics["analysis_family"] == "downstream") & metrics["dataset"].isin(eligible)]
     downstream_families = (
         int(downstream.loc[(downstream["method"] == "safe_fusion") & downstream["status"].isin(["evaluated", "pseudobulk", "heldout_unit", "known_simulation_edges"]), "task"].nunique())
@@ -74,7 +72,7 @@ def evaluate_publication_gate(metrics: pd.DataFrame, config: dict) -> dict:
     perturb = metrics[(metrics["analysis_family"] == "perturbation") & metrics["dataset"].isin(eligible)]
     perturb_roles_pass = set(perturb.loc[perturb["status"] == "passed", "perturbation_role"].dropna()) if "perturbation_role" in perturb and not perturb.empty else set()
     perturb_pass = {"ko", "crispra", "crispri"}.issubset(perturb_roles_pass)
-    risk_pass = False  # Requires a saved monotone risk-by-coverage curve, not one scalar AURC.
+    risk_pass = False
     all_pass = enough_continuous and downstream_families >= 2 and perturb_pass and risk_pass
     return {
         "claim": "best_imputation" if all_pass else "no_go",

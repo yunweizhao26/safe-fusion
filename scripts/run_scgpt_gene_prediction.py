@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Run frozen scGPT masked value decoder for per cell and gene ranking scores."""
-
 from __future__ import annotations
 
 import argparse
@@ -18,8 +16,8 @@ from scipy import sparse
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from safefusion_benchmark.contracts import order_hash, write_output_contract  # noqa: E402
-from safefusion_benchmark.hashing import sha256_file  # noqa: E402
+from safefusion_benchmark.contracts import order_hash, write_output_contract
+from safefusion_benchmark.hashing import sha256_file
 
 
 def main() -> None:

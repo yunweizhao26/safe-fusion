@@ -12,7 +12,6 @@ from run_simple_imputers import gene_median_impute, svd_impute, knn_impute
 
 
 def infer_dataset_id(path: str) -> str:
-    """Infer dataset id from file name."""
     stem = Path(path).name
     dataset_id = stem.split(".")[0]
     if dataset_id.endswith("_raw") or dataset_id.endswith("_pre"):
@@ -21,7 +20,6 @@ def infer_dataset_id(path: str) -> str:
 
 
 def to_dense(matrix) -> np.ndarray:
-    """Convert a dense or sparse matrix to a dense numpy array."""
     if hasattr(matrix, "toarray"):
         return matrix.toarray()
     return np.asarray(matrix)
@@ -33,16 +31,6 @@ def load_counts(
     max_genes: Optional[int] = None,
     seed: int = 42,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Load raw counts from an AnnData file, optionally subsampling cells/genes.
-
-    Returns:
-        counts: float32 array (cells x genes)
-        cell_ids: array of cell ids
-        gene_ids: array of gene ids
-        cell_idx: indices used for subsampling
-        gene_idx: indices used for subsampling
-    """
     adata = read_h5ad(input_path, backed=None)
     counts = to_dense(adata.X).astype(np.float32)
     cell_ids = np.array(adata.obs_names).astype(str)
@@ -75,12 +63,6 @@ def load_teacher_matrices(
     graph_include_self: bool = True,
     seed: int = 42,
 ) -> Dict[str, np.ndarray]:
-    """
-    Load teacher imputation matrices from disk. Optionally compute simple baselines.
-
-    The expected layout is:
-        {output_root}/{method}/{dataset_id}/{disease}/{tissue}.npy
-    """
     teachers: Dict[str, np.ndarray] = {}
     missing: List[str] = []
     for method in methods:
@@ -130,7 +112,6 @@ def compute_teacher_from_counts(
     graph_include_self: bool = True,
     seed: int = 42,
 ) -> np.ndarray:
-    """Compute a lightweight teacher on a counts matrix."""
     if method == "gene_median":
         return gene_median_impute(counts)
     if method == "svd_impute":
@@ -162,10 +143,6 @@ def graph_smooth_impute(
     include_self: bool = True,
     seed: int = 42,
 ) -> np.ndarray:
-    """
-    Graph smoothing teacher: build a kNN graph in PCA space and diffuse counts.
-    Formula: T_graph = A * X, where A is row-normalized adjacency.
-    """
     n_cells = counts.shape[0]
     if n_cells <= 1:
         return counts.astype(np.float32)
@@ -194,7 +171,6 @@ def subset_teachers(
     cell_idx: np.ndarray,
     gene_idx: np.ndarray,
 ) -> Dict[str, np.ndarray]:
-    """Apply cell/gene subset to each teacher matrix."""
     return {name: matrix[cell_idx][:, gene_idx] for name, matrix in teachers.items()}
 
 
@@ -206,7 +182,6 @@ def save_imputed_matrix(
     disease: str,
     tissue: str,
 ) -> Path:
-    """Persist imputed matrix to the standard output location."""
     dest = Path(output_root) / method / dataset_id / disease
     dest.mkdir(parents=True, exist_ok=True)
     path = dest / f"{tissue}.npy"
@@ -219,7 +194,6 @@ def save_metadata(
     payload: Dict,
     name: str = "metadata.json",
 ) -> Path:
-    """Save experiment metadata alongside outputs."""
     path = Path(output_dir) / name
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as handle:

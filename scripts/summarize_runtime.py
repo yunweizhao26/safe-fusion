@@ -1,22 +1,4 @@
 #!/usr/bin/env python3
-"""Summarize wall time and peak memory of pipeline steps from Slurm accounting.
-
-Reads a tab-separated job list (default ``scripts/runtime_jobs.tsv``) with
-columns ``step``, ``dataset`` and ``jobs``, where ``jobs`` is a comma-separated
-list of the Slurm job or array-task IDs that ran the step for the dataset.
-The wall time of a step for a dataset is the summed Elapsed time of its tasks,
-and its peak memory is the largest MaxRSS over the job steps of its tasks. For
-each step, the table reports the range of wall times over datasets and the
-largest peak memory. Every listed task must have state COMPLETED.
-
-Accounting records come from ``sacct`` or, with ``--sacct-file``, from a saved
-pipe-delimited sacct dump with a header line, such as the
-``sacct_records.txt`` that this script writes next to the tables. MaxRSS
-suffixes K, M, G and T are binary multiples (1K = 1024 bytes), and a number
-without a suffix is in bytes (``sacct --noconvert``). Memory is reported in GB
-of 10^9 bytes. Minutes and GB are rounded half up to one decimal.
-"""
-
 from __future__ import annotations
 
 import argparse

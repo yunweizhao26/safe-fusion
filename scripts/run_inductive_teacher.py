@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""Fit MAGIC or scVI as an inductive Safe Fusion teacher.
-
-The model is fitted on the model-fitting cells only and proposes values for
-held-out cells from their own recorded counts. A proposal for a model-fitting
-cell comes from a model fitted without that cell's cross-fitting partition, so
-no proposal uses the cell's own counts. Outputs are on the count scale of the
-input: depth-normalized expression is multiplied by the cell's library size.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -24,9 +15,9 @@ from scipy import sparse
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from safefusion_benchmark.contracts import order_hash, write_output_contract  # noqa: E402
-from safefusion_benchmark.hashing import sha256_file  # noqa: E402
-from safefusion_benchmark.splits import FOLDS, training_folds  # noqa: E402
+from safefusion_benchmark.contracts import order_hash, write_output_contract
+from safefusion_benchmark.hashing import sha256_file
+from safefusion_benchmark.splits import FOLDS, training_folds
 
 
 def log1p_cp10k(counts: np.ndarray) -> np.ndarray:
@@ -36,10 +27,6 @@ def log1p_cp10k(counts: np.ndarray) -> np.ndarray:
 
 
 def magic_fit_predict(fit_counts: np.ndarray, new_counts: np.ndarray, seed: int, n_jobs: int) -> np.ndarray:
-    """MAGIC on the fitting cells, extended to new cells by one kernel transition.
-
-    Returns depth-normalized expression (per 1e4 counts) for the new cells.
-    """
     import magic
 
     operator = magic.MAGIC(random_state=seed, n_jobs=n_jobs, verbose=0)
@@ -51,12 +38,6 @@ def magic_fit_predict(fit_counts: np.ndarray, new_counts: np.ndarray, seed: int,
 
 def scvi_fit_predict(fit_counts: np.ndarray, new_counts: np.ndarray, genes: pd.Index, seed: int, epochs: int,
                      fit_condition: np.ndarray | None = None, new_condition: np.ndarray | None = None) -> np.ndarray:
-    """scVI trained on the fitting cells and applied to new cells by encoding them.
-
-    With conditions (for example perturbations), the condition is a categorical
-    covariate of the decoder, so each cell's expression is predicted for its own
-    condition. Returns depth-normalized expression (per 1e4 counts) for the new cells.
-    """
     import scvi
 
     scvi.settings.seed = seed

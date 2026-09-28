@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Prepare a leakage-safe, donor-resolved human pancreatic-islet benchmark."""
-
 from __future__ import annotations
 
 import argparse

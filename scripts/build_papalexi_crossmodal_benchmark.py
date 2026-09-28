@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Create the locked Papalexi benchmark after required-gene selection."""
-
 from __future__ import annotations
 
 import argparse
@@ -17,8 +15,8 @@ from scipy import sparse
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from safefusion_benchmark.corruption import corrupt_counts  # noqa: E402
-from safefusion_benchmark.hashing import sha256_file  # noqa: E402
+from safefusion_benchmark.corruption import corrupt_counts
+from safefusion_benchmark.hashing import sha256_file
 
 
 def dense(value) -> np.ndarray:

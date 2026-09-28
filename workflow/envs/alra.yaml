@@ -1,4 +1,3 @@
 name: safefusion-alra
 channels: [conda-forge, bioconda]
 dependencies: [r-base=4.4.2, r-matrix=1.7_2, r-remotes=2.5.0]
-# Install the official ALRA source at a reviewed immutable commit before locking.

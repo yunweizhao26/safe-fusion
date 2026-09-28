@@ -8,8 +8,6 @@
 #SBATCH --output=logs/slurm-alra-crossfit-%A_%a.out
 #SBATCH --error=logs/slurm-alra-crossfit-%A_%a.err
 
-# ALRA baseline on each pancreas cross-fitting fold. The randomized SVD result
-# depends on the number of BLAS threads, so every ALRA launcher fixes it at 8.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

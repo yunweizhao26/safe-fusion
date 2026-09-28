@@ -6,10 +6,6 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=24G
 
-# Build the Python official-baseline environments (scGPT, scGCL) and download
-# the scGPT human checkpoint. Runs on a compute node so the login node memory
-# cap is not an issue.
-
 set -e
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$SAFE_FUSION_ROOT"
@@ -25,8 +21,6 @@ fi
 .venv-baselines/bin/pip install -q scgpt
 .venv-baselines/bin/pip install -q "gdown"
 
-# scGCL best-effort via GitHub archive (the git+ pip install needs credentials
-# from this node; if the archive is unavailable, scGPT proceeds alone).
 set +e
 cd external_data/baselines
 curl -L --fail --max-time 120 https://codeload.github.com/PharrellWANG/scGCL/zip/refs/heads/main -o scgcl.zip

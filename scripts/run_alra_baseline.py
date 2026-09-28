@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""Official ALRA (KlugerLab) adapted to the leakage-safe protocol.
-
-Fits the randomized SVD, per-gene quantile threshold, and per-gene
-mean/variance scaling on training cells (development + validation) and
-projects held-out test cells through the fitted components. Mirrors the
-official R implementation (normalize_data, choose_k, alra) with the only
-adaptation that all per-gene statistics use training rows.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -25,7 +16,7 @@ from sklearn.utils.extmath import randomized_svd
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
-from safefusion_benchmark.contracts import write_output_contract  # noqa: E402
+from safefusion_benchmark.contracts import write_output_contract
 
 
 def dense(value) -> np.ndarray:

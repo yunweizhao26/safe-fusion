@@ -7,10 +7,6 @@
 #SBATCH --output=logs/slurm-pap-cd274-%j.out
 #SBATCH --error=logs/slurm-pap-cd274-%j.err
 
-# CD274 RNA zeros against surface PD-L1, on CLR and raw antibody counts, the
-# perturbation-state baselines and partial correlations, then the paper figure.
-# Run after scripts/slurm_papalexi_crossmodal_mlp.sh. PAPER_DIR sets the
-# directory of the extra PNG copy of the figure (default: the figure directory).
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

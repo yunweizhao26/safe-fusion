@@ -1,33 +1,4 @@
 #!/usr/bin/env python3
-"""Accuracy of the value that Safe Fusion inserts (Table 2, Supplementary Table S7).
-
-The zeros selected by Safe Fusion stay fixed, and each candidate value is
-inserted there: the boosted fused value (contract ``safe_fusion``), the linear
-combination of the teachers (``safe_fusion_linear``), the autoencoder fusion
-network with three or five teachers, and each teacher. The evaluation entries
-are the held-out positives: coordinates of held-out test cells whose recorded
-count is positive and whose input count is zero (masked, or thinned to zero).
-All errors are absolute errors of log1p counts.
-
-For the units of Table 2 (``--unit``), the script reports
-
-- the percentage of held-out positive error removed at the zeros selected at
-  fill fractions 1% to 10%. An unselected positive keeps the error of the
-  input, its true log count, and a selected positive gets the error of the
-  inserted value;
-- the mean absolute log error over all held-out positives, overall, by true
-  count, and by quintile of the gene detection rate in the model-fitting cells;
-- paired bootstrap intervals that resample biological units (donors, or
-  perturbation targets in the CRISPRa screen), with the pancreas folds pooled;
-- the five-fold cross-validated error of the boosted and linear value models
-  on the model-fitting cells, recorded in the ``safe_fusion`` contract.
-
-For the replicate units (``--replicate``: mask replicates and thinning units),
-it reports the error of the boosted and linear values and the error they
-remove at one fill fraction. The launcher ``slurm_value_accuracy.sh`` passes
-the paths of every unit.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -49,7 +20,6 @@ LINEAR = "safe_fusion_linear"
 TEACHERS = ("gene_median", "svd_impute", "graph_smooth", "magic_inductive", "scvi_inductive")
 VALUES = (BOOSTED, LINEAR, "autoencoder_fusion_3teachers", "autoencoder_fusion_5teachers", *TEACHERS)
 FRACTIONS = tuple(round(0.01 * step, 2) for step in range(1, 11))
-# Pooling dataset and biological unit column of each dataset key of unit_paths.sh.
 UNIT_KEYS = {
     "pancreas_0": ("pancreas", "donor"),
     "pancreas_1": ("pancreas", "donor"),
@@ -59,7 +29,7 @@ UNIT_KEYS = {
 }
 TRUE_COUNT_BINS = [0, 1, 3, 10, np.inf]
 TRUE_COUNT_LABELS = ["1", "2-3", "4-10", ">10"]
-DETECTION_GROUPS = 5  # quintiles of the gene detection rate
+DETECTION_GROUPS = 5
 UNIT_FIELDS = ("input", "coordinates", "splits", "methods_root", "selector")
 
 
@@ -68,7 +38,6 @@ def dense(value) -> np.ndarray:
 
 
 def held_out_positives(spec: dict) -> dict:
-    """Input counts, model-fitting cells and held-out positives of one unit."""
     adata = ad.read_h5ad(spec["input"])
     matrix = adata.layers["corrupted_counts"] if "corrupted_counts" in adata.layers else adata.X
     counts = dense(matrix).astype(np.float32)
@@ -97,13 +66,11 @@ def log_value(contract: Path, rows: np.ndarray, cols: np.ndarray) -> np.ndarray:
 
 
 def selected_zeros(selector: Path, fraction: float, rows: np.ndarray, cols: np.ndarray) -> np.ndarray:
-    """Zeros that the selector fills at a fill fraction: positive in its filled output."""
     filled = selector / f"safe_fusion_calibrated_mlp_topk_{fraction_name(fraction)}" / "mean.npy"
     return np.asarray(np.load(filled, mmap_mode="r")[rows, cols]) > 0
 
 
 def table_unit(key: str, spec: dict) -> pd.DataFrame:
-    """Per held-out positive: absolute log error of every value, alone and inserted at the selected zeros."""
     dataset, unit_column = UNIT_KEYS[key]
     data = held_out_positives(spec)
     rows, cols, y = data["rows"], data["cols"], data["y"]
@@ -130,7 +97,6 @@ def table_unit(key: str, spec: dict) -> pd.DataFrame:
 
 
 def bootstrap_interval(numerator: np.ndarray, denominator: np.ndarray, draws: np.ndarray) -> tuple[float, float, float]:
-    """Pooled ratio and its 95% percentile interval over resampled biological units."""
     resampled = numerator[draws].sum(axis=1) / denominator[draws].sum(axis=1)
     return float(numerator.sum() / denominator.sum()), float(np.percentile(resampled, 2.5)), float(np.percentile(resampled, 97.5))
 
@@ -182,7 +148,6 @@ def cross_validation(key: str, spec: dict) -> list[dict]:
 
 
 def replicate_row(label: str, spec: dict, fraction: float) -> dict:
-    """Boosted against linear value at the held-out positives of one replicate unit."""
     data = held_out_positives(spec)
     rows, cols, y = data["rows"], data["cols"], data["y"]
     selected = selected_zeros(Path(spec["selector"]), fraction, rows, cols)

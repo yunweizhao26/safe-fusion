@@ -7,8 +7,6 @@
 #SBATCH --output=logs/slurm-benchmark-data-%j.out
 #SBATCH --error=logs/slurm-benchmark-data-%j.err
 
-# Count cells, genes, test candidates and masked positives of every masked
-# benchmark in scripts/unit_paths.sh (Supplementary Table S2).
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

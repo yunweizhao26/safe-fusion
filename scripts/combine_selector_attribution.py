@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""Combine disjoint cross-fit selector-attribution outputs.
-
-The biological units must be held out in exactly one input directory.  Unit
-rows are concatenated and bootstrapped once, which preserves the paired
-cross-fit comparison and avoids treating folds as independent summary values.
-Ranking AUCs remain fold-specific because exact pooled AUCs require raw scores.
-"""
-
 from __future__ import annotations
 
 import argparse

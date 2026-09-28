@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""Collect evaluator comparisons with the unfilled input into one table.
-
-Reads every ``paired_comparisons.parquet`` under ``--root`` and keeps the rows
-whose reference is the unfilled input (``corrupted_raw``). Method names of the
-form ``<source>_<pct>pct`` or ``<source>_<pct>pct__<part>`` are split into
-their source, fill fraction and part. Used for the decomposition of the masked
-benchmark (parts ``masked_only`` and ``zeros_only``) and for the deployment
-analysis, where the unfilled input is the recorded matrix.
-"""
-
 from __future__ import annotations
 
 import argparse

@@ -9,9 +9,6 @@
 #SBATCH --output=logs/slurm-scvi-teacher-%A_%a.out
 #SBATCH --error=logs/slurm-scvi-teacher-%A_%a.err
 
-# Fit the inductive scVI teacher for one dataset per task (units from
-# scripts/unit_paths.sh). The fitted values differ between GPU models, so every
-# scVI fit runs on an L40S.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

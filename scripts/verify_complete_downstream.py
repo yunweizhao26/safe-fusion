@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Fail unless every required real-data downstream deliverable is complete."""
-
 from __future__ import annotations
 
 import argparse

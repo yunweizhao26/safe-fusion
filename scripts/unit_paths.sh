@@ -1,7 +1,3 @@
-# Shared dataset paths for the Safe Fusion launchers. Source this file and call
-# `unit_paths <key>` to set: input, coordinates, splits, truth, methods_root.
-# Teacher and stacked-value contracts live under ${methods_root}/<method>.
-
 UNITS=(pancreas_0 pancreas_1 pancreas_2 colon norman_crispra adamson_crispri dixit_ko papalexi_eccite zebrafish papalexi_crossmodal)
 TEACHERS=(gene_median svd_impute graph_smooth magic_inductive scvi_inductive)
 
@@ -65,9 +61,6 @@ unit_paths() {
   esac
 }
 
-# Contract directory name of the fused value fitted with value model $1
-# (run_leakage_safe_method.py --value-model): safe_fusion for the boosted
-# production value, safe_fusion_<model> for a comparison value model.
 fused_value_contract() {
   if [[ "$1" == boosted ]]; then
     echo safe_fusion
@@ -76,7 +69,6 @@ fused_value_contract() {
   fi
 }
 
-# Arguments that pass every teacher contract of a dataset to the stack or selector.
 teacher_contract_args() {
   local root="$1"
   local name

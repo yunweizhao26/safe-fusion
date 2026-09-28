@@ -1,30 +1,4 @@
 #!/usr/bin/env python3
-"""Fill decisions of standard imputers on recorded zeros (Supplementary Table S1).
-
-Reads the recorded matrix ``X`` of a CELLxGENE H5AD and the imputer outputs
-written by ``scripts/standard_imputers/run_standard_imputers.py`` under
-``<imputed-root>/<method>/<dataset-id>/<disease>/<tissue>.npy``. Cells are
-restricted to ``is_primary_data`` as in the imputer runs. A recorded zero is
-filled by a method when the method's output at that entry is positive. MAGIC
-returns only the genes detected in at least ``--magic-min-cells`` cells of the
-subset (its modeled genes), and its other genes count as not filled.
-
-Outputs in ``--output-dir``:
-
-* ``fill_rates.csv``: per subset, method and gene set (all genes or MAGIC
-  modeled genes), the recorded zeros, the filled zeros, the fill rate, and the
-  fraction of all output entries of those genes that are positive.
-* ``gene_patterns.csv``: per subset, method and gene set, the fractions of
-  genes with recorded zeros whose zeros are all kept, all filled or mixed, and
-  the share of recorded zeros that lie in mixed genes.
-* ``pair_agreement.csv``: per subset and method pair, the observed fraction of
-  recorded zeros on which the two methods make the same decision, and the
-  agreement expected if the methods decided independently, either at their
-  overall fill rates or at their fill rates within each gene.
-* ``table_s1.csv``: fill rates in percent, one row per method and one column
-  per subset, with the modeled-genes row of MAGIC.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -36,7 +10,6 @@ import numpy as np
 import pandas as pd
 
 REPO = Path(__file__).resolve().parents[1]
-# Output directory name and display name of each method.
 METHODS = {
     "SAUCIE": "SAUCIE",
     "MAGIC": "MAGIC",
@@ -87,7 +60,6 @@ def dense_rows(adata: ad.AnnData, rows: np.ndarray) -> np.ndarray:
 
 
 def count_subset(adata, rows, arrays, magic_min_cells, chunk_rows):
-    """Per-gene counts of recorded zeros, fills, joint fills and positive outputs."""
     n_genes = adata.n_vars
     detected = np.zeros(n_genes, dtype=np.int64)
     for start in range(0, len(rows), chunk_rows):

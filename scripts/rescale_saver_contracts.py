@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""Put existing SAVER contracts on the count scale of their input.
-
-``run_saver_baseline.R`` calls ``SAVER::saver`` with the default size factors
-(each cell's library over the mean library), so the stored estimates are on the
-normalized scale although the contracts recorded ``scale: counts``. This script
-multiplies each estimate by its cell's size factor and each variance by the
-squared size factor, as ``run_saver_baseline.py`` now does for new runs. It is
-idempotent: contracts already marked ``count_scale_rescaled`` are skipped.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -25,7 +15,7 @@ REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 sys.path.insert(0, str(REPOSITORY / "scripts"))
 
-from run_saver_baseline import saver_size_factors  # noqa: E402
+from run_saver_baseline import saver_size_factors
 
 
 def main() -> None:
@@ -56,7 +46,6 @@ def main() -> None:
         variance = np.load(args.contract / "variance.npy")
         np.save(output / "variance.npy", (variance * np.square(size_factor)[:, None]).astype(np.float32))
     for extra in args.contract.iterdir():
-        # Copy side files for a new output; the R work directory stays behind.
         if extra.is_file() and extra.name not in {"mean.npy", "variance.npy", "metadata.json"}:
             if not (output / extra.name).exists():
                 shutil.copy2(extra, output / extra.name)

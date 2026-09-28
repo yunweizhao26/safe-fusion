@@ -7,11 +7,6 @@
 #SBATCH --output=logs/slurm-perturbation-zeros-%j.out
 #SBATCH --error=logs/slurm-perturbation-zeros-%j.err
 
-# Knockdown-zero table of the four screens. Perturbation-defined zeros use the
-# deployment setting: run after scripts/slurm_deployment_fill.sh and the
-# deployment tasks of scripts/slurm_condition_aware_screens.sh. Masked F1 uses
-# the masked benchmarks: run after scripts/slurm_complete_downstream_selectors.sh
-# and the masked tasks of scripts/slurm_condition_aware_screens.sh.
 set -euo pipefail
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$SAFE_FUSION_ROOT"

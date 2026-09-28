@@ -12,15 +12,6 @@ def zinb_negative_log_likelihood(
     pi: torch.Tensor,
     mask: torch.Tensor,
 ) -> torch.Tensor:
-    """
-    ZINB log-likelihood per entry:
-        NB(x; mu, theta) = Gamma(x + theta) / (Gamma(theta) * x!)
-                           * (theta / (theta + mu))^theta
-                           * (mu / (theta + mu))^x
-
-        ZINB(x; pi, mu, theta) = pi + (1 - pi) * NB(x)   if x == 0
-                               (1 - pi) * NB(x)        otherwise
-    """
     eps = 1e-8
     mu = torch.clamp(mu, min=eps)
     theta = torch.clamp(theta, min=eps)
@@ -44,14 +35,6 @@ def zinb_negative_log_likelihood(
 
 
 class LatentTruthModel(nn.Module):
-    """
-    Latent Truth Fusion model.
-
-    Teacher likelihood (log scale):
-        y_m = log(x_hat_m + eps)
-        y_m ~ Normal(mu_log + b_m, var_m(g,c))
-    """
-
     def __init__(
         self,
         n_genes: int,
@@ -91,9 +74,7 @@ class LatentTruthModel(nn.Module):
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, n_genes),
         )
-        # Per-gene dispersion (theta > 0)
         self.log_theta = nn.Parameter(torch.zeros(n_genes))
-        # Prior variance per gene
         self.prior_logvar = nn.Parameter(torch.zeros(n_genes))
         self.prior_var_min = prior_var_min
         self.prior_var_max = prior_var_max
@@ -159,10 +140,6 @@ class LatentTruthModel(nn.Module):
         gene_dropout: torch.Tensor,
         pca_feat: torch.Tensor = None,
     ) -> torch.Tensor:
-        """
-        Construct sigma-net features per entry.
-        Features: log_libsize, gene_mean, gene_dropout, mu_log, teacher_mean_log, teacher_std_log, teacher_range_log
-        """
         mean_log = torch.mean(teacher_log, dim=0)
         std_log = torch.std(teacher_log, dim=0)
         min_log = torch.min(teacher_log, dim=0).values
@@ -267,11 +244,6 @@ class LatentTruthModel(nn.Module):
         pca_feat: torch.Tensor = None,
         teacher_mask: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Posterior fusion in log-space:
-            mu_post = (p0*mu0 + sum_m pm*(y_m - b_m)) / (p0 + sum_m pm)
-            var_post = 1 / (p0 + sum_m pm)
-        """
         mu_log = torch.log1p(mu)
         teacher_log = torch.log1p(torch.clamp(teachers, min=0.0))
         teacher_log = self.calibrate_teacher_log(teacher_log)
@@ -282,14 +254,6 @@ class LatentTruthModel(nn.Module):
 
 
 class MixtureOfExpertsModel(nn.Module):
-    """
-    Mixture-of-experts gating model.
-
-    Prediction:
-        alpha_m = softmax(h(features))
-        mu = sum_m alpha_m * x_hat_m
-    """
-
     def __init__(
         self,
         n_teachers: int,
@@ -316,16 +280,6 @@ class MixtureOfExpertsModel(nn.Module):
         x_log: torch.Tensor,
         teachers: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """
-        Compute per-entry gating.
-        Inputs:
-            x_log: (B, G) log1p counts
-            teachers: (M, B, G) raw teacher counts
-        Returns:
-            mu: (B, G)
-            pi: (B, G)
-            alpha: (M, B, G)
-        """
         teacher_log = torch.log1p(torch.clamp(teachers, min=0.0))
         teacher_std = torch.std(teacher_log, dim=0)
         feats = torch.cat(
@@ -350,15 +304,6 @@ class MixtureOfExpertsModel(nn.Module):
 
 
 class DiffusionGuidedModel(nn.Module):
-    """
-    Lightweight diffusion denoiser with teacher guidance.
-
-    Forward noise process:
-        x_t = sqrt(alpha_bar_t) * x_0 + sqrt(1 - alpha_bar_t) * eps
-
-    Train to predict eps with teacher conditioning.
-    """
-
     def __init__(
         self,
         n_genes: int,

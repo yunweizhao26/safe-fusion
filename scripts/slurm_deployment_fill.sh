@@ -8,11 +8,6 @@
 #SBATCH --output=logs/slurm-deployment-fill-%A_%a.out
 #SBATCH --error=logs/slurm-deployment-fill-%A_%a.err
 
-# Deployment analysis, step 3 of 3. Fits the Safe Fusion stacked value from all
-# five teachers and the MLP selector on the hybrid input, as in the masked
-# benchmark, and fills the top b of the test cells' recorded zeros with Safe
-# Fusion, SVD and weighted kNN. Every evaluated matrix keeps the recorded
-# counts outside the test cells.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
@@ -40,8 +35,6 @@ step safe_fusion
 
 fractions=()
 for pct in ${PCTS}; do fractions+=("$(printf '0.%02d' "${pct}")"); done
-# Test cells hold recorded counts, so they have no masked positives and the
-# selector report leaves the test ranking metrics undefined.
 "${PY}" scripts/calibrated_selective_fill.py \
   --corrupted "${out}/hybrid.h5ad" --truth "${truth}" \
   --coordinates "${out}/coordinates.parquet" --splits "${out}/splits.parquet" \
@@ -59,8 +52,6 @@ for spec in "svd_impute svd" "graph_smooth weighted_knn"; do
 done
 step matched
 
-# Evaluated matrices, written next to splits.parquet under the names that the
-# cross-fit evaluator reads (<fold>/graph_smooth, <fold>/safe_fusion, ...).
 sources=(
   --source "gene_median=${deploy_methods}/gene_median"
   --source "svd_impute=${deploy_methods}/svd_impute"

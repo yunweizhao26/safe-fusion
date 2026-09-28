@@ -8,9 +8,6 @@
 #SBATCH --output=logs/slurm-teachers-%A_%a.out
 #SBATCH --error=logs/slurm-teachers-%A_%a.err
 
-# Fit the CPU teachers for every dataset: task 4 * unit + teacher, with units
-# from scripts/unit_paths.sh and teachers gene median, SVD, weighted kNN and
-# inductive MAGIC. The scVI teacher runs on a GPU (slurm_scvi_teachers.sh).
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

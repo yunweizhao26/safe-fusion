@@ -56,10 +56,6 @@ methods:
     runner: external
     version: parent-repository-frozen
     command: [python, scripts/run_leakage_safe_method.py, --method, graph_smooth, --input, "{input}", --coordinates, "{coordinates}", --splits, "{splits}", --output, "{output}", --seed, "{seed}"]
-  # The Safe Fusion value stacks five teacher contracts, including the inductive
-  # MAGIC and scVI teachers, which this workflow does not fit. The fused
-  # value is fitted by scripts/slurm_safe_fusion_stack.sh for the units in
-  # scripts/unit_paths.sh.
   safe_fusion: {enabled: false}
   alra: {enabled: false}
   scgcl: {enabled: false}

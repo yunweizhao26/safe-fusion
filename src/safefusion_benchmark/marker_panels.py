@@ -1,20 +1,3 @@
-"""Marker panels for the colon and pancreatic islet benchmarks.
-
-The primary panels are the markers that the source studies used to annotate
-the cell types evaluated here:
-
-* Colon epithelium: Table S2 ("Marker genes for fine-grained cell type
-  identification") of Kong et al., Immunity 56:444-458 (2023),
-  doi:10.1016/j.immuni.2023.01.002.  Gene symbols are kept as published.
-* Pancreatic islets: the Garnett cell type marker file (Supplementary Table 17)
-  of Fasolino et al., Nature Metabolism 4:284-299 (2022),
-  doi:10.1038/s42255-022-00531-x.
-
-A panel maps each gene to the annotated cell-type labels it marks.  Genes that
-are absent from a benchmark matrix are skipped by the evaluators.  The original
-hand-assembled panels are kept for a sensitivity analysis.
-"""
-
 from __future__ import annotations
 
 KONG_TABLE_S2: dict[str, tuple[str, ...]] = {
@@ -105,8 +88,6 @@ KONG_TABLE_S2: dict[str, tuple[str, ...]] = {
     "Tuft cells": ("SH2D6", "LRMP", "7SK_ENSG00000260682", "AVIL", "BMX", "AZGP1", "MATK", "TRPM5"),
 }
 
-# Colon benchmark labels (annotation of the prepared colon data) and the
-# Table S2 subset that each label corresponds to.
 COLON_LABEL_TO_KONG_SUBSET: dict[str, str] = {
     "Enterocytes BEST4": "Enterocytes BEST4+",
     "Enterocytes CA1 CA2 CA4-": "Enterocytes CA1+ CA2+ CA4-",
@@ -136,7 +117,6 @@ FASOLINO_TABLE_S17: dict[str, tuple[str, ...]] = {
     "Immune Cells": ("PTPRC",),
 }
 
-# Pancreas benchmark labels that each Fasolino cell type covers.
 PANCREAS_TYPE_TO_LABELS: dict[str, tuple[str, ...]] = {
     "Beta Cells": ("beta_major", "beta_minor"),
     "Alpha Cells": ("alpha",),
@@ -152,7 +132,6 @@ PANCREAS_TYPE_TO_LABELS: dict[str, tuple[str, ...]] = {
 
 
 def invert(markers_by_type: dict[str, tuple[str, ...]], labels_by_type: dict[str, tuple[str, ...]]) -> dict[str, tuple[str, ...]]:
-    """Map each gene to every benchmark label whose cell type lists it."""
     panel: dict[str, set[str]] = {}
     for cell_type, genes in markers_by_type.items():
         for gene in genes:

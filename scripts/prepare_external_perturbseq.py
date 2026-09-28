@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""Prepare locked CRISPRi/KO benchmarks from harmonized scPerturb H5ADs.
-
-Condition QC and feature selection use development cells only.  Test cells are
-assigned before those choices and are carried untouched into the benchmark.
-The source datasets do not expose independent biological replicates, so the
-reported inferential unit is the perturbation target, not the individual cell.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -31,8 +23,6 @@ def sha256(path: Path) -> str:
 
 
 def dense_column(matrix, column: int, rows: np.ndarray) -> np.ndarray:
-    # The harmonized files store X as CSC.  Reading one full column and then
-    # subsetting in memory avoids very slow HDF5 point-selection over rows.
     value = matrix[:, column]
     if sparse.issparse(value):
         value = value.toarray()
@@ -54,9 +44,6 @@ def dataset_annotations(adata: ad.AnnData, dataset: str) -> tuple[np.ndarray, np
         else:
             target_series = labels.fillna("none")
             targets = target_series.to_numpy(dtype=str)
-        # The original Dixit processing explicitly identifies intergenic
-        # guides as the proper controls.  Include both the collapsed control
-        # label and retained individual intergenic-guide labels.
         control = (
             labels.eq("control").fillna(False)
             | target_series.str.startswith("INTERGENIC", na=False)
@@ -67,7 +54,7 @@ def dataset_annotations(adata: ad.AnnData, dataset: str) -> tuple[np.ndarray, np
         targets = np.asarray(
             [re.sub(r"g[0-9]+$", "", value) for value in labels.fillna("none").to_numpy(dtype=str)]
         )
-    else:  # pragma: no cover - argparse constrains this branch
+    else:
         raise ValueError(dataset)
     targets[control] = "none"
     return targets, control
@@ -131,8 +118,6 @@ def main() -> None:
     args = parser.parse_args()
 
     source = Path(args.input)
-    # Keep the large harmonized matrix on disk.  Only target columns are read
-    # for QC; the selected cell slice is materialized after locking conditions.
     adata = ad.read_h5ad(source, backed="r")
     counts = adata.X
     genes = adata.var_names.astype(str).to_numpy()
@@ -159,9 +144,6 @@ def main() -> None:
         direct_effect_passed = bool(
             log2fc <= args.target_log2fc_max and p_value < args.target_p_max
         )
-        # CRISPR-Cas9 KO commonly changes protein function without reducing
-        # the target transcript.  For Dixit, use an assignment/power gate and
-        # retain the direct-RNA result as a limitation rather than a filter.
         passed = direct_effect_passed if args.dataset == "adamson_crispri" else True
         qc_rows.append({
             "target": target,

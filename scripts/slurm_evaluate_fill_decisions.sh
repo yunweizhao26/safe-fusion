@@ -7,9 +7,6 @@
 #SBATCH --output=logs/slurm-fill-decisions-%j.out
 #SBATCH --error=logs/slurm-fill-decisions-%j.err
 
-# Fill rates, within-gene decisions and pairwise agreement of the standard
-# imputers (Supplementary Table S1) from the outputs of
-# scripts/slurm_standard_imputers.sh.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

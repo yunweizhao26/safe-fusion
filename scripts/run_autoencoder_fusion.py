@@ -1,18 +1,4 @@
 #!/usr/bin/env python3
-"""Autoencoder fusion network (the original Safe Fusion value model), trained leak-free.
-
-The network combines an autoencoder expression prior with precision-weighted
-teacher proposals. No training target is visible to any input. Two modes:
-
-- resampled: each epoch hides a fresh 15% of the recorded nonzero entries of the
-  model-fitting cells. The gene median, SVD and kNN teacher proposals and the
-  cell representation are recomputed from the hidden matrix (three teachers).
-- masked_positives: the training targets are the masked positives of the
-  model-fitting cells, which are zero in every input. Teacher proposals come
-  from contracts whose fitting-cell proposals exclude the cell's own counts, so
-  any teacher set can be used. These are the targets of the stacked value.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -29,11 +15,11 @@ from sklearn.decomposition import PCA
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 sys.path.insert(0, str(REPOSITORY / "scripts"))
-sys.path.insert(0, str(REPOSITORY))  # the repository's fusion/ package
+sys.path.insert(0, str(REPOSITORY))
 
-from run_leakage_safe_method import GraphTeacher, SVDTeacher, fill_zeros, gene_medians, log1p_cpm  # noqa: E402
-from safefusion_benchmark.contracts import order_hash, write_output_contract  # noqa: E402
-from safefusion_benchmark.hashing import sha256_file  # noqa: E402
+from run_leakage_safe_method import GraphTeacher, SVDTeacher, fill_zeros, gene_medians, log1p_cpm
+from safefusion_benchmark.contracts import order_hash, write_output_contract
+from safefusion_benchmark.hashing import sha256_file
 
 
 def main() -> None:

@@ -7,17 +7,6 @@
 #SBATCH --output=logs/slurm-condition-%A_%a.out
 #SBATCH --error=logs/slurm-condition-%A_%a.err
 
-# Condition-aware Safe Fusion for the perturbation screens. The weighted kNN
-# teacher borrows only from cells with the same perturbation, the scVI teacher
-# conditions on the perturbation, and the selector adds each gene's mean and
-# zero fraction within the cell's perturbation. Array task = 2 * screen + setting,
-# with screens Norman, Adamson, Dixit, Papalexi and settings masked (benchmark
-# input) and deployment (recorded test cells).
-#
-#   t=$(sbatch --parsable --array=0-7 --export=ALL,STAGE=knn scripts/slurm_condition_aware_screens.sh)
-#   v=$(sbatch --parsable --array=0-7 --gres=gpu:l40s:1 --export=ALL,STAGE=scvi scripts/slurm_condition_aware_screens.sh)
-#   sbatch --array=0-7 --dependency=afterok:$t:$v --export=ALL,STAGE=select scripts/slurm_condition_aware_screens.sh
-#   sbatch --array=1,3,5,7 --dependency=afterok:$t:$v --export=ALL,STAGE=matched scripts/slurm_condition_aware_screens.sh
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
@@ -73,7 +62,6 @@ case "${STAGE:?STAGE must be knn, scvi, select or matched}" in
       "${curve[@]}" --seed 1729
     ;;
   matched)
-    # Comparators at the same fill fractions, each ranking zeros by its own value.
     for spec in "graph_smooth_condition knn_condition" "scvi_inductive_condition scvi_condition" \
                 "scvi_inductive scvi" "magic_inductive magic"; do
       set -- ${spec}

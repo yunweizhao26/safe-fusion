@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Combine the MLP selector coverage curves with matched baseline curves."""
-
 from __future__ import annotations
 
 import argparse
@@ -64,13 +62,6 @@ def normalized_auc(x: np.ndarray, y: np.ndarray) -> float:
 
 
 def summarize(table: pd.DataFrame) -> dict[str, dict]:
-    """Margins of the Safe Fusion selector over the best comparator of each family.
-
-    The ``main`` family holds the untrained comparators ranked by their own
-    count-scale value (scGCL is supplementary and excluded). The ``stacked``
-    family holds the same MLP selector trained on one comparator's value plus
-    the context features.
-    """
     result: dict[str, dict] = {}
     ranges = ((0.001, 0.01), (0.001, 0.02), (0.001, 0.05), (0.001, 0.10), (0.001, 0.20), (0.001, 1.0))
     for dataset, frame in table.groupby("dataset", sort=False):
@@ -136,8 +127,6 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # The selector runs that also produce every downstream output
-    # (scripts/slurm_complete_downstream_selectors.sh).
     evidence = args.evidence_root
     unit_keys = {
         "Pancreas": [f"pancreas_{fold}" for fold in range(3)],
@@ -159,8 +148,6 @@ def main() -> None:
         frame.insert(0, "method", "Safe Fusion MLP")
         frame.insert(0, "dataset", dataset)
         frames.append(frame)
-        # Stacked baselines: the same MLP selector trained on one comparator's
-        # count-scale value plus the context features.
         if args.stacked_root.exists():
             first_unit = args.stacked_root / unit_keys[dataset][0]
             for method_dir in sorted(path for path in first_unit.iterdir() if (path / "report.json").exists()):

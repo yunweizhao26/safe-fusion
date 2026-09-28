@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Donor-cross-fitted pancreas biology evaluation with cluster bootstrap inference."""
-
 from __future__ import annotations
 
 import argparse
@@ -18,9 +16,9 @@ from scipy.spatial.distance import cdist
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
-from safefusion_benchmark.downstream import randomized_pca_embedding  # noqa: E402
-from safefusion_benchmark.marker_panels import PANELS  # noqa: E402
-from safefusion_benchmark.metrics import average_precision_tie_aware, log1p_mae, spearman  # noqa: E402
+from safefusion_benchmark.downstream import randomized_pca_embedding
+from safefusion_benchmark.marker_panels import PANELS
+from safefusion_benchmark.metrics import average_precision_tie_aware, log1p_mae, spearman
 
 
 DISEASE_MARKERS = {"CXCL10", "STAT1", "B2M", "IFITM1", "IFITM3"}

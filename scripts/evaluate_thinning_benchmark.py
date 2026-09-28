@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""Evaluate the binomial-thinning benchmark at matched fill fractions.
-
-The positives are held-out candidate zeros that are nonzero in the recorded
-counts and zero after thinning. Within each unit every ranking changes the
-same number of held-out zeros; comparison rankings break ties at random.
-Paired intervals resample held-out donors. Recall is also stratified by the
-recorded count of the positive.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -66,7 +57,6 @@ def unit_tables(root: Path, dataset: str, unit: str, splits_path: Path, truth_co
     methods = root / unit
     comparators = root / "comparators" / dataset
     scores = {name: load(methods / sub / "mean.npy", rows, cols) for name, sub in TEACHERS}
-    # All-cell comparators are depth normalized; the library size puts them on counts.
     scores["MAGIC (all cells)"] = np.expm1(load(comparators / "magic/mean.npy", rows, cols)) * library[rows]
     scores["scVI (all cells)"] = load(comparators / "scvi/mean.npy", rows, cols) * library[rows]
     scores["Detection rate x depth"] = (1.0 - np.exp(-library[rows] * gene_rate[cols])).astype(np.float32)

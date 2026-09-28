@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Evaluate unsupervised cell-type clustering on held-out biological units."""
-
 from __future__ import annotations
 
 import argparse
@@ -19,7 +17,7 @@ from sklearn.neighbors import NearestNeighbors
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
-from safefusion_benchmark.downstream import (  # noqa: E402
+from safefusion_benchmark.downstream import (
     adjusted_rand_index,
     normalized_mutual_information,
     randomized_pca_embedding,

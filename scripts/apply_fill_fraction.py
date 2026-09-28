@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""Fill a fraction of held-out recorded zeros with a method's own imputed values.
-
-Every sparse output in the downstream analyses follows one rule. The candidate
-zeros are the recorded zeros of test cells. They are ranked by the method's
-imputed value, and the top ``round(b * |Z|)`` entries are replaced by that value.
-All other entries keep the recorded counts. Safe Fusion applies the same rule
-with its selector score in place of the imputed value.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -24,8 +15,8 @@ REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 sys.path.insert(0, str(REPOSITORY / "scripts"))
 
-from safefusion_benchmark.contracts import write_output_contract  # noqa: E402
-from selector_attribution import exact_topk  # noqa: E402
+from safefusion_benchmark.contracts import write_output_contract
+from selector_attribution import exact_topk
 
 
 def fraction_suffix(fraction: float) -> str:

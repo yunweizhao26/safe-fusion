@@ -7,11 +7,6 @@
 #SBATCH --output=logs/slurm-baseline-figure-%j.out
 #SBATCH --error=logs/slurm-baseline-figure-%j.err
 
-# Masked-F1 curves of the comparators on the count scale, the combined table
-# with the Safe Fusion selector and the stacked selectors, paired unit
-# intervals, and the paper figure. Run after slurm_rescale_saver_contracts.sh
-# and, for the stacked rows, slurm_stacked_selector_baselines.sh.
-# FIGURE sets the figure path.
 set -euo pipefail
 
 SAFE_FUSION_ROOT="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"

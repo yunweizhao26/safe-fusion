@@ -1,30 +1,4 @@
 #!/usr/bin/env python3
-"""Perturbation-defined zeros: does a method fill dropouts and keep biological zeros?
-
-In a knockdown or knockout screen, zeros of the targeted gene in perturbed cells
-are mostly biological absence, while zeros of the same gene in control cells,
-where it is expressed, are more likely technical. In an activation screen the
-direction reverses: zeros of the activated gene in perturbed cells are mostly
-technical. This evaluation uses the recorded counts of held-out test cells (the
-deployment setting, with no artificial masking).
-
-A target gene enters when it is in the gene panel, at least 5 development
-cells carry its perturbation, it is detected in at least 20% of the development
-cells where it should be expressed (control cells for a knockdown, perturbed
-cells for an activation), and its perturbation changes its expression in the
-development cells in the expected direction (one-sided Mann-Whitney p < 0.01 on
-log counts per ten thousand). The target also needs at least 5 recorded zeros
-of the gene in held-out control cells and at least 5 in held-out perturbed
-cells. This last condition uses the recorded counts of the held-out cells but
-no model output. Model outputs on held-out cells are used only for scoring.
-
-For each method and fill fraction the evaluation reports, per target, the share
-of recorded zeros filled in control and in perturbed cells, the directional
-difference (positive when the method fills the likely dropouts more), and an
-AUROC for ranking the likely-dropout zeros above the likely-biological zeros.
-Intervals come from a bootstrap over target genes.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -44,7 +18,6 @@ SCREENS = {
     "papalexi_eccite": "knockdown",
 }
 FRACTIONS = list(range(1, 11))
-# Sparse outputs at each fill fraction, relative to the deployment directory.
 SPARSE_METHODS = {
     "safe_fusion": "safe_fusion_{pct}pct",
     "safe_fusion_condition": "selector_condition/safe_fusion_calibrated_mlp_topk_{suffix}",
@@ -99,8 +72,6 @@ def evaluate_screen(dataset: str, deploy_root: Path, splits_path: Path, prepared
             continue
         g = gene_index[gene]
         dev_control, dev_perturbed = development & control, development & (target == gene)
-        # The likely-dropout cells must express the gene: controls for a knockdown,
-        # perturbed cells for an activation.
         expressing = dev_control if direction == "knockdown" else dev_perturbed
         if dev_perturbed.sum() < 5 or (recorded[expressing, g] > 0).mean() < min_detection:
             continue
@@ -111,7 +82,6 @@ def evaluate_screen(dataset: str, deploy_root: Path, splits_path: Path, prepared
         perturbed_zero = np.flatnonzero(test & (target == gene) & (recorded[:, g] == 0))
         if len(control_zero) < 5 or len(perturbed_zero) < 5:
             continue
-        # Label 1 marks the likely-dropout zeros: control cells for a knockdown, perturbed cells for an activation.
         cells = np.concatenate([control_zero, perturbed_zero])
         likely_dropout = np.concatenate([np.ones(len(control_zero)), np.zeros(len(perturbed_zero))])
         if direction == "activation":
