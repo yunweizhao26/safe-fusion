@@ -21,20 +21,11 @@ fi
 .venv-baselines/bin/pip install -q scgpt
 .venv-baselines/bin/pip install -q "gdown"
 
-set +e
-cd external_data/baselines
-curl -L --fail --max-time 120 https://codeload.github.com/PharrellWANG/scGCL/zip/refs/heads/main -o scgcl.zip
-CURL_OK=$?
-set -e
-if [ "$CURL_OK" -eq 0 ] && [ -f scgcl.zip ]; then
-  unzip -q scgcl.zip
-  cd "$SAFE_FUSION_ROOT"
-  .venv-baselines/bin/pip install -q -e external_data/baselines/scGCL-main
-  echo SCGCL_OK
-else
-  echo SCGCL_SKIPPED
+.venv-baselines/bin/pip install -q "faiss-cpu==1.9.0.post1"
+if [ ! -d baselines_and_data/scGCL/.git ]; then
+  git clone https://github.com/zehaoxiong123/scGCL.git baselines_and_data/scGCL
 fi
-cd "$SAFE_FUSION_ROOT"
+git -C baselines_and_data/scGCL checkout -q 317015acdf06d2929c20a7d2858bac539b3d8ebd
 
 mkdir -p external_data/baselines/scgpt_human
 .venv-baselines/bin/gdown --folder \
