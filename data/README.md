@@ -1,10 +1,10 @@
 # Papalexi RNA-protein evaluation inputs
 
 `papalexi_crossmodal_inputs.tar.gz` holds the inputs of the RNA-protein
-analysis of the manuscript (Figure 2 and Supplementary Table S9): the prepared
-Papalexi ECCITE-seq RNA and protein matrix, the masked benchmark, the fitted
-teachers, fused value, selector and scVI comparator, and the matched RNA and
-antibody panel. With these inputs the evaluation runs without regenerating the
+analysis of the manuscript (Figure 2 and Supplementary Tables S15 and S16): the
+prepared Papalexi ECCITE-seq RNA and protein matrix, the masked benchmark, the
+fitted teachers, fused value, selector and scVI comparator, and the matched RNA
+and antibody panel. With these inputs the evaluation runs without regenerating the
 upstream chain. The archive is stored with Git LFS.
 
 - Size: 344,659,694 bytes (345 MB)
@@ -54,4 +54,7 @@ to `artifacts/paper_evidence/figures`. `PAPER_DIR` sets the directory of an
 extra PNG copy of the figure. `scripts/slurm_evaluate_papalexi_crossmodal.sh`
 and `scripts/slurm_evaluate_papalexi_crossmodal_raw.sh` run from the same
 inputs. They evaluate CD86, PD-L2 and TIM-3 together with CD274, on centered
-log ratio (the last three columns of Table S9) and raw antibody counts.
+log ratio (the last three columns of Table S15) and raw antibody counts.
+`scripts/slurm_evaluate_protein_within_state.sh` also runs from these inputs.
+It refits the selector and writes Table S16 to
+`artifacts/paper_evidence/review_round2/protein/evaluation`.

@@ -2,8 +2,8 @@
 
 ## Scope
 
-This protocol defines the downstream analyses of the manuscript (main Table 4
-and Supplementary Table S10). Every learned model is fitted without the
+This protocol defines the downstream analyses of the manuscript (main Table 3
+and Supplementary Table S17). Every learned model is fitted without the
 held-out cells. Artificially masked nonzero counts fit and evaluate the zero
 selector only. Cell-type labels, disease status, developmental stages and
 perturbation responses are reserved for evaluation.
@@ -73,5 +73,6 @@ the `scripts/slurm_deployment_*.sh` chain).
 - The unmasked held-out matrix is a reference and is not an available
   imputation method.
 
-Commands are in [REPRODUCTION.md](REPRODUCTION.md), sections 9 (recorded
-zeros, Table 4) and 13 (masked benchmark, Table S10).
+Commands are in [REPRODUCTION.md](REPRODUCTION.md), section 10 (recorded
+zeros, Table 3, and masked benchmark, Table S17). Section 10.4 runs the Norman
+CRISPR activation screen.

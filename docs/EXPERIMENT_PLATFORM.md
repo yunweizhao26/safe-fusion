@@ -66,5 +66,8 @@ baseline environments, and configuration files listed in
 The manuscript uses the workflow only to prepare the colon and pancreas
 splits and masks. The method itself uses five teachers, the boosted fused
 value and the MLP selector with `apply_topk` selection (REPRODUCTION.md,
-section 3.2). The other selector architectures and budget modes of
-`scripts/calibrated_selective_fill.py` are not used in the manuscript.
+section 3.2). Supplementary Table S5 also refits the selector as a logistic
+regression and as a gradient-boosted classifier on the same features
+(`scripts/fusion_value_selectors.py`). The other selector architectures and
+budget modes of `scripts/calibrated_selective_fill.py` are not used in the
+manuscript.

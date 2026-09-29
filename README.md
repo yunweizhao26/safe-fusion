@@ -39,7 +39,8 @@ CELLxGENE, the Norman, Adamson, Dixit and Papalexi perturbation screens, and
 the zebrafish axial mesoderm time course of CellRank.
 [docs/DATA.md](docs/DATA.md) lists the sources, the prepared paths and their
 checksums. The repository does not redistribute these datasets. The derived
-inputs of the RNA-protein analysis (Figure 2) are in
+inputs of the RNA-protein analysis (Figure 2, Supplementary Tables S15 and
+S16) are in
 [data/](data/README.md), stored with Git LFS.
 
 ## Reproducing the manuscript
@@ -47,13 +48,15 @@ inputs of the RNA-protein analysis (Figure 2) are in
 [docs/REPRODUCTION.md](docs/REPRODUCTION.md) gives the commands for every
 table and figure, in dependency order, with the output directory of each
 job. [docs/PAPER_EXPERIMENTS.md](docs/PAPER_EXPERIMENTS.md) maps each table
-and figure to its scripts and output files.
+and figure to its scripts and output files. The selector scores depend on the
+processor model. The paper's selectors ran on Intel Xeon Platinum 8592+ nodes
+([Conventions](docs/REPRODUCTION.md#conventions)).
 
 | Path | Contents |
 |---|---|
 | `src/safefusion_benchmark/` | Data contracts, splits, masking, evaluation and the workflow command line |
 | `scripts/` | Teachers, fused value, selector, comparison methods, evaluations and Slurm launchers |
-| `fusion/` | Autoencoder fusion network, the comparison value model of Table 2 |
+| `fusion/` | Autoencoder fusion network, the comparison value model of Supplementary Table S9 |
 | `workflow/`, `configs/`, `profiles/` | Snakemake workflow that prepares the colon and pancreas splits and masks |
 | `data/` | Papalexi RNA-protein evaluation inputs (Git LFS) |
 | `docs/` | Reproduction guide, data sources and protocols |

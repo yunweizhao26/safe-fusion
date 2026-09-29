@@ -2,79 +2,111 @@
 
 This file gives the commands that reproduce every table and figure of the
 manuscript "Safe Fusion: Selective Zero Imputation for Single-Cell RNA
-Sequencing" (Briefings in Bioinformatics). Sections 1 to 3 build the
-environments, prepare the data, and fit Safe Fusion and the comparison
-methods. Sections 4 to 17 each produce one manuscript item, or two items
-that come from the same jobs. Every job depends only on jobs submitted
-earlier in this file, so the sections follow the job dependencies and not
-the order of the manuscript.
+Sequencing" (Briefings in Bioinformatics) and of its supplement. Sections 1 to
+3 build the environments, prepare the data, and fit Safe Fusion and the
+comparison methods. Sections 4 to 18 each produce one or more manuscript
+items. Every job depends only on jobs submitted earlier in this file, so the
+sections follow the job dependencies and not the order of the manuscript.
 [PAPER_EXPERIMENTS.md](PAPER_EXPERIMENTS.md) lists the scripts and output
 files of every item.
 
 | Manuscript item | Section |
 |---|---|
-| Table 1, Figure 1 | [4](#4-table-1-and-figure-1-masked-recovery-at-matched-fill-fractions) |
-| Table 2, Supplementary Table S7 | [8](#8-table-2-and-supplementary-table-s7-accuracy-of-the-inserted-value) |
-| Table 3, Supplementary Table S8 | [11](#11-table-3-and-supplementary-table-s8-zeros-created-by-knockdown) |
-| Table 4 | [9](#9-table-4-filling-recorded-zeros-in-held-out-cells) |
-| Figure 2, Supplementary Table S9 | [12](#12-figure-2-and-supplementary-table-s9-agreement-with-surface-protein) |
-| Supplementary Table S1 | [14](#14-supplementary-table-s1-fill-decisions-of-standard-imputers) |
-| Supplementary Table S2 | [15](#15-supplementary-table-s2-benchmark-data) |
-| Supplementary Table S3 and Section S3 | [16](#16-supplementary-table-s3-and-section-s3-comparison-methods) |
-| Supplementary Table S4 | [5](#5-supplementary-table-s4-mask-and-seed-replicates) |
-| Supplementary Table S5 | [6](#6-supplementary-table-s5-selector-feature-groups) |
-| Supplementary Table S6 | [7](#7-supplementary-table-s6-binomial-thinning) |
-| Supplementary Table S10 | [13](#13-supplementary-table-s10-downstream-analyses-on-the-masked-benchmark) |
-| Supplementary Table S11 | [10](#10-supplementary-table-s11-fill-fraction-rule) |
-| Supplementary Table S12 | [17](#17-supplementary-table-s12-runtime) |
+| Table 1 (masked F1 differences) | [4](#4-table-1-figure-1-and-supplementary-table-s4-lower-block-masked-recovery), [5](#5-table-1-lower-blocks-and-supplementary-table-s5-sources-of-the-ranking-gain) |
+| Table 2 (zeros with known status) | [13](#13-table-2-and-supplementary-table-s13-zeros-with-known-status) |
+| Table 3 (filling recorded zeros) | [10](#10-table-3-and-supplementary-tables-s17-and-s21-downstream-analyses-and-the-fill-fraction-rule) |
+| Figure 1 | [4](#4-table-1-figure-1-and-supplementary-table-s4-lower-block-masked-recovery) |
+| Figure 2 | [14](#14-figure-2-and-supplementary-tables-s15-and-s16-agreement-with-surface-protein) |
+| Supplementary Table S1 | [15](#15-supplementary-table-s1-fill-decisions-of-standard-imputers) |
+| Supplementary Table S2 | [16](#16-supplementary-table-s2-benchmark-data) |
+| Supplementary Table S3 and Section S3 | [17](#17-supplementary-table-s3-and-section-s3-comparison-methods) |
+| Supplementary Table S4 | [4](#4-table-1-figure-1-and-supplementary-table-s4-lower-block-masked-recovery) (lower block), [6](#6-supplementary-table-s4-upper-block-mask-and-seed-replicates) (upper block) |
+| Supplementary Table S5 | [5](#5-table-1-lower-blocks-and-supplementary-table-s5-sources-of-the-ranking-gain) |
+| Supplementary Table S6 | [7](#7-supplementary-table-s6-selector-feature-groups) |
+| Supplementary Tables S7 and S8 | [8](#8-supplementary-tables-s7-and-s8-binomial-thinning-and-recall-by-count) |
+| Supplementary Tables S9 and S10 | [9](#9-supplementary-tables-s9-and-s10-accuracy-of-the-inserted-value) |
+| Supplementary Tables S11 and S12 | [11](#11-supplementary-tables-s11-and-s12-values-inserted-into-recorded-zeros-and-their-bias) |
+| Supplementary Table S13 | [13](#13-table-2-and-supplementary-table-s13-zeros-with-known-status) |
+| Supplementary Table S14 | [12](#12-supplementary-tables-s14-and-s18-to-s20-disease-and-control-checks) |
+| Supplementary Tables S15 and S16 | [14](#14-figure-2-and-supplementary-tables-s15-and-s16-agreement-with-surface-protein) |
+| Supplementary Table S17 | [10](#10-table-3-and-supplementary-tables-s17-and-s21-downstream-analyses-and-the-fill-fraction-rule) |
+| Supplementary Tables S18, S19 and S20 | [12](#12-supplementary-tables-s14-and-s18-to-s20-disease-and-control-checks) |
+| Supplementary Table S21 | [10](#10-table-3-and-supplementary-tables-s17-and-s21-downstream-analyses-and-the-fill-fraction-rule) |
+| Supplementary Table S22 | [18](#18-supplementary-table-s22-runtime) |
 
 ## Conventions
 
 - Run every command from the repository root. Each launcher changes to
   `SLURM_SUBMIT_DIR` and writes its log to `logs/`, so create that
   directory first (`mkdir -p logs`).
-- All compute runs through Slurm. Some launchers carry
+- All compute runs through Slurm. Most launchers carry
   `#SBATCH --account=torch_pr_634_general`, the account of the cluster where
   the paper was run. Set your own account (and partition, if your cluster
   needs one) once per shell. Slurm input environment variables override
-  `#SBATCH` lines, and they also apply to the `sbatch` calls inside
-  `scripts/slurm_thinning_benchmark.sh`:
+  `#SBATCH` lines, and they also apply to the `sbatch` calls inside the
+  launchers that have a `submit` stage:
 
   ```bash
   export SBATCH_ACCOUNT=<account>
   export SBATCH_PARTITION=<partition>   # only if your cluster needs it
   ```
 
-- Python commands that have no launcher also run on a compute node, for
-  example inside `srun`. They use the environment of section 1
-  (`source .venv/bin/activate`).
+- The selector scores depend on the CPU model, because the BLAS kernels of
+  the multilayer perceptron differ between processors. The paper ran the
+  selectors on the `cs` partition of its cluster, whose nodes have Intel Xeon
+  Platinum 8592+ processors. `slurm_fusion_value.sh` and
+  `slurm_evaluate_protein_within_state.sh` request that partition with
+  `#SBATCH --partition`. On another processor model the selector scores, the
+  selected zeros and every number that depends on them change slightly. Run
+  all selector fits on one processor model.
 - Every scVI fit requests an NVIDIA L40S GPU (`--gres=gpu:l40s:1`), because
-  scVI outputs differ between GPU types. This applies to
-  `slurm_scvi_teachers.sh`, `slurm_deployment_scvi.sh`,
-  `slurm_scvi_current_baselines.sh`, `slurm_papalexi_crossmodal_scvi.sh`, and
-  to the scVI stages of `slurm_seed_replicates.sh`,
-  `slurm_thinning_benchmark.sh` and `slurm_condition_aware_screens.sh`, whose
-  `sbatch` commands below request the same GPU. On other GPU types the
-  scVI values, and the results that use them, change slightly.
-- Every ALRA launcher (`slurm_alra_colon.sh`, `slurm_alra_pancreas_crossfit.sh`,
-  `sbatch_run_alra_norman.s`) fixes `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS`
-  and `MKL_NUM_THREADS` at 8, because the randomized SVD of ALRA depends on
-  the number of BLAS threads.
+  scVI outputs differ between GPU types. The scGPT launchers request an NVIDIA
+  H200 (`--gres=gpu:h200:1`).
+- Every ALRA fit fixes `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS` and
+  `MKL_NUM_THREADS` at 8, because the randomized SVD of ALRA depends on the
+  number of BLAS threads.
 - The launchers and scripts fix their seeds. Most splits, masks, models and
-  bootstraps use seed 1729. The mask replicates of section 5 use seeds 1730
-  to 1733, and the thinning bootstrap of section 7 uses seed 7. scGCL keeps
-  the upstream seed 0. The package versions are pinned in
-  `uv.lock`, `workflow/envs/` and `scripts/standard_imputers/environment.yaml`.
-  Numerical results can still vary across hardware and library builds.
-- Each section stores job IDs in shell variables (`teachers`, `scvi`,
-  `stack`, ...), and later sections depend on them. Submit the sections in
-  order from one shell, or drop a dependency on a job that has already
-  finished.
-- The launchers read the colon and pancreas workflow runs of section 2.2 from
-  the fixed directories `artifacts/colon_runs/0b2469810675-c0db6f963e94` and
-  `artifacts/pancreas_runs/0b2469810675-45c81b160d78`.
+  bootstraps use seed 1729. The mask replicates use seeds 1730 to 1733, the
+  thinning bootstraps use seed 7, and scGCL and Mixscape keep their upstream
+  seed 0. The package versions are pinned in `uv.lock`, `workflow/envs/`,
+  `scripts/standard_imputers/environment.yaml` and the setup launchers of
+  section 1. Numerical results can still vary across hardware and library
+  builds.
+- Each section stores job IDs in shell variables (`teachers`, `lf_selector`,
+  ...), and later sections depend on them. Submit the sections in order from
+  one shell, or drop a dependency on a job that has already finished.
+- Where the paper's jobs requested more memory or time than a launcher's
+  `#SBATCH` lines, the commands below pass `--mem` or `--time`.
+- Python commands that have no launcher also run on a compute node, for
+  example inside `srun`, with the environment of section 1
+  (`source .venv/bin/activate`).
 - `artifacts/`, `external_data/`, `logs/` and the environments are ignored by
   Git.
+
+### Output directories
+
+Two benchmark builds feed the manuscript.
+
+- The production build, under `artifacts/paper_evidence/`, holds colon, the
+  pancreas benchmark with one set of 1,208 genes, the Adamson, Dixit and
+  Papalexi screens, the zebrafish time course and the Papalexi RNA-protein
+  benchmark.
+- The leakage-free build, under
+  `artifacts/paper_evidence/review_round2/leakage_free/`, holds the pancreas
+  donor folds with variable genes selected within each fold and the Norman
+  CRISPR activation screen with conditions selected on development cells.
+  Table 1, Figure 1, the lower block of Supplementary Table S4, Supplementary
+  Tables S5 and S8, the pancreas fold rows of Supplementary Table S2 and every
+  Norman number come from this build. The analyses that use the Norman
+  benchmark beyond masked recovery write to
+  `artifacts/paper_evidence/review_round2/norman_rebuilt/`.
+
+The analyses added for the revision write to
+`artifacts/paper_evidence/review_round2/<analysis>/` and
+`artifacts/paper_evidence/disease_control_checks/`. The launchers read the
+colon and pancreas workflow runs of section 2.2 from the fixed directories
+`artifacts/colon_runs/0b2469810675-c0db6f963e94` and
+`artifacts/pancreas_runs/0b2469810675-45c81b160d78`.
 
 ## 1. Environments
 
@@ -86,6 +118,7 @@ mkdir -p logs
 sbatch scripts/slurm_setup_current_baselines.sh    # .conda-scvi-current and .conda-magic-current
 sbatch scripts/sbatch_setup_r_baselines.s          # .conda-r-baselines
 sbatch scripts/sbatch_setup_python_baselines.s     # .venv-baselines and the scGPT checkpoint
+sbatch scripts/sbatch_setup_pertpy_env.s           # .venv-pertpy
 
 git clone https://github.com/zehaoxiong123/scGCL.git baselines_and_data/scGCL
 git -C baselines_and_data/scGCL checkout 317015acdf06d2929c20a7d2858bac539b3d8ebd
@@ -97,16 +130,18 @@ steps.
 | Environment | Built from | Runs |
 |---|---|---|
 | `.venv` | `pyproject.toml`, `uv.lock` | Workflow, gene median, SVD and weighted kNN teachers, fused value, selector, ALRA (Python port), SAVER driver, autoencoder fusion network, evaluations and Figure 1 |
-| `.conda-scvi-current` | `workflow/envs/scvi.yaml` | scVI teacher, standard scVI, Papalexi RNA-protein preparation and audit |
+| `.conda-scvi-current` | `workflow/envs/scvi.yaml` | scVI teacher, standard scVI, the probability of a nonzero count (`nonzero_probability.py`), Papalexi RNA-protein preparation and audit, label audit |
 | `.conda-magic-current` | `workflow/envs/magic.yaml` | MAGIC teacher, standard MAGIC |
 | `.conda-r-baselines` | `scripts/sbatch_setup_r_baselines.s` | SAVER (`scripts/run_saver_baseline.R`, called by `run_saver_baseline.py --rscript`) |
 | `.venv-baselines` | `scripts/sbatch_setup_python_baselines.s` | scGPT (checkpoint in `external_data/baselines/scgpt_human`), the scGCL adapter (which also imports `scanpy` and `faiss`), and the Figure 2 plot |
+| `.venv-pertpy` | `scripts/sbatch_setup_pertpy_env.s` | Mixscape classes of the Papalexi cells (pertpy 1.3.0, scanpy 1.12.4, mudata 0.4.1) |
+| `.venv-scanpy` | `scripts/slurm_disease_control_analysis.sh` on first use | Module scores and Leiden clusters of section 12 (scanpy 1.11.5, leidenalg 0.12.0, igraph 1.0.0 on the numerical stack of `.venv`) |
 | `.conda-standard-imputers` | `scripts/standard_imputers/environment.yaml` | The six imputers of Supplementary Table S1, created by `slurm_standard_imputers.sh` on first use |
 
 ## 2. Data preparation
 
 [DATA.md](DATA.md) lists the public sources and the SHA-256 of every input.
-Run the commands of sections 2.1 to 2.5 on a compute node.
+Run the commands of sections 2.1 to 2.7 on a compute node.
 
 ### 2.1 Colon epithelium and pancreatic islets
 
@@ -131,7 +166,11 @@ python scripts/prepare_pancreas_atlas.py \
 
 Both scripts keep at most 12 cells per donor, cell type and condition
 (`--cells-per-stratum`) and select 1,200 variable genes
-(`--variable-genes`), plus a fixed marker list.
+(`--variable-genes`), plus a fixed marker list. Without
+`--gene-selection-splits`, the pancreas script selects the variable genes on
+the development donors of its own donor assignment. This gives the production
+pancreas gene set of 1,208 genes. Section 2.5 selects them within each donor
+fold instead.
 
 ### 2.2 Workflow runs: splits and corruptions of colon and pancreas
 
@@ -146,7 +185,7 @@ The workflow checks the SHA-256 of each prepared file against its config and
 writes, under `artifacts/{colon,pancreas}_runs/<run-id>/data/<dataset>/`,
 `preprocessed.h5ad`, `splits.parquet`, `corrupted/<corruption>.h5ad` and
 `coordinates/<corruption>.parquet`. The corruptions are `mask_010` (both
-datasets) and the colon `thinning_050` and `thinning_025` of section 7. The
+datasets) and the colon `thinning_050` and `thinning_025` of section 8. The
 manuscript uses only these data outputs. The DAG also fits and evaluates the
 simple methods enabled in the configs, whose results the manuscript does not
 report, and the dense `safe_fusion` entry is disabled. Section 3 writes the
@@ -179,25 +218,66 @@ The script writes `fold_<k>/splits.parquet` and `manifest.json`.
 ### 2.4 Norman CRISPR activation screen
 
 The input is the GEARS-processed Norman file (`perturb_processed.h5ad`) with
-its raw UMI counts layer.
+its raw UMI counts layer. Task 1 of the `data` stage of
+`scripts/slurm_leakage_free_rerun.sh` prepares the benchmark:
 
 ```bash
-python scripts/prepare_norman_crispra.py \
-  --input <path to perturb_processed.h5ad> \
-  --output external_data/prepared/norman_crispra.h5ad \
-  --seed 1729 --max-cells-per-condition 60 --max-control-cells 1000 \
-  --min-cells-per-condition 60 --target-log2fc-min 0.5 --target-p-max 0.05
-python scripts/setup_norman_crispra_experiment.py \
-  --input external_data/prepared/norman_crispra.h5ad \
-  --output-dir artifacts/paper_evidence/norman_crispra \
-  --test-fraction 0.30 --mask-fraction 0.10 --seed 1729
+LF=scripts/slurm_leakage_free_rerun.sh
+lf_norman=$(sbatch --parsable --array=1 --mem=32G \
+  --export=ALL,STAGE=data,NORMAN_SOURCE=<path to perturb_processed.h5ad> $LF)
 ```
 
-`prepare_norman_crispra.py` reads the source with bounded h5py block reads.
-Opening the source with AnnData backed fancy indexing loads the full dense
-matrix.
+The task runs
 
-### 2.5 Adamson, Dixit and Papalexi screens and the zebrafish time course
+```bash
+python scripts/prepare_norman_crispra.py --input <perturb_processed.h5ad> \
+  --output artifacts/paper_evidence/review_round2/leakage_free/norman_crispra/prepared.h5ad \
+  --seed 1729 --max-cells-per-condition 60 --max-control-cells 1000 \
+  --min-cells-per-condition 60 --target-log2fc-min 0.5 --target-p-max 0.05 --test-fraction 0.30
+python scripts/setup_norman_crispra_experiment.py \
+  --input artifacts/paper_evidence/review_round2/leakage_free/norman_crispra/prepared.h5ad \
+  --output-dir artifacts/paper_evidence/review_round2/leakage_free/norman_crispra \
+  --split-column preassigned_split --mask-fraction 0.10 --seed 1729
+```
+
+`prepare_norman_crispra.py` reads the source with bounded h5py block reads,
+draws 60 cells of each single-gene condition that has at least 60 cells and
+1,000 control cells, and assigns 30% of the cells of each condition to the
+test split. It then keeps a condition when, in the development cells, the
+mean count of its target gene exceeds that of the control cells by at least
+0.5 on the log2(1 + x) scale with a two-sided Mann-Whitney p < 0.05. The
+cell labels come from the source rows of the drawn cells. The split is stored
+in the obs column `preassigned_split`, and `setup_norman_crispra_experiment.py`
+must be called with `--split-column preassigned_split` so that the benchmark
+keeps the split on which the conditions were selected. The prepared file has
+SHA-256 `8aa5b1e3d82a1c57e42e2f4397a37bad2f5181baf04ffca6b161d25a0ad47170`
+and holds 65 of 104 single-gene conditions, 1,000 control cells and 5,045
+genes (`prepared.report.json`). The benchmark directory also holds
+`corrupted.h5ad`, `coordinates.parquet`, `splits.parquet` and
+`manifest.json`.
+
+### 2.5 Pancreatic-islet folds with variable genes selected within each fold
+
+```bash
+lf_pancreas=$(sbatch --parsable --array=0 --mem=32G --export=ALL,STAGE=data $LF)
+```
+
+Task 0 of the `data` stage rebuilds the donor folds of section 2.3 under
+`artifacts/paper_evidence/review_round2/leakage_free/pancreas_crossfit/` (the
+folds depend only on donors, conditions and the seed, so they equal the
+production folds). For each fold it prepares the pancreas file with
+`prepare_pancreas_atlas.py --gene-selection-splits fold_<k>/splits.parquet`,
+which selects the variable genes on the development donors of that fold
+(1,207, 1,209 and 1,207 genes), and masks 10% of the nonzero entries of the
+fold within 16 strata of library size and gene mean count
+(`make_mask_replicate.py`, seed 1729). It writes
+`fold_<k>/{prepared.h5ad,prepared.report.json,corrupted.h5ad,coordinates.parquet,splits.parquet}`.
+It then writes `units_manifest.json`, the masked-recovery units of the
+leakage-free build (`write_leakage_free_units.py`), in which colon keeps its
+production unit, and links the production colon selector and stacked
+selectors of sections 3.2 and 4 into the leakage-free directory.
+
+### 2.6 Adamson, Dixit and Papalexi screens and the zebrafish time course
 
 The screen inputs are the harmonized raw-count H5AD files of scPerturb
 (Zenodo record 10044268) in `external_data/scperturb/`. The zebrafish axial
@@ -230,7 +310,7 @@ python scripts/setup_norman_crispra_experiment.py \
 Each preparation report (`external_data/prepared/<dataset>.report.json`)
 records the source SHA-256.
 
-### 2.6 Papalexi RNA-protein benchmark
+### 2.7 Papalexi RNA-protein benchmark
 
 ```bash
 pdl1_prep=$(sbatch --parsable scripts/slurm_prepare_papalexi_crossmodal.sh)
@@ -248,20 +328,42 @@ audit=$(sbatch --parsable --dependency=afterok:${fetch} scripts/slurm_audit_papa
   MD5 of the MuData object and records the SHA-256 of the GEO archive.
 - `slurm_audit_papalexi_multimodal.sh` matches the antibody counts to the RNA
   cells and writes
-  `artifacts/paper_evidence/papalexi_crossmodal/audit/matched_rna_adt_panel.parquet`.
+  `artifacts/paper_evidence/papalexi_crossmodal/audit/matched_rna_adt_panel.parquet`
+  and `audit_report.json` (20,729 cells, 285 barcodes shared by more than one
+  cell, 20,156 matched cells; Supplementary Section S7).
+
+### 2.8 Label audit
+
+`scripts/audit_prepared_labels.py` locates the source row of every prepared
+cell and reports the share of cells whose counts and labels equal the source,
+and the change of each perturbation target gene in the cells labelled with
+that target. It needs the sources of sections 2.1, 2.4 and 2.6, the Papalexi
+files of section 2.7 and `mudata`, so it runs in `.conda-scvi-current`:
+
+```bash
+sbatch --mem=96G -c 4 --time=01:00:00 --dependency=afterok:${lf_norman}:${audit} \
+  --wrap ".conda-scvi-current/bin/python scripts/audit_prepared_labels.py \
+  --norman-source <path to perturb_processed.h5ad>"
+```
+
+It writes `artifacts/paper_evidence/review_round2/label_audit/label_audit.json`.
+The Dixit entry gives the median log2 fold change of the knocked-out targets,
+-0.009 (Supplementary Section S6), and the Norman entry confirms that every
+prepared Norman cell carries its source condition.
 
 ## 3. Safe Fusion and the comparison methods
 
 ### 3.1 Dataset units
 
-`scripts/unit_paths.sh` defines the ten dataset units of the launchers, in
-array order: `pancreas_0`, `pancreas_1`, `pancreas_2` (the donor folds),
-`colon`, `norman_crispra`, `adamson_crispri`, `dixit_ko`, `papalexi_eccite`,
-`zebrafish` and `papalexi_crossmodal`. `unit_paths <key>` sets `input`,
-`coordinates`, `splits`, `truth` and `methods_root`, and
-`teacher_contract_args <root>` expands the five teacher contracts under
-`<root>`. A contract is a directory with `mean.npy` (cells by genes) and
-`metadata.json`.
+`scripts/unit_paths.sh` defines the nine production units of the launchers,
+in array order: `pancreas_0`, `pancreas_1`, `pancreas_2` (the donor folds),
+`colon`, `adamson_crispri`, `dixit_ko`, `papalexi_eccite`, `zebrafish` and
+`papalexi_crossmodal`. `unit_paths <key>` sets `input`, `coordinates`,
+`splits`, `truth` and `methods_root`, and `teacher_contract_args <root>`
+expands the five teacher contracts under `<root>`. The key `norman_crispra`
+points to the Norman benchmark of section 2.4, which the leakage-free
+launcher of section 3.4 fits. A contract is a directory with `mean.npy`
+(cells by genes) and `metadata.json`.
 
 ### 3.2 Teachers, fused value and selector
 
@@ -279,8 +381,8 @@ cell's counts.
 gradient-boosted regression of the log count on the masked positives of the
 training cells (`--value-model boosted`, the default). It takes the five
 teacher contracts with `--teacher-contract`. `--value-model linear` fits the
-linear combination of Table 2 instead. The contract metadata records the
-five-fold cross-validated error of both value models
+linear combination of Supplementary Table S9 instead. The contract metadata
+records the five-fold cross-validated error of both value models
 (`parameters.value_model_cross_validation`).
 
 `scripts/calibrated_selective_fill.py --architecture mlp --budget-mode
@@ -290,7 +392,7 @@ top-ranked zeros of the held-out cells with the fused value at each fill
 fraction. It writes one `safe_fusion_calibrated_mlp_topk_<b>` contract per
 fraction, where `<b>` is the fraction with `p` in place of the decimal point
 (`0p01` to `0p1`), and `calibration_report.json` with the 1000-point masked
-F1 curve from 0.1% to 100%. With `--condition-column target` (section 11),
+F1 curve from 0.1% to 100%. With `--condition-column target` (section 13),
 the selector adds the two features computed within each perturbation label.
 Held-out labels do not fit any model or choose any entry.
 
@@ -304,32 +406,29 @@ pdl1_selector=$(sbatch --parsable --dependency=afterok:${stack} scripts/slurm_pa
 pdl1_scvi=$(sbatch --parsable --dependency=afterok:${pdl1_prep} scripts/slurm_papalexi_crossmodal_scvi.sh)
 ```
 
-- `slurm_prepare_complete_downstream_teachers.sh` (array 0-39, task =
+- `slurm_prepare_complete_downstream_teachers.sh` (array 0-35, task =
   4 × unit + teacher) fits the gene median, SVD, weighted kNN and MAGIC
-  teachers of every unit. `slurm_scvi_teachers.sh` (array 0-9) fits the scVI
+  teachers of every unit. `slurm_scvi_teachers.sh` (array 0-8) fits the scVI
   teacher. The contracts are
   `<methods_root>/{gene_median,svd_impute,graph_smooth,magic_inductive,scvi_inductive}`.
-- `slurm_safe_fusion_stack.sh` (array 0-9) writes the fused value to
+- `slurm_safe_fusion_stack.sh` (array 0-8) writes the fused value to
   `<methods_root>/safe_fusion`. With `VALUE_MODEL=linear` it writes
-  `<methods_root>/safe_fusion_linear` (section 8).
-- `slurm_complete_downstream_selectors.sh` (array 0-8, every unit except
-  `papalexi_crossmodal`, in the order `pancreas_0`, `pancreas_1`,
-  `pancreas_2`, `norman_crispra`, `adamson_crispri`, `dixit_ko`,
+  `<methods_root>/safe_fusion_linear` (section 9).
+- `slurm_complete_downstream_selectors.sh` (array 0-7, in the order
+  `pancreas_0`, `pancreas_1`, `pancreas_2`, `adamson_crispri`, `dixit_ko`,
   `papalexi_eccite`, `zebrafish`, `colon`) fits the selector and writes the
   fills at 1% to 10%. The output directories are
   `artifacts/paper_evidence/selector_mlp_biology_range/colon`,
-  `artifacts/paper_evidence/pancreas_crossfit/fold_<k>/selector_mlp_biology_range_fullteachers`,
-  `artifacts/paper_evidence/selector_mlp_biology_range_fullteachers/norman_crispra`
-  and `<methods_root>/selector_mlp_biology_range` for the three other screens
-  and zebrafish.
-- `slurm_apply_fill_fraction.sh` (array 0-8) fills SVD and weighted kNN at
+  `artifacts/paper_evidence/pancreas_crossfit/fold_<k>/selector_mlp_biology_range_fullteachers`
+  and `<methods_root>/selector_mlp_biology_range` for the three screens and
+  zebrafish.
+- `slurm_apply_fill_fraction.sh` (array 0-7) fills SVD and weighted kNN at
   the same fractions, each ranking zeros by its own value
   (`scripts/apply_fill_fraction.py`), and writes `svd_topk_<b>` and
   `weighted_knn_topk_<b>` under
   `artifacts/paper_evidence/matched_fraction/colon`,
-  `artifacts/paper_evidence/pancreas_crossfit/fold_<k>/matched_fraction`,
-  `artifacts/paper_evidence/norman_crispra/matched_fraction` and
-  `<methods_root>/matched_fraction` for the other screens and zebrafish.
+  `artifacts/paper_evidence/pancreas_crossfit/fold_<k>/matched_fraction` and
+  `<methods_root>/matched_fraction` for the screens and zebrafish.
 - `slurm_papalexi_crossmodal_mlp.sh` fits the selector of the RNA-protein
   benchmark and writes
   `artifacts/paper_evidence/papalexi_crossmodal/benchmark/mlp_selector/`,
@@ -338,35 +437,29 @@ pdl1_scvi=$(sbatch --parsable --dependency=afterok:${pdl1_prep} scripts/slurm_pa
 - `slurm_papalexi_crossmodal_scvi.sh` fits standard scVI on the RNA-protein
   benchmark (`benchmark/scvi`).
 
-### 3.3 Comparison methods
+### 3.3 Comparison methods on the production tissues
 
 ```bash
 alra_colon=$(sbatch --parsable scripts/slurm_alra_colon.sh)
 alra_pancreas=$(sbatch --parsable scripts/slurm_alra_pancreas_crossfit.sh)
-alra_norman=$(sbatch --parsable scripts/sbatch_run_alra_norman.s)
 saver_tissue=$(sbatch --parsable scripts/sbatch_run_saver_pc.s)
-saver_norman=$(sbatch --parsable scripts/slurm_saver_full_norman.sh)
-saver_rescale=$(sbatch --parsable --dependency=afterok:${saver_tissue}:${saver_norman} scripts/slurm_rescale_saver_contracts.sh)
+saver_rescale=$(sbatch --parsable --dependency=afterok:${saver_tissue} scripts/slurm_rescale_saver_contracts.sh)
 magic_std=$(sbatch --parsable scripts/slurm_magic_current_baselines.sh)
 scvi_std=$(sbatch --parsable scripts/slurm_scvi_current_baselines.sh)
 scgpt=$(sbatch --parsable scripts/slurm_scgpt_gene_current_baselines.sh)
 scgcl=$(sbatch --parsable scripts/sbatch_scgcl_baselines.s)
-scgcl_norman=$(sbatch --parsable scripts/slurm_scgcl_norman.sh)
-baselines=${alra_colon}:${alra_pancreas}:${alra_norman}:${saver_rescale}:${magic_std}:${scvi_std}:${scgpt}:${scgcl}:${scgcl_norman}
+baselines=${alra_colon}:${alra_pancreas}:${saver_rescale}:${magic_std}:${scvi_std}:${scgpt}:${scgcl}
 ```
 
 | Launcher | Method | Output |
 |---|---|---|
 | `slurm_alra_colon.sh` | ALRA, colon | `artifacts/paper_evidence/baselines/alra/colon_mask_010` |
 | `slurm_alra_pancreas_crossfit.sh` (array 0-2) | ALRA, pancreas folds | `artifacts/paper_evidence/pancreas_crossfit/fold_<k>/alra` |
-| `sbatch_run_alra_norman.s` | ALRA, Norman | `artifacts/paper_evidence/baselines/alra/norman_mask_010` |
 | `sbatch_run_saver_pc.s` | SAVER, pancreas and colon | `artifacts/paper_evidence/baselines/saver/{pancreas,colon}_mask_010` |
-| `slurm_saver_full_norman.sh` | SAVER, Norman | `artifacts/paper_evidence/baselines/saver/norman_full_mask_010` |
-| `slurm_magic_current_baselines.sh` (array 0-2) | Standard MAGIC | `artifacts/paper_evidence/baselines/magic/{pancreas,colon,norman}` |
-| `slurm_scvi_current_baselines.sh` (array 0-2) | Standard scVI | `artifacts/paper_evidence/baselines/scvi/{pancreas,colon,norman}` |
-| `slurm_scgpt_gene_current_baselines.sh` (array 0-2) | scGPT masked value decoder | `artifacts/paper_evidence/baselines/scgpt_mvc/{pancreas,colon,norman}` |
+| `slurm_magic_current_baselines.sh` (array 0-1) | Standard MAGIC | `artifacts/paper_evidence/baselines/magic/{pancreas,colon}` |
+| `slurm_scvi_current_baselines.sh` (array 0-1) | Standard scVI | `artifacts/paper_evidence/baselines/scvi/{pancreas,colon}` |
+| `slurm_scgpt_gene_current_baselines.sh` (array 0-1) | scGPT masked value decoder | `artifacts/paper_evidence/baselines/scgpt_mvc/{pancreas,colon}` |
 | `sbatch_scgcl_baselines.s` (array 0-1) | scGCL, pancreas and colon | `artifacts/paper_evidence/baselines/scgcl/{pancreas,colon}` |
-| `slurm_scgcl_norman.sh` | scGCL, Norman | `artifacts/paper_evidence/baselines/scgcl/norman` |
 
 ALRA is fitted on the training cells and applied to the held-out cells
 (`scripts/run_alra_baseline.py`, a Python port of ALRA). SAVER, MAGIC, scVI
@@ -377,103 +470,223 @@ contracts that lack this mark on the count scale and skips the others.
 `scripts/masked_f1_units.py` defines the evaluation units, the comparator
 contract paths and the conversion of each contract to the count scale.
 
-## 4. Table 1 and Figure 1: masked recovery at matched fill fractions
+### 3.4 Leakage-free build: pancreas folds and the Norman screen
+
+`scripts/slurm_leakage_free_rerun.sh` fits the five teachers, the fused
+value, the selector and every comparison method on the four units of the
+leakage-free build, in array order `pancreas_0`, `pancreas_1`, `pancreas_2`
+(the folds of section 2.5) and `norman_crispra` (section 2.4), with the
+production settings and seeds. `STAGE` selects the step.
+
+```bash
+after_data=afterok:${lf_norman}:${lf_pancreas}
+lf_teachers=$(sbatch --parsable --array=0-15 --mem=32G --dependency=${after_data} --export=ALL,STAGE=teachers $LF)
+lf_scvi_teacher=$(sbatch --parsable --array=0-3 --mem=32G --gres=gpu:l40s:1 --dependency=${after_data} --export=ALL,STAGE=scvi_teacher $LF)
+lf_stack=$(sbatch --parsable --array=0-3 --dependency=afterok:${lf_teachers}:${lf_scvi_teacher} --export=ALL,STAGE=stack $LF)
+lf_selector=$(sbatch --parsable --array=0-3 --mem=32G --dependency=afterok:${lf_stack} --export=ALL,STAGE=selector $LF)
+lf_alra=$(sbatch --parsable --array=0-3 --dependency=${after_data} --export=ALL,STAGE=alra $LF)
+lf_saver=$(sbatch --parsable --array=0-2 --time=03:00:00 --dependency=${after_data} --export=ALL,STAGE=saver $LF)
+lf_saver_norman=$(sbatch --parsable --array=3 --mem=120G --time=06:00:00 --dependency=${after_data} --export=ALL,STAGE=saver $LF)
+lf_magic=$(sbatch --parsable --array=0-3 --mem=96G --dependency=${after_data} --export=ALL,STAGE=magic $LF)
+lf_scvi=$(sbatch --parsable --array=0-3 --mem=64G --gres=gpu:l40s:1 --dependency=${after_data} --export=ALL,STAGE=scvi $LF)
+lf_scgpt=$(sbatch --parsable --array=0-3 --mem=64G --gres=gpu:h200:1 --dependency=${after_data} --export=ALL,STAGE=scgpt $LF)
+lf_baselines=${lf_alra}:${lf_saver}:${lf_saver_norman}:${lf_magic}:${lf_scvi}:${lf_scgpt}
+```
+
+- `teachers` (task = 4 × unit + teacher) and `scvi_teacher` fit the five
+  teachers, `stack` the fused value and `selector` the MLP selector with the
+  1000-point masked F1 curve. The pancreas contracts are in
+  `leakage_free/pancreas_crossfit/fold_<k>/`, with the selector in
+  `fold_<k>/selector_mlp_biology_range_fullteachers/`. The Norman contracts
+  are in `leakage_free/norman_crispra/methods/`, with the selector in
+  `leakage_free/selector_mlp_biology_range_fullteachers/norman_crispra/`.
+- `alra`, `saver`, `magic`, `scvi` and `scgpt` fit the comparison methods with
+  the settings of section 3.3 and write
+  `leakage_free/baselines/<method>/{pancreas_fold_<k>,norman}`.
+
+The directory `leakage_free/` stands for
+`artifacts/paper_evidence/review_round2/leakage_free/` here and below.
+
+## 4. Table 1, Figure 1 and Supplementary Table S4 (lower block): masked recovery
 
 ```bash
 stacked=$(sbatch --parsable --dependency=afterok:${teachers}:${scvi}:${baselines} scripts/slurm_stacked_selector_baselines.sh)
-sbatch --dependency=afterok:${selectors}:${stacked}:${baselines} scripts/slurm_matched_baseline_figure.sh
+curves=$(sbatch --parsable --dependency=afterok:${selectors}:${stacked}:${baselines} scripts/slurm_matched_baseline_curves.sh)
+lf_stacked=$(sbatch --parsable --array=0-3 --dependency=afterok:${lf_selector}:${lf_baselines} --export=ALL,STAGE=stacked $LF)
+lf_evaluate=$(sbatch --parsable --array=0 --mem=64G \
+  --dependency=afterok:${lf_selector}:${lf_stacked}:${lf_baselines}:${curves} --export=ALL,STAGE=evaluate $LF)
 ```
 
-`slurm_stacked_selector_baselines.sh` (array 0-4: `pancreas_0`, `pancreas_1`,
-`pancreas_2`, `colon`, `norman_crispra`) trains the Safe Fusion selector on one
-comparator's value plus the three context features, for every comparator with
-values on the selector-fitting cells. It writes
-`artifacts/paper_evidence/stacked_selector_baselines/<unit>/<comparator>/`
-(`report.json`, `unit_counts.parquet`). `slurm_matched_baseline_figure.sh`
-runs `compute_matched_baseline_f1_curves.py`, `combine_mlp_baseline_curves.py`,
-`paired_masked_f1_bootstrap.py` and `plot_selector_f1_fillrate.py`. It writes,
-under `artifacts/paper_evidence/`:
+- `slurm_stacked_selector_baselines.sh` (array 0-3: `pancreas_0`,
+  `pancreas_1`, `pancreas_2`, `colon`) trains the Safe Fusion selector on one
+  comparator's value plus the three context features, for every comparator
+  with values on the selector-fitting cells, and writes
+  `artifacts/paper_evidence/stacked_selector_baselines/<unit>/<comparator>/`
+  (`report.json`, `unit_counts.parquet`). The `stacked` stage of the
+  leakage-free launcher does the same for its four units in
+  `leakage_free/stacked_selector_baselines/`, which also links the colon
+  results.
+- `slurm_matched_baseline_curves.sh` computes the masked F1 curves and paired
+  bootstraps of the production tissue units
+  (`compute_matched_baseline_f1_curves.py`, `combine_mlp_baseline_curves.py`,
+  `paired_masked_f1_bootstrap.py`) under `artifacts/paper_evidence/`. The
+  comparison with the leakage-free build and the scGCL comparison of
+  Supplementary Section S3 read these files.
+- The `evaluate` stage runs the same three scripts on
+  `leakage_free/units_manifest.json` (pancreas folds, colon, Norman), plots
+  Figure 1 with `plot_selector_f1_fillrate.py`, and runs
+  `compare_leakage_free_benchmarks.py`.
 
+The outputs are in `leakage_free/`:
+
+- `masked_f1_paired_bootstrap.csv` and `masked_f1_paired_bootstrap.json`: Safe
+  Fusion minus each comparison and each stacked selector, at 1%, 2%, 5% and
+  10% and averaged over the fill fractions 1% to 10%
+  (`mean_difference_1_to_10`), with intervals from 2000 draws of donors or
+  perturbation targets. The comparison rows give the upper block of Table 1,
+  and the rows of the stacked selectors (`<method> (stacked)`) give the
+  selector rows of Table 1 and the lower block of Supplementary Table S4.
+- `selector_f1_fillrate_mlp_baselines_summary.json`: in
+  `<dataset>/main/0.001_0.100/fraction_mlp_best`, the share of the 100 fill
+  fractions from 0.1% to 10% at which Safe Fusion has the highest F1 (row
+  "Fractions with highest F1" of Table 1).
 - `selector_f1_fillrate_baselines_1000_points.csv`,
-  `selector_f1_fillrate_baselines_summary.json` and
-  `masked_f1_unit_counts.parquet`: the comparator curves and the per-unit
-  counts at 1% to 10%.
-- `selector_f1_fillrate_mlp_baselines_1000_points.csv` and
-  `selector_f1_fillrate_mlp_baselines_summary.json`: the same curves with
-  Safe Fusion and the stacked selectors. In the summary,
-  `<dataset>/main/0.001_0.100/fraction_mlp_best` is the share of the 100 fill
-  fractions from 0.1% to 10% at which Safe Fusion has the highest F1 (last row
-  of Table 1).
-- `masked_f1_paired_bootstrap.csv` and `masked_f1_paired_bootstrap.json`:
-  Safe Fusion minus each comparator and each stacked selector, at 1%, 2%, 5%
-  and 10% and averaged over the fill fractions 1% to 10%, with intervals from
-  2000 draws of donors or perturbation targets (Table 1).
-- Figure 1: `figures/f1_fillrate_3panel_oup.png`. `FIGURE=<path>` sets
-  another output path.
+  `selector_f1_fillrate_mlp_baselines_1000_points.csv` and
+  `masked_f1_unit_counts.parquet`: the curves and per-unit counts.
+- Figure 1: `figures/f1_fillrate_3panel_oup.png`.
+- `table1_old_vs_new.csv`: every Table 1 cell of the production and the
+  leakage-free pancreas benchmark. Its `change_pp` column gives the effect of
+  the gene set on each pancreas difference (Methods, Datasets and splits).
+  `leakage_audit.json` compares the gene sets and the mask strata.
 
-## 5. Supplementary Table S4: mask and seed replicates
+## 5. Table 1 lower blocks and Supplementary Table S5: sources of the ranking gain
+
+`scripts/slurm_fusion_value.sh` refits the selector variants of
+Supplementary Table S5 on the units of `leakage_free/units_manifest.json`
+(`pancreas_0` to `pancreas_2`, `colon`, `norman_crispra`). It requests the
+`cs` partition, on which these variants reproduce the production selectors
+entry for entry.
+
+```bash
+FV=scripts/slurm_fusion_value.sh
+fv_teachers=$(sbatch --parsable --array=0-24 --dependency=afterok:${lf_evaluate} --export=ALL,STAGE=teachers $FV)
+fv_stack=$(sbatch --parsable --array=0-4 --dependency=afterok:${fv_teachers} --export=ALL,STAGE=stack $FV)
+fv_selectors=$(sbatch --parsable --array=0-89 --dependency=afterok:${lf_evaluate} --export=ALL,STAGE=selectors $FV)
+fv_transductive=$(sbatch --parsable --array=0-4 --dependency=afterok:${fv_stack} \
+  --export=ALL,STAGE=selectors,FAMILIES=transductive $FV)
+fv_probability=$(sbatch --parsable --array=0-9 --dependency=afterok:${lf_evaluate} --export=ALL,STAGE=probability $FV)
+fusion_value=$(sbatch --parsable --dependency=afterok:${fv_selectors}:${fv_transductive}:${fv_probability} \
+  --export=ALL,STAGE=evaluate $FV)
+```
+
+- `teachers` (task = 5 × unit + teacher) fits the transductive teachers: the
+  gene median, SVD and weighted kNN on the masked counts of all cells
+  (`run_leakage_safe_method.py --transductive`), and count-scale copies of the
+  unit's standard MAGIC and scVI (`count_scale_contract.py`). `stack` fits the
+  fused value on them.
+- `selectors` runs `fusion_value_selectors.py` for 18 variants per unit: Safe
+  Fusion, Safe Fusion without each teacher, the logistic regression and
+  gradient-boosted classifiers on the same eight features, and the selector
+  trained on one method's value. With `FAMILIES=transductive` it fits the
+  transductive variant.
+- `probability` (task = 2 × unit + method) writes the probability of a
+  nonzero count under the standard scVI fit and under the SAVER posterior
+  (`nonzero_probability.py`).
+- `evaluate` runs `fusion_value_bootstrap.py`.
+
+The outputs are in
+`artifacts/paper_evidence/review_round2/fusion_value/evaluation/`:
+`summary_table.csv` holds Supplementary Table S5 and the rows "scVI
+probability" and "Transductive, minus ..." of Table 1, with
+`paired_differences.csv`, `absolute.csv` and `summary.json` (intervals and
+average precision).
+
+## 6. Supplementary Table S4 (upper block): mask and seed replicates
 
 Each replicate draws a new stratified 10% mask (`make_mask_replicate.py`) and
 refits the five teachers, the fused value, the selector, and standard MAGIC
 and scVI with seeds 1730 to 1733. Seed 1729 is the run of sections 3 and 4.
-The pancreas replicates reuse the three donor folds. `STAGE` selects the step.
+The pancreas replicates reuse the three donor folds and the production gene
+set. `STAGE` selects the step.
 
 ```bash
 SR=scripts/slurm_seed_replicates.sh
-mask_rep=$(sbatch --parsable --array=0-11 --export=ALL,STAGE=mask $SR)
-teachers_rep=$(sbatch --parsable --array=0-79 --dependency=afterok:${mask_rep} --export=ALL,STAGE=teachers $SR)
-scvi_teacher_rep=$(sbatch --parsable --array=0-19 --gres=gpu:l40s:1 --dependency=afterok:${mask_rep} --export=ALL,STAGE=scvi_teacher $SR)
-stack_rep=$(sbatch --parsable --array=0-19 --dependency=afterok:${teachers_rep}:${scvi_teacher_rep} --export=ALL,STAGE=stack $SR)
-rep_lin=$(sbatch --parsable --array=0-19 --dependency=afterok:${stack_rep} --export=ALL,STAGE=stack,VALUE_MODEL=linear $SR)
-selector_rep=$(sbatch --parsable --array=0-19 --dependency=afterok:${stack_rep} --export=ALL,STAGE=selector $SR)
-magic_rep=$(sbatch --parsable --array=0-11 --dependency=afterok:${mask_rep} --export=ALL,STAGE=magic $SR)
-scvi_rep=$(sbatch --parsable --array=0-11 --gres=gpu:l40s:1 --dependency=afterok:${mask_rep} --export=ALL,STAGE=scvi $SR)
+mask_rep=$(sbatch --parsable --array=0-7 --export=ALL,STAGE=mask $SR)
+teachers_rep=$(sbatch --parsable --array=0-63 --dependency=afterok:${mask_rep} --export=ALL,STAGE=teachers $SR)
+scvi_teacher_rep=$(sbatch --parsable --array=0-15 --gres=gpu:l40s:1 --dependency=afterok:${mask_rep} --export=ALL,STAGE=scvi_teacher $SR)
+stack_rep=$(sbatch --parsable --array=0-15 --dependency=afterok:${teachers_rep}:${scvi_teacher_rep} --export=ALL,STAGE=stack $SR)
+rep_lin=$(sbatch --parsable --array=0-15 --dependency=afterok:${stack_rep} --export=ALL,STAGE=stack,VALUE_MODEL=linear $SR)
+selector_rep=$(sbatch --parsable --array=0-15 --dependency=afterok:${stack_rep} --export=ALL,STAGE=selector $SR)
+magic_rep=$(sbatch --parsable --array=0-7 --dependency=afterok:${mask_rep} --export=ALL,STAGE=magic $SR)
+scvi_rep=$(sbatch --parsable --array=0-7 --gres=gpu:l40s:1 --dependency=afterok:${mask_rep} --export=ALL,STAGE=scvi $SR)
+
+NR=scripts/slurm_norman_rebuilt_replicates.sh
+nr_mask=$(sbatch --parsable --array=0-3 --mem=16G --dependency=afterok:${lf_norman} --export=ALL,STAGE=mask $NR)
+nr_teachers=$(sbatch --parsable --array=0-15 --mem=32G --dependency=afterok:${nr_mask} --export=ALL,STAGE=teachers $NR)
+nr_scvi_teacher=$(sbatch --parsable --array=0-3 --mem=32G --gres=gpu:l40s:1 --dependency=afterok:${nr_mask} --export=ALL,STAGE=scvi_teacher $NR)
+nr_stack=$(sbatch --parsable --array=0-3 --mem=48G --dependency=afterok:${nr_teachers}:${nr_scvi_teacher} --export=ALL,STAGE=stack $NR)
+nr_lin=$(sbatch --parsable --array=0-3 --mem=48G --dependency=afterok:${nr_stack} --export=ALL,STAGE=stack,VALUE_MODEL=linear $NR)
+nr_selector=$(sbatch --parsable --array=0-3 --mem=32G --dependency=afterok:${nr_stack} --export=ALL,STAGE=selector $NR)
+nr_magic=$(sbatch --parsable --array=0-3 --mem=96G --dependency=afterok:${nr_mask} --export=ALL,STAGE=magic $NR)
+nr_scvi=$(sbatch --parsable --array=0-3 --mem=64G --gres=gpu:l40s:1 --dependency=afterok:${nr_mask} --export=ALL,STAGE=scvi $NR)
+sbatch --array=0 --mem=32G --dependency=afterok:${nr_selector}:${nr_magic}:${nr_scvi}:${lf_evaluate} --export=ALL,STAGE=summary $NR
 ```
 
-`rep_lin` writes the linear combination of each replicate
-(`safe_fusion_linear`) for section 8. After these jobs and the jobs
-`selectors`, `magic_std` and `scvi_std` finish, run on a compute node:
+`slurm_seed_replicates.sh` covers the two tissues (mask, magic and scvi: task
+= 2 × seed + dataset; teachers: task = 16 × seed + 4 × unit + teacher; the
+other stages: task = 4 × seed + unit). `slurm_norman_rebuilt_replicates.sh`
+covers the Norman screen, with seed 1729 from section 3.4. `rep_lin` and
+`nr_lin` write the linear combination of each replicate
+(`safe_fusion_linear`) for section 9. After the tissue jobs finish, run on a
+compute node:
 
 ```bash
-python scripts/summarize_seed_replicates.py
+python scripts/summarize_seed_replicates.py --datasets Pancreas Colon
 ```
 
-The replicate inputs and models are in
-`artifacts/paper_evidence/seed_replicates/seed_<seed>/`. Table S4 comes from
+The tissue columns of the upper block come from
 `artifacts/paper_evidence/seed_replicates/summary/`
 (`seed_replicate_summary.csv`, `seed_replicate_across.csv`,
-`seed_replicate_f1_curves.csv`).
+`seed_replicate_f1_curves.csv`), and the CRISPRa column from the same files in
+`artifacts/paper_evidence/review_round2/norman_rebuilt/seed_replicates/summary/`.
 
-## 6. Supplementary Table S5: selector feature groups
+## 7. Supplementary Table S6: selector feature groups
 
 ```bash
 ablation=$(sbatch --parsable --dependency=afterok:${stack} scripts/slurm_selector_mlp_attribution_range.sh)
 sbatch --dependency=afterok:${ablation} scripts/slurm_pair_mlp_attribution_range.sh
+NS=scripts/slurm_norman_rebuilt_supplement.sh
+sbatch --dependency=afterok:${lf_stack} --export=ALL,STAGE=attribution $NS
 ```
 
-`slurm_selector_mlp_attribution_range.sh` (array 0-4: the pancreas folds,
-Norman, colon) refits the MLP selector with all features, the teacher
-features only and the context features only (`VARIANTS`, default
-`full teacher_only context_only`) and fills 1% to 10% of the zeros. For the
-full selector it also inserts each teacher's value into the same selected
-zeros. `slurm_pair_mlp_attribution_range.sh` (array 0-2) pools the pancreas
-folds and compares every variant with the full selector. The outputs are in
-`artifacts/paper_evidence/selector_mlp_attribution_range/{pancreas/fold_<k>,colon,norman_crispra}/`,
-and `ranking_metrics.parquet` holds the test precision-recall AUC and the
-masked positive counts of each variant (Table S5). `paired/{pancreas,colon,norman_crispra}/`
-holds the pooled comparisons.
+`slurm_selector_mlp_attribution_range.sh` (array 0-3: the pancreas folds,
+colon) refits the MLP selector with all features, the teacher features only
+and the context features only (`VARIANTS`, default
+`full teacher_only context_only`) and fills 1% to 10% of the zeros.
+`slurm_pair_mlp_attribution_range.sh` (array 0-1) pools the pancreas folds
+and compares every variant with the full selector. The `attribution` stage
+of `slurm_norman_rebuilt_supplement.sh` does both for the Norman screen. In
+`ranking_metrics.parquet` of
+`artifacts/paper_evidence/selector_mlp_attribution_range/{pancreas/fold_<k>,colon}/`
+and `artifacts/paper_evidence/review_round2/norman_rebuilt/selector_mlp_attribution_range/norman_crispra/`,
+the column `test_pr_auc` holds the test precision-recall AUC of each variant,
+next to the masked positive counts. The pancreas values of Table S6 are the
+means over the three folds.
 
-## 7. Supplementary Table S6: binomial thinning
+## 8. Supplementary Tables S7 and S8: binomial thinning and recall by count
+
+### 8.1 Thinning benchmark with thinning-trained selectors
 
 The positives are held-out entries that are nonzero in the recorded counts
 and zero after thinning. Colon uses the workflow corruptions `thinning_050`
 and `thinning_025` (section 2.2), and `prepare_thinning_benchmark.py` thins
 pancreas to 50% of the molecules. Every model is refitted on the thinned
-training cells, and standard MAGIC and scVI are fitted on all cells as
+training cells, the selector learns from the thinned-out entries of its
+fitting cells, and standard MAGIC and scVI are fitted on all cells as
 comparators. The `submit` stage calls `sbatch` for the stages `prepare`,
 `cpu`, `gpu` (on an L40S), `selector` and `evaluate` with their dependencies
 and prints their job IDs. The `stack` stage with `VALUE_MODEL=linear` writes
-the linear combination of section 8.
+the linear combination of section 9.
 
 ```bash
 read -r thin_prep thin_cpu thin_gpu thin_sel thin_eval <<< \
@@ -483,62 +696,120 @@ thin_lin=$(sbatch --parsable --job-name=sf-thin-stack --array=0-4 \
   scripts/slurm_thinning_benchmark.sh stack)
 ```
 
-`bash scripts/slurm_thinning_benchmark.sh submit` prints
-`prepare=<id> cpu=<id> gpu=<id> selector=<id> evaluate=<id>`, and the `read`
-line stores these IDs. The outputs are under
-`artifacts/paper_evidence/thinning/`: the inputs in `data/<dataset>/`, the
-teachers, fused value and selector of each unit in `<unit>/`, the comparators
-in `comparators/<dataset>/`, and Table S6 in
-`evaluation/matched_fraction_summary.{csv,json}`.
+The outputs are under `artifacts/paper_evidence/thinning/`: the inputs in
+`data/<dataset>/`, the teachers, fused value and selector of each unit in
+`<unit>/`, the comparators in `comparators/<dataset>/`, and the evaluation in
+`evaluation/matched_fraction_summary.{csv,json}`, which holds the weighted kNN
+row of Table S7.
 
-## 8. Table 2 and Supplementary Table S7: accuracy of the inserted value
+### 8.2 Thinning transfer
+
+`scripts/slurm_thinning_transfer.sh` adds the Norman screen thinned to 50%
+(from the benchmark of section 2.4) and the second design of Table S7: the
+fitting cells receive the stratified 10% mask on top of their thinned counts,
+the teachers, fused value and selector are fitted as in the main method, and
+the held-out thinning positives are evaluated. It also trains the selector on
+standard scVI and standard MAGIC under both designs.
 
 ```bash
-stack_lin=$(sbatch --parsable --array=0-4 --dependency=afterok:${teachers}:${scvi} \
+read -r tt_prep tt_cpu tt_gpu tt_sel tt_stacked tt_eval <<< \
+  "$(bash scripts/slurm_thinning_transfer.sh submit | sed 's/[a-z]*=//g')"
+```
+
+Submit it after `thin_sel`, `thin_eval` and `lf_norman` have finished (the
+`submit` stage sets dependencies only among its own stages). The stages are
+`prepare` (array 0-5), `cpu` (0-34), `gpu` (0-13, L40S), `selector` (0-6),
+`stacked` (0-23) and `evaluate`. The outputs are under
+`artifacts/paper_evidence/review_round2/thinning_transfer/`:
+
+- `evaluation/transfer_summary.{csv,json}` and
+  `evaluation/transfer_paired_differences.csv`: Table S7 except the weighted
+  kNN row, the count-one recall at 5%, the expected-count baseline and the
+  share of positives with an original count of one
+  (`composition.positive_count_1_share`).
+- `mask_trained/<unit>/input/manifest.json`: the share of masked positives
+  of the thinned fitting cells with a thinned count of one
+  (`fitting_masked_count_1_share`).
+
+### 8.3 Recall by count stratum
+
+```bash
+read -r cr_stacked cr_eval <<< \
+  "$(bash scripts/slurm_count_stratified_recall.sh submit | sed 's/[a-z]*=//g')"
+```
+
+Submit it after `lf_evaluate` has finished. The `stacked` stage (array 0-9,
+task = 2 × unit + method) trains the selector on standard scVI or standard
+MAGIC for each unit of `leakage_free/units_manifest.json` and saves its
+held-out scores (`stacked_selector_scores.py`). The `evaluate` stage runs
+`evaluate_count_stratified_recall.py` and writes Table S8 to
+`artifacts/paper_evidence/review_round2/thinning_transfer/count_stratified_recall/count_stratified_recall.{csv,json}`.
+
+## 9. Supplementary Tables S9 and S10: accuracy of the inserted value
+
+```bash
+stack_lin=$(sbatch --parsable --array=0-3 --dependency=afterok:${teachers}:${scvi} \
   --export=ALL,VALUE_MODEL=linear scripts/slurm_safe_fusion_stack.sh)
 autoenc=$(sbatch --parsable --dependency=afterok:${teachers}:${scvi} scripts/slurm_autoencoder_fusion.sh)
-sbatch --dependency=afterok:${stack}:${stack_lin}:${autoenc}:${selectors}:${selector_rep}:${rep_lin}:${thin_sel}:${thin_lin} \
-  scripts/slurm_value_accuracy.sh
+NV=scripts/slurm_norman_rebuilt_value.sh
+nv_linear=$(sbatch --parsable --array=0 --dependency=afterok:${lf_stack} --export=ALL,STAGE=linear $NV)
+nv_autoenc=$(sbatch --parsable --array=0-1 --dependency=afterok:${nv_linear} --export=ALL,STAGE=autoencoder $NV)
+sbatch --array=0 --mem=64G \
+  --dependency=afterok:${stack}:${stack_lin}:${autoenc}:${selectors}:${selector_rep}:${rep_lin}:${thin_sel}:${thin_lin}:${nr_selector}:${nr_lin}:${nv_autoenc}:${lf_selector} \
+  --export=ALL,STAGE=evaluate $NV
 ```
 
 - `stack_lin` writes the linear combination of the teachers
-  (`<methods_root>/safe_fusion_linear`) for units 0-4 (the pancreas folds,
-  colon and Norman).
-- `slurm_autoencoder_fusion.sh` (array 0-9, task = 2 × unit + mode) fits the
+  (`<methods_root>/safe_fusion_linear`) for units 0-3 (the pancreas folds and
+  colon).
+- `slurm_autoencoder_fusion.sh` (array 0-7, task = 2 × unit + mode) fits the
   autoencoder fusion network of `fusion/` through
-  `scripts/run_autoencoder_fusion.py`. Mode `resampled` hides a fresh 15% of
-  the recorded nonzero entries of the training cells in each epoch and
-  recomputes the gene median, SVD and kNN proposals
-  (`<methods_root>/autoencoder_fusion_3teachers`). Mode `masked_positives`
-  learns from the masked positives with the five teacher contracts
-  (`<methods_root>/autoencoder_fusion_5teachers`).
-- `slurm_value_accuracy.sh` runs `scripts/evaluate_value_accuracy.py`. It
-  keeps the zeros selected by Safe Fusion fixed and inserts each candidate
-  value: the boosted fused value, the linear combination, the two autoencoder
-  networks and each teacher. It also reads the mask replicates of section 5
-  and the thinning units of section 7.
+  `scripts/run_autoencoder_fusion.py` for the pancreas folds and colon. Mode
+  `resampled` hides a fresh 15% of the recorded nonzero entries of the
+  training cells in each epoch and recomputes the gene median, SVD and kNN
+  proposals (`<methods_root>/autoencoder_fusion_3teachers`). Mode
+  `masked_positives` learns from the masked positives with the five teacher
+  contracts (`<methods_root>/autoencoder_fusion_5teachers`).
+- `slurm_norman_rebuilt_value.sh` links the Norman teachers and fused value of
+  section 3.4 into
+  `artifacts/paper_evidence/review_round2/norman_rebuilt/methods/`, fits the
+  linear combination (`linear`) and the two autoencoder networks
+  (`autoencoder`) there, and runs `scripts/evaluate_value_accuracy.py`
+  (`evaluate`) on the pancreas folds, colon and Norman with their mask
+  replicates and the thinning units of section 8.1. It keeps the zeros
+  selected by Safe Fusion fixed and inserts each candidate value.
 
-The outputs are in `artifacts/paper_evidence/value_accuracy/`:
-`error_removed.csv` (error removed at 1% to 10%, Table 2 and the top of
-Table S7), `log_error.csv` (mean absolute log error, Table 2),
-`log_error_strata.csv` (by true count and gene detection rate, Table S7),
-`cross_validation.csv` (five-fold error of the boosted and linear value
-models), `replicates.csv` (mask replicate and thinning units) and
-`summary.json` (paired bootstrap intervals).
+The outputs are in
+`artifacts/paper_evidence/review_round2/norman_rebuilt/value_accuracy/`:
 
-## 9. Table 4: filling recorded zeros in held-out cells
+- `error_removed.csv`: the error removed at 1% to 10% (Table S9 and the top
+  of Table S10) and the paired differences between values with bootstrap
+  intervals, for example the boosted fused value minus the linear
+  combination at 5% quoted in the Results.
+- `log_error.csv`: the mean absolute log error (Table S9).
+- `log_error_strata.csv`: the error by true count and gene detection rate
+  (Table S10).
+- `cross_validation.csv`: the out-of-fold error of the boosted and linear
+  value models (Supplementary Section S5).
+- `replicates.csv` and `summary.json`: the mask replicate and thinning units
+  and the bootstrap summaries.
+
+## 10. Table 3 and Supplementary Tables S17 and S21: downstream analyses and the fill-fraction rule
+
+### 10.1 Recorded counts of held-out cells (Table 3)
 
 The deployment analysis applies every method to the recorded counts of the
 held-out cells. The training cells keep the benchmark mask, so the selector
 still learns from their masked positives. `scripts/deployment_paths.sh`
-defines the nine units and `DEPLOY_ROOT` (default
+defines the eight units (`DEPLOY_KEYS`: the pancreas folds, colon, the three
+screens and zebrafish) and `DEPLOY_ROOT` (default
 `artifacts/paper_evidence/downstream_deployment`).
 
 ```bash
 prepare=$(sbatch --parsable scripts/slurm_deployment_prepare.sh)
 scvi_dep=$(sbatch --parsable --dependency=afterok:$prepare scripts/slurm_deployment_scvi.sh)
-fill=$(sbatch --parsable --dependency=afterok:$scvi_dep scripts/slurm_deployment_fill.sh)
-deploy_eval=$(sbatch --parsable --dependency=afterok:$fill scripts/slurm_deployment_evaluate.sh)
+deploy_fill=$(sbatch --parsable --dependency=afterok:$scvi_dep scripts/slurm_deployment_fill.sh)
+deploy_eval=$(sbatch --parsable --dependency=afterok:$deploy_fill scripts/slurm_deployment_evaluate.sh)
 ```
 
 After `deploy_eval` finishes, run on a compute node:
@@ -549,7 +820,7 @@ python scripts/summarize_fill_evaluations.py \
   --output artifacts/paper_evidence/downstream_deployment/summary.csv
 ```
 
-- `slurm_deployment_prepare.sh` (array 0-8) runs `build_deployment_inputs.py`,
+- `slurm_deployment_prepare.sh` (array 0-7) runs `build_deployment_inputs.py`,
   which writes `hybrid.h5ad` (training cells masked, held-out cells
   recorded), `recorded.h5ad`, `coordinates.parquet`,
   `empty_coordinates.parquet` and `splits.parquet` into each unit directory,
@@ -560,153 +831,24 @@ python scripts/summarize_fill_evaluations.py \
   `finalize_deployment_contracts.py`, which writes the evaluated matrices
   (`safe_fusion_<p>pct`, `svd_<p>pct`, `weighted_knn_<p>pct` and the dense
   outputs) with recorded counts outside the held-out cells.
-- `slurm_deployment_evaluate.sh` (array 0-8) evaluates them with the
-  downstream evaluators of section 13, with the unfilled recorded matrix as
+- `slurm_deployment_evaluate.sh` (array 0-7) evaluates them with the
+  downstream evaluators of section 10.2, with the unfilled recorded matrix as
   the reference, and writes
   `artifacts/paper_evidence/downstream_deployment/evaluation/`.
 
-`summary_key_metrics.csv` next to `summary.csv` holds the endpoints of
-Table 4.
+`summary_key_metrics.csv` next to `summary.csv` holds the colon, pancreas and
+zebrafish rows of Table 3. The pancreas disease-effect row is the
+`AAB_vs_Control` contrast of `disease_logfc_spearman`.
 
-## 10. Supplementary Table S11: fill-fraction rule
-
-`slurm_detection_rule.sh` refits the selector with the production settings,
-calibrates its scores by isotonic regression on cross-fitted scores of the
-training cells, and fills every held-out zero whose detection probability
-p / (p + ρ(1 − p)) exceeds 1/2, with ρ = 0.10
-(`--detection-rule-mask-rate 0.10`). Tasks 0-4 (colon, the pancreas folds,
-Norman) apply the rule to the masked benchmark. Tasks 5-9 apply it to the
-deployment input of section 9, where every held-out candidate is a recorded
-zero.
-
-```bash
-sbatch --array=0-4 --dependency=afterok:${stack} scripts/slurm_detection_rule.sh
-sbatch --array=5-9 --dependency=afterok:${fill} scripts/slurm_detection_rule.sh
-```
-
-The `detection_rule` block of
-`artifacts/paper_evidence/detection_rule/<unit>/calibration_report.json`
-holds the chosen fill fraction, its masked F1, and the fraction and F1 with
-the highest F1 in hindsight. In
-`artifacts/paper_evidence/downstream_deployment/{colon,pancreas/fold_<k>,norman_crispra}/detection_rule/calibration_report.json`,
-`detection_rule.test_fill_fraction` is the share of recorded zeros that the
-rule fills (last column of Table S11).
-
-## 11. Table 3 and Supplementary Table S8: zeros created by knockdown
-
-This analysis ranks the zeros of the knocked-down gene in the recorded counts
-of the held-out screen cells (section 9), and reports masked F1 on the four
-masked screen benchmarks. `slurm_condition_aware_screens.sh` fits Safe Fusion
-with perturbation labels (obs column `target`). Array task = 2 × screen +
-setting, with screens Norman, Adamson, Dixit and Papalexi. Even tasks use the
-masked benchmark, and odd tasks use the deployment input of section 9.
-`STAGE=knn` fits the weighted kNN teacher within each label, `STAGE=scvi` the
-scVI teacher with the label as a covariate, and `STAGE=select` the fused value
-from the gene median, SVD, MAGIC and the two label teachers, followed by the
-selector with the two label features. `STAGE=matched` fills the deployment
-zeros at 1% to 10% with the label kNN and scVI teachers and with the MAGIC and
-scVI teachers, each ranked by its own value.
-
-```bash
-C=scripts/slurm_condition_aware_screens.sh
-knn_c=$(sbatch --parsable --array=0-7 --dependency=afterok:${prepare} --export=ALL,STAGE=knn $C)
-scvi_c=$(sbatch --parsable --array=0-7 --gres=gpu:l40s:1 --dependency=afterok:${prepare} --export=ALL,STAGE=scvi $C)
-select_c=$(sbatch --parsable --array=0-7 --dependency=afterok:${teachers}:${prepare}:${knn_c}:${scvi_c} --export=ALL,STAGE=select $C)
-matched_c=$(sbatch --parsable --array=1,3,5,7 --dependency=afterok:${prepare}:${scvi_dep}:${knn_c}:${scvi_c} --export=ALL,STAGE=matched $C)
-sbatch --dependency=afterok:${fill}:${select_c}:${matched_c}:${selectors} scripts/slurm_evaluate_perturbation_zeros.sh
-```
-
-The standard selectors of the four screens are tasks 3-6 of
-`slurm_complete_downstream_selectors.sh` (section 3.2). To run only this
-item, submit them with
-`sbatch --array=3-6 --dependency=afterok:${stack} scripts/slurm_complete_downstream_selectors.sh`.
-
-The masked setting writes `graph_smooth_condition`,
-`scvi_inductive_condition`, `safe_fusion_condition` and `selector_condition`
-under `<methods_root>`. The deployment setting writes the same teachers to
-`methods/` and the fills to `selector_condition/` and `matched_condition/`
-in `artifacts/paper_evidence/downstream_deployment/<screen>/`.
-`slurm_evaluate_perturbation_zeros.sh` runs `evaluate_perturbation_zeros.py`
-and `evaluate_condition_masked_f1.py` and writes
-`artifacts/paper_evidence/perturbation_zeros/`:
-
-- `report.json` and `per_target.csv`: the fill shares of control and
-  knocked-down zeros at 1% to 10% and the AUROC with intervals over targets
-  (Table 3), and `auroc_by_screen` (Table S8).
-- `masked_f1_report.json` and `masked_f1_by_fraction.csv`: the mean masked F1
-  over the fill fractions 1% to 10% in each masked screen and averaged over
-  the four screens, with and without labels (Masked F1 column of Table 3).
-
-## 12. Figure 2 and Supplementary Table S9: agreement with surface protein
-
-```bash
-after=afterok:${audit}:${pdl1_scvi}:${pdl1_selector}
-sbatch --dependency=${after} scripts/slurm_evaluate_papalexi_cd274.sh
-sbatch --dependency=${after} scripts/slurm_evaluate_papalexi_crossmodal.sh
-sbatch --dependency=${after} scripts/slurm_evaluate_papalexi_crossmodal_raw.sh
-sbatch --dependency=${after}:${selectors}:${matched} scripts/slurm_compare_method_rankings.sh
-```
-
-- `slurm_evaluate_papalexi_cd274.sh` runs `evaluate_papalexi_crossmodal.py`
-  for CD274 on centered log ratio and raw PD-L1
-  (`benchmark/evaluation_cd274/`, `benchmark/evaluation_cd274_raw_counts/`),
-  then `evaluate_pdl1_state_baselines.py`, which adds the target and
-  interferon-γ baselines, the paired differences and the partial correlations
-  with their intervals (`benchmark/evaluation_pdl1_state/`). It then plots
-  Figure 2 with `plot_biological_range_figures.py --pdl1-only` in
-  `.venv-baselines`, which writes `pdl1_range_validation.{png,pdf}` to
-  `artifacts/paper_evidence/figures/`. `PAPER_DIR=<dir>` writes an extra PNG
-  copy to `<dir>`.
-- `slurm_evaluate_papalexi_crossmodal.sh` and
-  `slurm_evaluate_papalexi_crossmodal_raw.sh` evaluate CD86, PD-L2 and TIM-3
-  together with CD274, on centered log ratio and raw counts
-  (`benchmark/evaluation/`, `benchmark/evaluation_raw_counts/`).
-- `slurm_compare_method_rankings.sh` writes
-  `artifacts/paper_evidence/ranking_comparison/`, with the partial Spearman
-  correlations of the Safe Fusion and SVD rankings with PD-L1
-  (`cd274_report.json`) and the overlap of the zeros filled by Safe Fusion,
-  SVD and weighted kNN in the tissues.
-
-The `benchmark/` paths are under
-`artifacts/paper_evidence/papalexi_crossmodal/`. In each evaluation
-directory, `protein_threshold_range_metrics.csv` holds the threshold AUROC,
-`continuous_protein_association.csv` the Spearman correlations,
-`fill_range_protein_enrichment.csv` and `range_leaders.csv` the enrichment of
-the filled cells, `replicate_association.csv` the correlation within each
-replicate, and `permutation_tests.csv` the permutation tests. Table S9 takes
-its replicate columns from `evaluation_cd274`, the raw column from
-`evaluation_cd274_raw_counts`, and the CD86, PD-L2 and TIM-3 columns from
-`evaluation`.
-
-### Figure 2 from the released inputs
-
-`data/papalexi_crossmodal_inputs.tar.gz`, stored with Git LFS, holds the
-inputs of these evaluations: the prepared RNA-protein file, the audit panel,
-the masked benchmark, the five teacher contracts, the fused value, standard
-scVI and the selector scores (see [data/README.md](../data/README.md) for
-the checksum and contents). Unpack it at the repository root and run the
-evaluations without the chain above:
-
-```bash
-git lfs pull --include "data/papalexi_crossmodal_inputs.tar.gz"
-tar -xzf data/papalexi_crossmodal_inputs.tar.gz
-sbatch scripts/slurm_evaluate_papalexi_cd274.sh
-sbatch scripts/slurm_evaluate_papalexi_crossmodal.sh
-sbatch scripts/slurm_evaluate_papalexi_crossmodal_raw.sh
-```
-
-These launchers need `.venv`, and the Figure 2 plot also needs
-`.venv-baselines` (section 1).
-
-## 13. Supplementary Table S10: downstream analyses on the masked benchmark
+### 10.2 Masked benchmark (Supplementary Table S17)
 
 The downstream benchmark uses the donor-held-out pancreas and colon data, the
-held-out zebrafish cells, and the Norman, Adamson, Dixit and Papalexi
-interventions. Safe Fusion, SVD and weighted kNN fill 1% to 10% of the
-candidate zeros. `MARKER_PANEL` (default `source`, the markers of the source
-studies in `src/safefusion_benchmark/marker_panels.py`) selects the marker
-panel. [COMPLETE_DOWNSTREAM_PROTOCOL.md](COMPLETE_DOWNSTREAM_PROTOCOL.md)
-defines the tasks.
+held-out zebrafish cells, and the Adamson, Dixit and Papalexi interventions.
+Safe Fusion, SVD and weighted kNN fill 1% to 10% of the candidate zeros.
+`MARKER_PANEL` (default `source`, the markers of the source studies in
+`src/safefusion_benchmark/marker_panels.py`) selects the marker panel.
+[COMPLETE_DOWNSTREAM_PROTOCOL.md](COMPLETE_DOWNSTREAM_PROTOCOL.md) defines the
+tasks.
 
 ```bash
 down_eval=$(sbatch --parsable --dependency=afterok:${selectors}:${matched} scripts/slurm_evaluate_complete_downstream.sh)
@@ -722,14 +864,14 @@ python scripts/summarize_fill_evaluations.py \
   --output artifacts/paper_evidence/downstream_decomposition/summary.csv
 ```
 
-- `slurm_evaluate_complete_downstream.sh` (array 0-8) writes
+- `slurm_evaluate_complete_downstream.sh` (array 0-7) writes
   `artifacts/paper_evidence/downstream_complete/{clustering,markers,pancreas_biology,trajectory,grn}/`.
   `slurm_finalize_complete_downstream.sh` writes the combined tables
-  (`all_bootstrap_summaries.csv`, the values of Table S10) and the five-panel
-  figure to `artifacts/paper_evidence/downstream_complete/summary/`. It fails
-  unless all five tasks, all ten fill fractions, all 24 pancreas donors, all
-  9 colon donors, all 12 zebrafish stages and all 128 perturbation regulators
-  are present and pass the leakage checks.
+  (`all_bootstrap_summaries.csv`, every row of Table S17 except Norman) and a
+  five-panel figure to `artifacts/paper_evidence/downstream_complete/summary/`.
+  It fails unless all five tasks, all ten fill fractions, all 24 pancreas
+  donors, all 9 colon donors, all 12 zebrafish stages and the 64 regulators of
+  the three screens are present and pass the leakage checks.
 - `slurm_decompose_fills.sh` (array 0-8, task = 3 × dataset + source, with
   datasets colon, pancreas and zebrafish and sources Safe Fusion, SVD and
   weighted kNN) splits each fill into its selected masked positives and its
@@ -739,9 +881,316 @@ python scripts/summarize_fill_evaluations.py \
   `artifacts/paper_evidence/downstream_decomposition/<dataset>/<source>/`, and
   `summary.csv` and `summary_key_metrics.csv` collect the comparisons with the
   masked input. The Results text on masked positives and recorded zeros comes
-  from these files.
+  from these files. The pancreas share of masked positives pools the
+  `decomposition_counts.csv` of the three folds.
 
-## 14. Supplementary Table S1: fill decisions of standard imputers
+### 10.3 Fill-fraction rule (Supplementary Table S21)
+
+`slurm_detection_rule.sh` refits the selector with the production settings,
+calibrates its scores by isotonic regression on cross-fitted scores of the
+training cells, and fills every held-out zero whose detection probability
+p / (p + ρ(1 − p)) exceeds 1/2, with ρ = 0.10
+(`--detection-rule-mask-rate 0.10`). Tasks 0-3 (colon, the pancreas folds)
+apply the rule to the masked benchmark. Tasks 4-7 apply it to the deployment
+input of section 10.1, where every held-out candidate is a recorded zero.
+
+```bash
+sbatch --array=0-3 --dependency=afterok:${stack} scripts/slurm_detection_rule.sh
+sbatch --array=4-7 --dependency=afterok:${deploy_fill} scripts/slurm_detection_rule.sh
+```
+
+The `detection_rule` block of
+`artifacts/paper_evidence/detection_rule/<unit>/calibration_report.json`
+holds the chosen fill fraction, its masked F1, and the fraction and F1 with
+the highest F1 in hindsight. In
+`artifacts/paper_evidence/downstream_deployment/{colon,pancreas/fold_<k>}/detection_rule/calibration_report.json`,
+`detection_rule.test_fill_fraction` is the share of recorded zeros that the
+rule fills (last column of Table S21).
+
+### 10.4 The Norman screen
+
+`scripts/slurm_norman_rebuilt_downstream.sh` repeats the Norman tasks of the
+launchers of sections 10.1 to 10.3 on the benchmark of section 2.4, with the
+selector of section 3.4. `STAGE` selects the step.
+
+```bash
+ND=scripts/slurm_norman_rebuilt_downstream.sh
+nd_matched=$(sbatch --parsable --mem=32G --dependency=afterok:${lf_selector} --export=ALL,STAGE=matched $ND)
+nd_masked=$(sbatch --parsable --time=04:00:00 --dependency=afterok:${nd_matched} --export=ALL,STAGE=masked_grn $ND)
+nd_rule=$(sbatch --parsable --mem=24G --dependency=afterok:${lf_stack} --export=ALL,STAGE=detection_masked $ND)
+nd_prep=$(sbatch --parsable --dependency=afterok:${lf_norman} --export=ALL,STAGE=deploy_prepare $ND)
+nd_scvi=$(sbatch --parsable --mem=32G --gres=gpu:l40s:1 --dependency=afterok:${nd_prep} --export=ALL,STAGE=deploy_scvi $ND)
+nd_fill=$(sbatch --parsable --dependency=afterok:${nd_scvi} --export=ALL,STAGE=deploy_fill $ND)
+nd_eval=$(sbatch --parsable --time=04:00:00 --dependency=afterok:${nd_fill} --export=ALL,STAGE=deploy_eval $ND)
+nd_rule_dep=$(sbatch --parsable --mem=24G --dependency=afterok:${nd_fill} --export=ALL,STAGE=detection_deploy $ND)
+sbatch --dependency=afterok:${nd_masked}:${nd_rule}:${nd_eval}:${nd_rule_dep} --export=ALL,STAGE=summarize $ND
+```
+
+The outputs are under
+`artifacts/paper_evidence/review_round2/norman_rebuilt/`: the SVD and weighted
+kNN fills in `matched_fraction/`, the response-edge evaluation on the masked
+benchmark in `downstream_masked/grn/norman_crispra/`, the deployment input,
+fills and evaluation in `deployment/`, and the rule in
+`detection_rule/norman_crispra/` and
+`deployment/norman_crispra/detection_rule/`. The `summarize` stage runs
+`summarize_norman_rebuilt_downstream.py` and writes
+`norman_downstream_rows.csv`, whose rows with `table` 3, S17 and S21 hold the
+Norman rows of Table 3 and Supplementary Tables S17 and S21.
+
+## 11. Supplementary Tables S11 and S12: values inserted into recorded zeros and their bias
+
+```bash
+read -r iv_prep iv_scvi iv_fill iv_eval <<< \
+  "$(bash scripts/slurm_inserted_value.sh submit ${tt_eval}:${deploy_fill} | sed 's/[a-z]*=//g')"
+```
+
+Submit it after `lf_norman` has finished. The optional argument of `submit` is
+a colon-separated list of job IDs that the `evaluate` stage waits for. The
+`prepare`, `scvi` and `fill` stages build the Norman deployment input
+from the benchmark of section 2.4 under
+`artifacts/paper_evidence/review_round2/inserted_value/deployment/norman_crispra/`,
+with the commands of section 10.1. The `evaluate` stage runs
+`evaluate_inserted_value.py all` and writes, in
+`artifacts/paper_evidence/review_round2/inserted_value/`:
+
+- `recorded_zero_fills.csv`: the median value that Safe Fusion and SVD insert
+  into recorded zeros of held-out cells and the share of filled zeros whose
+  expected count exceeds 2 (Table S11). It reads the production deployment of
+  section 10.1 for every dataset except Norman.
+- `thinning_positive_bias.csv`: the signed bias against the count expected at
+  the thinned depth (Table S12, rows with `design` mask-trained and
+  `recorded_count` all) and the absolute log error against the count before
+  thinning (`abs_error_vs_recorded_count`, Supplementary Section S5), from
+  the thinning units of sections 8.1 and 8.2.
+
+## 12. Supplementary Tables S14 and S18 to S20: disease and control checks
+
+These checks use the recorded counts of the held-out tissue cells from
+section 10.1 and the masked tissue benchmark.
+
+```bash
+dc_fill=$(sbatch --parsable --dependency=afterok:${deploy_fill}:${stack} scripts/slurm_disease_control_fill.sh)
+DC=scripts/slurm_disease_control_analysis.sh
+sbatch --array=2-3 --dependency=afterok:${dc_fill} $DC
+sbatch --array=0,1,4-9 --cpus-per-task=4 --mem=32G --time=01:00:00 \
+  --dependency=afterok:${dc_fill}:${curves}:${baselines} $DC
+```
+
+- `slurm_disease_control_fill.sh` (array 0-3: the pancreas folds, colon) fills
+  the recorded zeros of the held-out cells with the inductive MAGIC and scVI
+  teachers at 1%, 5% and 10% (`deployment_fills/`), and refits the Safe Fusion
+  selectors of the deployment analysis and of the masked benchmark with their
+  production arguments and seed to write the scores of every XIST and RPS4Y1
+  zero (`selector_scores/{deployment,masked}/`). The refitted selectors
+  reproduce the production fills.
+- `slurm_disease_control_analysis.sh` (array 0-9, task = 2 × analysis +
+  tissue, with analyses condition, effects, modules, annotation and
+  sex_zeros and tissues pancreas and colon) runs
+  `scripts/disease_control_<analysis>.py`. The modules and annotation tasks
+  use `.venv-scanpy`, which the launcher creates when it is missing.
+
+The outputs are under `artifacts/paper_evidence/disease_control_checks/`:
+
+- Table S14 and the Sex column of Table 2:
+  `sex_zeros/<tissue>/auroc.csv`, with `fill_rates.csv`, `zero_counts.csv`
+  and `donor_sex.csv` for the donor-sex paragraph.
+- Table S18: `disease_effects/<tissue>/observed_summary.csv` (slopes and
+  discoveries) and `permutation_null.csv` (false discoveries under permuted
+  donor labels).
+- Table S19: `module_scores/<tissue>/disease_effect.csv`.
+- Table S20: `annotation/<tissue>/reference_mapping_overall.csv`.
+- `condition/<tissue>/depth.csv` and `fill_rate.csv`: library size, zero
+  fraction and fill rate per condition (Supplementary Section S7).
+
+## 13. Table 2 and Supplementary Table S13: zeros with known status
+
+This analysis ranks the zeros of the perturbed gene in the recorded counts of
+the held-out screen cells and reports masked F1 on the four masked screen
+benchmarks. Adamson, Dixit and Papalexi use the production benchmarks and the
+deployment inputs of section 10.1. Norman uses the benchmark of section 2.4.
+
+### 13.1 Perturbation labels on Adamson, Dixit and Papalexi
+
+`slurm_condition_aware_screens.sh` fits Safe Fusion with perturbation labels
+(obs column `target`). Array task = 2 × screen + setting, with screens
+Adamson, Dixit and Papalexi. Even tasks use the masked benchmark, and odd
+tasks use the deployment input. `STAGE=knn` fits the weighted kNN teacher
+within each label, `STAGE=scvi` the scVI teacher with the label as a
+covariate, and `STAGE=select` the fused value from the gene median, SVD, MAGIC
+and the two label teachers, followed by the selector with the two label
+features. `STAGE=matched` fills the deployment zeros at 1% to 10% with the
+label kNN and scVI teachers and with the MAGIC and scVI teachers, each ranked
+by its own value.
+
+```bash
+C=scripts/slurm_condition_aware_screens.sh
+knn_c=$(sbatch --parsable --array=0-5 --dependency=afterok:${prepare} --export=ALL,STAGE=knn $C)
+scvi_c=$(sbatch --parsable --array=0-5 --gres=gpu:l40s:1 --dependency=afterok:${prepare} --export=ALL,STAGE=scvi $C)
+select_c=$(sbatch --parsable --array=0-5 --dependency=afterok:${teachers}:${prepare}:${knn_c}:${scvi_c} --export=ALL,STAGE=select $C)
+matched_c=$(sbatch --parsable --array=1,3,5 --dependency=afterok:${prepare}:${scvi_dep}:${knn_c}:${scvi_c} --export=ALL,STAGE=matched $C)
+```
+
+The masked setting writes `graph_smooth_condition`,
+`scvi_inductive_condition`, `safe_fusion_condition` and `selector_condition`
+under `<methods_root>`. The deployment setting writes the same teachers to
+`methods/` and the fills to `selector_condition/` and `matched_condition/` in
+`artifacts/paper_evidence/downstream_deployment/<screen>/`.
+
+### 13.2 Norman, standard imputers, selector scores, null test and Mixscape
+
+```bash
+K=scripts/slurm_knockdown_norman_rebuilt.sh
+kn_knn=$(sbatch --parsable --dependency=afterok:${lf_stack} --export=ALL,STAGE=masked_knn $K)
+kn_scvi=$(sbatch --parsable --gres=gpu:l40s:1 --dependency=afterok:${lf_stack} --export=ALL,STAGE=masked_scvi $K)
+kn_select=$(sbatch --parsable --dependency=afterok:${kn_knn}:${kn_scvi} --export=ALL,STAGE=masked_select $K)
+kn_prep=$(sbatch --parsable --dependency=afterok:${lf_norman} --export=ALL,STAGE=deploy_prepare $K)
+kn_dscvi=$(sbatch --parsable --gres=gpu:l40s:1 --dependency=afterok:${kn_prep} --export=ALL,STAGE=deploy_scvi $K)
+kn_fill=$(sbatch --parsable --dependency=afterok:${kn_prep}:${kn_dscvi} --export=ALL,STAGE=deploy_fill $K)
+
+S=scripts/slurm_knockdown_standard_imputers.sh
+after_std=afterok:${kn_prep}:${prepare}
+kd_std=$(sbatch --parsable --dependency=${after_std} --export=ALL,METHOD=alra $S)
+kd_std=${kd_std}:$(sbatch --parsable --dependency=${after_std} --export=ALL,METHOD=magic $S)
+kd_std=${kd_std}:$(sbatch --parsable --dependency=${after_std} --export=ALL,METHOD=saver $S)
+kd_std=${kd_std}:$(sbatch --parsable --gres=gpu:l40s:1 --dependency=${after_std} --export=ALL,METHOD=scvi $S)
+
+kd_scores=$(sbatch --parsable --dependency=afterok:${deploy_fill}:${select_c} scripts/slurm_knockdown_selector_scores.sh)
+
+N=scripts/slurm_knockdown_pseudolabel_null.sh
+p=$(sbatch --parsable --dependency=afterok:${deploy_fill}:${select_c} --export=ALL,STAGE=prepare $N)
+k=$(sbatch --parsable --dependency=afterok:$p --export=ALL,STAGE=knn $N)
+v=$(sbatch --parsable --dependency=afterok:$p --gres=gpu:l40s:1 --export=ALL,STAGE=scvi $N)
+s=$(sbatch --parsable --dependency=afterok:$k:$v --export=ALL,STAGE=select $N)
+kd_null=$(sbatch --parsable --array=0 --dependency=afterok:$s --export=ALL,STAGE=evaluate $N)
+
+mixscape=$(sbatch --parsable --dependency=afterok:${fetch} scripts/slurm_papalexi_mixscape.sh)
+
+sbatch --dependency=afterok:${kn_select}:${kn_fill}:${kd_std}:${kd_scores}:${mixscape}:${select_c}:${matched_c}:${deploy_fill}:${selectors}:${lf_selector} \
+  scripts/slurm_evaluate_knockdown_zero_analyses.sh
+```
+
+- `scripts/knockdown_paths.sh` sets the paths of each screen. For Norman, the
+  label teachers of the masked benchmark go to
+  `artifacts/paper_evidence/review_round2/knockdown/norman_rebuilt/masked/`
+  and the deployment input, teachers and fills to
+  `knockdown/norman_rebuilt/deployment/`. The deployment selectors of
+  `slurm_knockdown_norman_rebuilt.sh` also write the score of every zero of the
+  target genes (`--score-gene`).
+- `slurm_knockdown_standard_imputers.sh` (array 0-2: Norman, Adamson,
+  Papalexi) fits ALRA, standard MAGIC, SAVER and standard scVI on each
+  deployment input with the settings of section 3.3.
+- `slurm_knockdown_selector_scores.sh` (array 0-3, task = 2 × screen +
+  variant, with screens Adamson and Papalexi and variants without and with
+  labels) refits the deployment selectors and writes the score of every zero
+  of the target genes.
+- `slurm_knockdown_pseudolabel_null.sh` (array 0-3, the pseudo-label
+  assignments with seeds 1729 to 1732) gives half of the Adamson control cells
+  random pseudo-labels, refits the label-aware Safe Fusion, and tests
+  differential expression between groups (`knockdown_pseudolabel_null.py`).
+  Its evaluation is in
+  `artifacts/paper_evidence/review_round2/knockdown/pseudolabel_null/adamson_crispri/evaluation/`
+  (`summary.json`, `pseudo_group_de.csv`).
+- `slurm_papalexi_mixscape.sh` runs Mixscape on the Papalexi MuData object in
+  `.venv-pertpy` (`run_papalexi_mixscape.py`) and writes
+  `knockdown/mixscape/papalexi_mixscape_classes.parquet`.
+- `slurm_evaluate_knockdown_zero_analyses.sh` runs
+  `evaluate_condition_masked_f1.py` and
+  `evaluate_knockdown_zero_analyses.py --depth-strata 5`.
+
+The outputs are under `artifacts/paper_evidence/review_round2/knockdown/`:
+
+- `evaluation/report.json`: in `screens.<screen>.auroc["<method>|fill_order"]`,
+  the unadjusted AUROC (`none`) and the AUROC within library-size quintiles
+  (`depth_strata`) of Table 2 and Table S13, and in
+  `knockdown_effect_shift["<method>|10"]` the shift of the held-out
+  perturbation log2 fold change at 10% (Table S13). It also holds the
+  library-size AUROC, the continuous AUROC, the comparison of the Adamson and
+  Papalexi screens, the held-out fold changes (`heldout_log2fc_recorded`) and
+  the Mixscape fill rates (`mixscape_papalexi`) of Supplementary Section S6.
+  `auroc.csv`, `effects.csv`, `fills.csv`, `targets.csv`, `mixscape.csv` and
+  `per_target_table.csv` hold the per-target values. The fill rates of all
+  Papalexi control zeros quoted next to the Mixscape classes pool the
+  `fill_control` values of `fills.csv` (method `safe_fusion`) over targets,
+  weighted by `n_control_zero` of `targets.csv`.
+- `masked_f1/masked_f1_report.json`: the mean masked F1 over the fill
+  fractions 1% to 10%, averaged over the four screens (Masked F1 column of
+  Table 2), and `masked_f1/masked_f1_by_screen.json` the value of each screen
+  with and without labels, with intervals over perturbation labels.
+
+The Sex column of Table 2 comes from section 12.
+
+## 14. Figure 2 and Supplementary Tables S15 and S16: agreement with surface protein
+
+```bash
+after=afterok:${audit}:${pdl1_scvi}:${pdl1_selector}
+sbatch --dependency=${after} scripts/slurm_evaluate_papalexi_cd274.sh
+sbatch --dependency=${after} scripts/slurm_evaluate_papalexi_crossmodal.sh
+sbatch --dependency=${after} scripts/slurm_evaluate_papalexi_crossmodal_raw.sh
+sbatch --dependency=${after} scripts/slurm_evaluate_protein_within_state.sh
+```
+
+- `slurm_evaluate_papalexi_cd274.sh` runs `evaluate_papalexi_crossmodal.py`
+  for CD274 on centered log ratio and raw PD-L1
+  (`benchmark/evaluation_cd274/`, `benchmark/evaluation_cd274_raw_counts/`),
+  then `evaluate_pdl1_state_baselines.py` (`benchmark/evaluation_pdl1_state/`).
+  It then plots Figure 2 with `plot_biological_range_figures.py --pdl1-only`
+  in `.venv-baselines`, which writes `pdl1_range_validation.{png,pdf}` to
+  `artifacts/paper_evidence/figures/`. `PAPER_DIR=<dir>` writes an extra PNG
+  copy to `<dir>`.
+- `slurm_evaluate_papalexi_crossmodal.sh` and
+  `slurm_evaluate_papalexi_crossmodal_raw.sh` evaluate CD86, PD-L2 and TIM-3
+  together with CD274, on centered log ratio and raw counts
+  (`benchmark/evaluation/`, `benchmark/evaluation_raw_counts/`).
+- `slurm_evaluate_protein_within_state.sh` refits the Papalexi selector with
+  global fill fractions of 1%, 5% and 10% and scores every gene
+  (`review_round2/protein/global_fill_selector/`), then runs
+  `evaluate_protein_within_state.py`, which writes
+  `artifacts/paper_evidence/review_round2/protein/evaluation/`.
+
+The `benchmark/` paths are under
+`artifacts/paper_evidence/papalexi_crossmodal/`. In each evaluation
+directory, `protein_threshold_range_metrics.csv` holds the threshold AUROC,
+`continuous_protein_association.csv` the Spearman correlations,
+`fill_range_protein_enrichment.csv` and `range_leaders.csv` the enrichment of
+the filled cells and the methods with the highest value at each threshold and
+fraction, `replicate_association.csv` the correlation within each replicate,
+and `permutation_tests.csv` the permutation tests. Table S15 takes its
+replicate columns from `evaluation_cd274/replicate_association.csv`, the raw
+column from `evaluation_cd274_raw_counts/continuous_protein_association.csv`,
+and the CD86, PD-L2 and TIM-3 columns from
+`evaluation/continuous_protein_association.csv`. In
+`review_round2/protein/evaluation/`, `pdl1_pooled_rankings.csv` holds the
+pooled correlations, mean AUROC and paired differences with intervals over
+perturbation targets (Pooled column of Table S16 and the protein paragraph of
+the Results), `association.csv` the correlations within targets, in the
+control cells, after adjustment (`partial_spearman`) and of detected RNA with
+protein (Table S16 and Supplementary Section S7), and `global_fill.csv` the
+CD274 zeros filled at global fill fractions.
+
+### Figure 2 and Table S16 from the released inputs
+
+`data/papalexi_crossmodal_inputs.tar.gz`, stored with Git LFS, holds the
+inputs of these evaluations: the prepared RNA-protein file, the audit panel,
+the masked benchmark, the five teacher contracts, the fused value, standard
+scVI and the selector scores (see [data/README.md](../data/README.md) for
+the checksum and contents). Unpack it at the repository root and run the
+evaluations without the chain above:
+
+```bash
+git lfs pull --include "data/papalexi_crossmodal_inputs.tar.gz"
+tar -xzf data/papalexi_crossmodal_inputs.tar.gz
+sbatch scripts/slurm_evaluate_papalexi_cd274.sh
+sbatch scripts/slurm_evaluate_papalexi_crossmodal.sh
+sbatch scripts/slurm_evaluate_papalexi_crossmodal_raw.sh
+sbatch scripts/slurm_evaluate_protein_within_state.sh
+```
+
+These launchers need `.venv`, and the Figure 2 plot also needs
+`.venv-baselines` (section 1). On an Intel Xeon Platinum 8592+ node,
+`slurm_evaluate_protein_within_state.sh` reproduces the files of
+`review_round2/protein/evaluation/` of the paper byte for byte.
+
+## 15. Supplementary Table S1: fill decisions of standard imputers
 
 ```bash
 jid=$(sbatch --parsable scripts/slurm_standard_imputers.sh)
@@ -761,23 +1210,31 @@ decisions and the agreement analysis of Supplementary Section S1.
 [scripts/standard_imputers/README.md](../scripts/standard_imputers/README.md)
 describes the imputer settings and environment.
 
-## 15. Supplementary Table S2: benchmark data
+## 16. Supplementary Table S2: benchmark data
 
 ```bash
 sbatch --dependency=afterok:${pdl1_prep} scripts/slurm_summarize_benchmark_data.sh
+sbatch --array=0 --dependency=afterok:${lf_norman}:${lf_pancreas} --export=ALL,STAGE=benchmark_data $LF
 ```
 
-The launcher counts the cells, genes, held-out candidates and masked
-positives of every unit of `scripts/unit_paths.sh` and writes
-`artifacts/paper_evidence/benchmark_data/benchmark_data.csv`. It needs the
+Both launchers count the cells, genes, held-out candidates and masked
+positives of their units with `summarize_benchmark_data.py`. They need the
 inputs of section 2 only.
+`slurm_summarize_benchmark_data.sh` covers the production units and writes
+`artifacts/paper_evidence/benchmark_data/benchmark_data.csv`, which holds the
+colon, screen, zebrafish and RNA-protein rows of Table S2 and, in its
+pancreas rows, the candidate counts of the production gene set given in the
+caption. The `benchmark_data` stage of the leakage-free launcher covers the
+pancreas folds and the Norman screen and writes
+`leakage_free/benchmark_data/benchmark_data.csv`.
 
-## 16. Supplementary Table S3 and Section S3: comparison methods
+## 17. Supplementary Table S3 and Section S3: comparison methods
 
-Table S3 lists the settings of the launchers of section 3.3. The ALRA rank is
-`chosen_k` in the `metadata.json` of each ALRA contract. The scGCL comparison
-of Supplementary Section S3 uses the rows of `scGCL` (comparison
-`supplementary`) in the curve files of section 4.
+Table S3 lists the settings of the comparison launchers of sections 3.3 and
+3.4. The ALRA rank is `chosen_k` in the `metadata.json` of each ALRA contract:
+`artifacts/paper_evidence/baselines/alra/colon_mask_010` for colon and
+`leakage_free/baselines/alra/{pancreas_fold_<k>,norman}` for the pancreas
+folds and the Norman screen.
 
 scGCL runs through `scripts/run_scgcl_baseline.py`, an adapter for the
 official repository at commit `317015acdf06d2929c20a7d2858bac539b3d8ebd`
@@ -792,11 +1249,33 @@ epoch 68. At 1e-4 it fails at epoch 165, and at 1e-5 colon fails after epoch
 240. The launchers therefore use 1e-6 for 300 epochs on CPU, with every other
 setting unchanged, and record the default, the learning rate used and the
 failure note in the contract metadata. The adapter writes a checkpoint every
-25 epochs. `sbatch_scgcl_baselines.s` resumes from it after preemption and
-runs `scripts/evaluate_scgcl_baseline.py` on each fit. `slurm_scgcl_norman.sh`
-fits Norman without the evaluator.
+25 epochs. `sbatch_scgcl_baselines.s` fits pancreas and colon, resumes from
+the checkpoint after preemption and runs `scripts/evaluate_scgcl_baseline.py`
+on each fit. For the Norman screen:
 
-## 17. Supplementary Table S12: runtime
+```bash
+scgcl_norman=$(sbatch --parsable --cpus-per-task=16 --mem=96G --dependency=afterok:${lf_norman} \
+  --export=ALL,STAGE=scgcl $NS)
+sbatch --dependency=afterok:${scgcl_norman}:${lf_evaluate} --export=ALL,STAGE=scgcl_compare $NS
+```
+
+The `scgcl` stage fits scGCL on the Norman benchmark
+(`review_round2/norman_rebuilt/baselines/scgcl/norman`, 2,048 variable genes),
+and `scgcl_compare` computes its masked F1 curve and the paired bootstrap in
+`review_round2/norman_rebuilt/scgcl_comparison/`. The differences between Safe
+Fusion and scGCL averaged over the fill fractions 1% to 10% are the scGCL rows
+with statistic `mean_difference_1_to_10` of
+`artifacts/paper_evidence/masked_f1_paired_bootstrap.csv` (pancreas and colon,
+section 4) and of `scgcl_comparison/masked_f1_paired_bootstrap.csv` (CRISPRa).
+Two further numbers of Section S3 are computed from these outputs. The ratio of
+scGCL to a random ranking divides the mean scGCL F1 over the fill fractions
+1% to 10% (`selector_f1_fillrate_baselines_1000_points.csv` and
+`scgcl_comparison/scgcl_1000_points.csv`) by the mean F1 of a random ranking,
+2πb / (π + b) at fill fraction b and prevalence π (Table S2). The decrease of
+the training loss compares the first and the last loss recorded in the
+`metadata.json` of each scGCL contract.
+
+## 18. Supplementary Table S22: runtime
 
 ```bash
 python3 scripts/summarize_runtime.py
@@ -804,10 +1283,11 @@ python3 scripts/summarize_runtime.py
 
 `scripts/summarize_runtime.py` reads `scripts/runtime_jobs.tsv`, which lists
 the Slurm tasks of the paper run that fitted each step for each dataset
-(section 3.2), and queries `sacct` for their elapsed time and peak memory. To
-summarize your own run, replace the job IDs in `scripts/runtime_jobs.tsv` with
-those of your `teachers`, `scvi`, `stack` and `selectors` jobs.
-`--sacct-file` reads a saved pipe-delimited `sacct` dump instead of querying
-Slurm. The script writes `runtime_table.csv` (Table S12),
-`runtime_by_dataset.csv` and `sacct_records.txt` to
+(sections 3.2 and 3.4), and queries `sacct` for their elapsed time and peak
+memory. To summarize your own run, replace the job IDs in
+`scripts/runtime_jobs.tsv` with those of your `teachers`, `scvi`, `stack` and
+`selectors` jobs and, for Norman, of `lf_teachers`, `lf_scvi_teacher`,
+`lf_stack` and `lf_selector`. `--sacct-file` reads a saved pipe-delimited
+`sacct` dump instead of querying Slurm. The script writes `runtime_table.csv`
+(Table S22), `runtime_by_dataset.csv` and `sacct_records.txt` to
 `artifacts/paper_evidence/runtime/`.
