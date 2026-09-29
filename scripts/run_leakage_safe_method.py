@@ -281,9 +281,22 @@ def main() -> None:
         default=[],
         help="Teacher contracts combined by the safe_fusion stack (required for safe_fusion).",
     )
+    parser.add_argument(
+        "--transductive",
+        action="store_true",
+        help=(
+            "Fit gene_median, svd_impute and graph_smooth on the masked counts of all cells, held-out cells "
+            "included, without cross-fitting: each cell's proposal comes from a fit that contains its own "
+            "counts, and every cell is in its own kNN neighbour set. For safe_fusion, accept count-scale "
+            "teacher contracts fitted this way. The fused value is still fitted on the masked positives of "
+            "the model-fitting cells only, and no hidden value is used."
+        ),
+    )
     args = parser.parse_args()
     if args.method == "safe_fusion" and len(args.teacher_contract) < 2:
         raise ValueError("safe_fusion needs at least two --teacher-contract directories")
+    if args.transductive and args.condition_column is not None:
+        raise ValueError("--transductive does not support --condition-column")
 
     adata = ad.read_h5ad(args.input)
     matrix = adata.layers["corrupted_counts"] if "corrupted_counts" in adata.layers else adata.X
@@ -294,39 +307,62 @@ def main() -> None:
     if not training.any() or np.any(split[training] == "test"):
         raise ValueError("invalid training split")
 
-    medians = gene_medians(counts, training)
+    teacher_cells = np.ones(len(counts), dtype=bool) if args.transductive else training
+    medians = gene_medians(counts, teacher_cells)
     svd = None
     graph = None
-    if args.method in {"svd_impute", "graph_smooth"}:
+    transductive_pca = None
+    if args.transductive and args.method in {"svd_impute", "graph_smooth"}:
+        transductive_pca = fit_pca(log1p_cpm(counts)[0], args.components, args.seed)
+    elif args.method in {"svd_impute", "graph_smooth"}:
         svd = SVDTeacher(counts, training, args.seed, args.components)
     if args.method == "graph_smooth":
-        assert svd is not None
-        if args.condition_column is None:
+        if args.transductive:
+            graph = GraphTeacher(counts, teacher_cells, transductive_pca, args.neighbors)
+        elif args.condition_column is None:
+            assert svd is not None
             graph = GraphTeacher(counts, training, svd.model, args.neighbors)
         else:
+            assert svd is not None
             graph = ConditionGraphTeacher(counts, training, adata.obs[args.condition_column].to_numpy(), svd.model, args.neighbors)
+    pca_model = transductive_pca if transductive_pca is not None else (svd.model if svd is not None else None)
     details: dict = {
-        "fit_cells": int(training.sum()),
+        "fit_cells": int(teacher_cells.sum()) if args.method != "safe_fusion" else int(training.sum()),
         "heldout_test_cells": int((split == "test").sum()),
-        "svd_components": int(svd.model.n_components_) if svd is not None else None,
+        "svd_components": int(pca_model.n_components_) if pca_model is not None else None,
         "graph_neighbors": int(args.neighbors) if graph is not None else None,
-        "test_used_for_fit": False,
-        "fitting_cell_proposals_exclude_own_counts": True,
+        "test_used_for_fit": bool(args.transductive),
+        "fitting_cell_proposals_exclude_own_counts": not args.transductive,
         "condition_column": args.condition_column,
     }
+    if args.transductive:
+        details.update({
+            "transductive": True,
+            "test_labels_used_for_fit": False,
+            "cross_fitting": "none: training and held-out cells enter the teachers in the same way",
+        })
     if args.method == "gene_median":
         prediction = fill_zeros(counts, medians)
     elif args.method == "svd_impute":
-        assert svd is not None
-        prediction = svd.proposals(counts)
+        if args.transductive:
+            prediction = svd_reconstruct(transductive_pca, counts)
+        else:
+            assert svd is not None
+            prediction = svd.proposals(counts)
     elif args.method == "graph_smooth":
         assert graph is not None
-        prediction = graph.proposals(counts)
+        if args.transductive:
+            prediction = graph.smooth(counts, np.full(len(counts), -1))
+        else:
+            prediction = graph.proposals(counts)
     else:
         teachers = {}
         for path in args.teacher_contract:
             teacher_metadata = json.loads((Path(path) / "metadata.json").read_text())
-            if teacher_metadata.get("scale") != "counts" or not teacher_metadata["parameters"].get("fitting_cell_proposals_exclude_own_counts"):
+            if args.transductive:
+                if teacher_metadata.get("scale") != "counts" or not teacher_metadata["parameters"].get("transductive"):
+                    raise ValueError(f"teacher {path} must be a count-scale contract fitted on all cells")
+            elif teacher_metadata.get("scale") != "counts" or not teacher_metadata["parameters"].get("fitting_cell_proposals_exclude_own_counts"):
                 raise ValueError(f"teacher {path} must be a count-scale contract whose fitting-cell proposals exclude own counts")
             if teacher_metadata["cell_ids"] != adata.obs_names.astype(str).tolist():
                 raise ValueError(f"teacher {path} cell order differs from the input")
@@ -342,6 +378,7 @@ def main() -> None:
         version = "unavailable"
     cell_ids = adata.obs_names.astype(str).tolist()
     gene_ids = adata.var_names.astype(str).tolist()
+    fitted_cells = training if args.method == "safe_fusion" else teacher_cells
     metadata = {
         "method": args.method,
         "method_version": version,
@@ -350,8 +387,8 @@ def main() -> None:
         "gene_ids": gene_ids,
         "cell_order_sha256": order_hash(cell_ids),
         "gene_order_sha256": order_hash(gene_ids),
-        "training_splits": ["development", "validation"],
-        "training_data": {"cell_ids_sha256": order_hash(np.asarray(cell_ids)[training].tolist())},
+        "training_splits": sorted(set(split[fitted_cells].tolist())) if args.transductive else ["development", "validation"],
+        "training_data": {"cell_ids_sha256": order_hash(np.asarray(cell_ids)[fitted_cells].tolist())},
         "parameters": details,
         "seed": args.seed,
         "input_sha256": sha256_file(args.input),
