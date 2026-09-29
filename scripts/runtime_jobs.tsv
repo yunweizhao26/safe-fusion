@@ -1,4 +1,4 @@
-# Slurm tasks behind the runtime table (Supplementary Table S12).
+# Slurm tasks behind the runtime table (Supplementary Table S22).
 # One row per step and dataset. The jobs column lists the array tasks that ran
 # that step for that dataset; scripts/summarize_runtime.py sums their wall times
 # and takes the largest MaxRSS. Dataset keys follow UNITS in scripts/unit_paths.sh.
@@ -14,12 +14,15 @@
 # 18676310  scripts/slurm_complete_downstream_selectors.sh, task order pancreas_0,
 #           pancreas_1, pancreas_2, norman_crispra, adamson_crispri, dixit_ko,
 #           papalexi_eccite, zebrafish, colon.
+# 18730466, 18730468, 18730472, 18730571  scripts/slurm_leakage_free_rerun.sh, stages
+#           teachers, scvi_teacher, stack and selector, unit norman_crispra (task 3;
+#           CPU teacher tasks 12-15). The norman_crispra rows list these jobs.
 step	dataset	jobs
 Gene median, SVD and kNN teachers	pancreas_0	18532061_0,18532061_1,18532061_2
 Gene median, SVD and kNN teachers	pancreas_1	18532061_4,18532061_5,18532061_6
 Gene median, SVD and kNN teachers	pancreas_2	18532061_8,18532061_9,18532061_10
 Gene median, SVD and kNN teachers	colon	18532061_12,18532061_13,18532061_14
-Gene median, SVD and kNN teachers	norman_crispra	18532061_16,18532061_17,18532061_18
+Gene median, SVD and kNN teachers	norman_crispra	18730466_12,18730466_13,18730466_14
 Gene median, SVD and kNN teachers	adamson_crispri	18532061_20,18532061_21,18532061_22
 Gene median, SVD and kNN teachers	dixit_ko	18532061_24,18532061_25,18532061_26
 Gene median, SVD and kNN teachers	papalexi_eccite	18532061_28,18532061_29,18532061_30
@@ -29,7 +32,7 @@ MAGIC teacher	pancreas_0	18541145_3
 MAGIC teacher	pancreas_1	18541145_7
 MAGIC teacher	pancreas_2	18541145_11
 MAGIC teacher	colon	18541145_15
-MAGIC teacher	norman_crispra	18541145_19
+MAGIC teacher	norman_crispra	18730466_15
 MAGIC teacher	adamson_crispri	18541145_23
 MAGIC teacher	dixit_ko	18541145_27
 MAGIC teacher	papalexi_eccite	18541145_31
@@ -39,7 +42,7 @@ scVI teacher	pancreas_0	18541146_0
 scVI teacher	pancreas_1	18541146_1
 scVI teacher	pancreas_2	18541146_2
 scVI teacher	colon	18541146_3
-scVI teacher	norman_crispra	18541146_4
+scVI teacher	norman_crispra	18730468_3
 scVI teacher	adamson_crispri	18541146_5
 scVI teacher	dixit_ko	18541146_6
 scVI teacher	papalexi_eccite	18541146_7
@@ -49,7 +52,7 @@ Fused value, with cross-validation	pancreas_0	18676309_0
 Fused value, with cross-validation	pancreas_1	18676309_1
 Fused value, with cross-validation	pancreas_2	18676309_2
 Fused value, with cross-validation	colon	18676309_3
-Fused value, with cross-validation	norman_crispra	18676309_4
+Fused value, with cross-validation	norman_crispra	18730472_3
 Fused value, with cross-validation	adamson_crispri	18676309_5
 Fused value, with cross-validation	dixit_ko	18676309_6
 Fused value, with cross-validation	papalexi_eccite	18676309_7
@@ -58,7 +61,7 @@ Fused value, with cross-validation	papalexi_crossmodal	18676309_9
 Selector	pancreas_0	18676310_0
 Selector	pancreas_1	18676310_1
 Selector	pancreas_2	18676310_2
-Selector	norman_crispra	18676310_3
+Selector	norman_crispra	18730571_3
 Selector	adamson_crispri	18676310_4
 Selector	dixit_ko	18676310_5
 Selector	papalexi_eccite	18676310_6

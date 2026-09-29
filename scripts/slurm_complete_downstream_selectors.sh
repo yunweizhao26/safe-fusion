@@ -4,7 +4,7 @@
 #SBATCH --time=01:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --array=0-8%4
+#SBATCH --array=0-7%4
 #SBATCH --output=logs/slurm-complete-downstream-selectors-%A_%a.out
 #SBATCH --error=logs/slurm-complete-downstream-selectors-%A_%a.err
 
@@ -18,7 +18,7 @@ export MKL_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 source scripts/unit_paths.sh
 
 BUDGETS=(0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.10)
-keys=(pancreas_0 pancreas_1 pancreas_2 norman_crispra adamson_crispri dixit_ko papalexi_eccite zebrafish colon)
+keys=(pancreas_0 pancreas_1 pancreas_2 adamson_crispri dixit_ko papalexi_eccite zebrafish colon)
 key="${keys[SLURM_ARRAY_TASK_ID]}"
 unit_paths "${key}"
 fit=(--fit-split development)
@@ -28,7 +28,6 @@ case "${key}" in
     fit=(--fit-split validation --fit-cells 3852)
     ;;
   pancreas_*) output="${methods_root}/selector_mlp_biology_range_fullteachers" ;;
-  norman_crispra) output=artifacts/paper_evidence/selector_mlp_biology_range_fullteachers/norman_crispra ;;
   *) output="${methods_root}/selector_mlp_biology_range" ;;
 esac
 mapfile -t teacher_args < <(teacher_contract_args "${methods_root}")

@@ -20,7 +20,6 @@ SOURCES = [
     ("markers", "colon", ROOT / "markers/colon"),
     ("differential_expression", "pancreas", ROOT / "pancreas_biology"),
     ("trajectory", "zebrafish", ROOT / "trajectory/zebrafish"),
-    ("grn", "norman_crispra", ROOT / "grn/norman_crispra"),
     ("grn", "adamson_crispri", ROOT / "grn/adamson_crispri"),
     ("grn", "dixit_ko", ROOT / "grn/dixit_ko"),
     ("grn", "papalexi_eccite", ROOT / "grn/papalexi_eccite"),

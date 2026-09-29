@@ -4,7 +4,7 @@
 #SBATCH --time=06:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
-#SBATCH --array=0-8%4
+#SBATCH --array=0-7%4
 #SBATCH --output=logs/slurm-deployment-evaluate-%A_%a.out
 #SBATCH --error=logs/slurm-deployment-evaluate-%A_%a.err
 
@@ -96,9 +96,9 @@ case "${SLURM_ARRAY_TASK_ID}" in
       --output-dir "${OUT}/trajectory/zebrafish" --bootstrap 2000 --seed 1729
     ;;
   *)
-    datasets=(unused unused unused unused unused norman_crispra adamson_crispri dixit_ko papalexi_eccite)
-    interventions=(unused unused unused unused unused gain_of_function loss_of_function loss_of_function loss_of_function)
-    dois=(unused unused unused unused unused 10.1126/science.aax4438 10.1016/j.cell.2016.11.048 10.1016/j.cell.2016.11.038 10.1038/s41588-021-00778-2)
+    datasets=(unused unused unused unused unused adamson_crispri dixit_ko papalexi_eccite)
+    interventions=(unused unused unused unused unused loss_of_function loss_of_function loss_of_function)
+    dois=(unused unused unused unused unused 10.1016/j.cell.2016.11.048 10.1016/j.cell.2016.11.038 10.1038/s41588-021-00778-2)
     dataset="${datasets[SLURM_ARRAY_TASK_ID]}"
     unit="${ROOT}/${dataset}"
     methods_for "${unit}"

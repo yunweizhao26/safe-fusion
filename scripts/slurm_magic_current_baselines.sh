@@ -3,7 +3,7 @@
 #SBATCH --time=02:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=96G
-#SBATCH --array=0-2
+#SBATCH --array=0-1
 #SBATCH --output=logs/slurm-magic-current-%A_%a.out
 #SBATCH --error=logs/slurm-magic-current-%A_%a.err
 
@@ -25,12 +25,6 @@ case "${SLURM_ARRAY_TASK_ID}" in
     coordinates=artifacts/colon_runs/0b2469810675-c0db6f963e94/data/colon_epithelial/coordinates/mask_010.parquet
     splits=artifacts/colon_runs/0b2469810675-c0db6f963e94/data/colon_epithelial/splits.parquet
     output=artifacts/paper_evidence/baselines/magic/colon
-    ;;
-  2)
-    corrupted=artifacts/paper_evidence/norman_crispra/corrupted.h5ad
-    coordinates=artifacts/paper_evidence/norman_crispra/coordinates.parquet
-    splits=artifacts/paper_evidence/norman_crispra/splits.parquet
-    output=artifacts/paper_evidence/baselines/magic/norman
     ;;
 esac
 

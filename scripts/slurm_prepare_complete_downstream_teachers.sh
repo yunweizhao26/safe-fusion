@@ -4,7 +4,7 @@
 #SBATCH --time=01:30:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --array=0-39
+#SBATCH --array=0-35
 #SBATCH --output=logs/slurm-teachers-%A_%a.out
 #SBATCH --error=logs/slurm-teachers-%A_%a.err
 

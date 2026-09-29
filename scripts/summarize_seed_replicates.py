@@ -14,7 +14,6 @@ EVIDENCE = Path("artifacts/paper_evidence")
 PAN = Path("artifacts/pancreas_runs/0b2469810675-45c81b160d78")
 COL = Path("artifacts/colon_runs/0b2469810675-c0db6f963e94")
 CF = EVIDENCE / "pancreas_crossfit"
-NORMAN = EVIDENCE / "norman_crispra"
 REP = EVIDENCE / "seed_replicates"
 GRID = np.linspace(0.001, 1.0, 1000)[:100]
 INTEGER = np.arange(9, 100, 10)
@@ -26,39 +25,41 @@ COUNT_SCALE = {
 }
 
 
-def units(seed: int) -> list[dict]:
+def units(seed: int, evidence: Path = EVIDENCE, replicates: Path = REP) -> list[dict]:
+    crossfit = evidence / "pancreas_crossfit"
+    norman = evidence / "norman_crispra"
     production = seed == 1729
     out = []
     for fold in range(3):
-        base = CF / f"fold_{fold}" if production else REP / f"seed_{seed}" / f"pancreas_{fold}"
-        data = PAN / "data/pancreas_islets" if production else REP / f"seed_{seed}" / "data/pancreas"
-        baselines = EVIDENCE / "baselines" if production else REP / f"seed_{seed}" / "baselines"
+        base = crossfit / f"fold_{fold}" if production else replicates / f"seed_{seed}" / f"pancreas_{fold}"
+        data = PAN / "data/pancreas_islets" if production else replicates / f"seed_{seed}" / "data/pancreas"
+        baselines = evidence / "baselines" if production else replicates / f"seed_{seed}" / "baselines"
         out.append(dict(
             dataset="Pancreas", tie_seed=seed + 100 * fold,
             corrupted=data / ("corrupted/mask_010.h5ad" if production else "corrupted.h5ad"),
             coordinates=data / ("coordinates/mask_010.parquet" if production else "coordinates.parquet"),
-            splits=CF / f"fold_{fold}/splits.parquet",
+            splits=crossfit / f"fold_{fold}/splits.parquet",
             selector=base / ("selector_mlp_biology_range_fullteachers" if production else "selector"),
             contracts={"SVD": base / "svd_impute", "Weighted kNN": base / "graph_smooth",
                        "MAGIC": baselines / "magic/pancreas", "scVI": baselines / "scvi/pancreas"}))
-    data = COL / "data/colon_epithelial" if production else REP / f"seed_{seed}" / "data/colon"
-    base = COL / "methods/standardized/colon_epithelial/mask_010" if production else REP / f"seed_{seed}" / "colon"
-    baselines = EVIDENCE / "baselines" if production else REP / f"seed_{seed}" / "baselines"
+    data = COL / "data/colon_epithelial" if production else replicates / f"seed_{seed}" / "data/colon"
+    base = COL / "methods/standardized/colon_epithelial/mask_010" if production else replicates / f"seed_{seed}" / "colon"
+    baselines = evidence / "baselines" if production else replicates / f"seed_{seed}" / "baselines"
     out.append(dict(
         dataset="Colon", tie_seed=seed + 1000,
         corrupted=data / ("corrupted/mask_010.h5ad" if production else "corrupted.h5ad"),
         coordinates=data / ("coordinates/mask_010.parquet" if production else "coordinates.parquet"),
         splits=COL / "data/colon_epithelial/splits.parquet",
-        selector=EVIDENCE / "selector_mlp_biology_range/colon" if production else base / "selector",
+        selector=evidence / "selector_mlp_biology_range/colon" if production else base / "selector",
         contracts={"SVD": base / "svd_impute", "Weighted kNN": base / "graph_smooth",
                    "MAGIC": baselines / "magic/colon", "scVI": baselines / "scvi/colon"}))
-    data = NORMAN if production else REP / f"seed_{seed}" / "data/norman"
-    base = NORMAN / "methods" if production else REP / f"seed_{seed}" / "norman"
+    data = norman if production else replicates / f"seed_{seed}" / "data/norman"
+    base = norman / "methods" if production else replicates / f"seed_{seed}" / "norman"
     out.append(dict(
         dataset="CRISPRa", tie_seed=seed + 2000,
         corrupted=data / "corrupted.h5ad", coordinates=data / "coordinates.parquet",
-        splits=NORMAN / "splits.parquet",
-        selector=EVIDENCE / "selector_mlp_biology_range_fullteachers/norman_crispra" if production else base / "selector",
+        splits=norman / "splits.parquet",
+        selector=evidence / "selector_mlp_biology_range_fullteachers/norman_crispra" if production else base / "selector",
         contracts={"SVD": base / "svd_impute", "Weighted kNN": base / "graph_smooth",
                    "MAGIC": baselines / "magic/norman", "scVI": baselines / "scvi/norman"}))
     return out
@@ -104,13 +105,22 @@ def f1(pooled: np.ndarray) -> np.ndarray:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seeds", type=int, nargs="+", default=[1729, 1730, 1731, 1732, 1733])
-    parser.add_argument("--output-dir", type=Path, default=REP / "summary")
+    parser.add_argument("--evidence-root", type=Path, default=EVIDENCE,
+                        help="Root of the seed-1729 runs (pancreas_crossfit, norman_crispra, baselines, selectors).")
+    parser.add_argument("--replicate-root", type=Path, default=None,
+                        help="Root of the seed replicates. Defaults to <evidence-root>/seed_replicates.")
+    parser.add_argument("--datasets", nargs="+", default=["Pancreas", "Colon"])
+    parser.add_argument("--output-dir", type=Path, default=None, help="Defaults to <replicate-root>/summary.")
     args = parser.parse_args()
+    replicate_root = args.replicate_root or args.evidence_root / "seed_replicates"
+    args.output_dir = args.output_dir or replicate_root / "summary"
     args.output_dir.mkdir(parents=True, exist_ok=True)
     rows = []
     for seed in args.seeds:
         pooled: dict[tuple[str, str], np.ndarray] = {}
-        for unit in units(seed):
+        for unit in units(seed, args.evidence_root, replicate_root):
+            if unit["dataset"] not in args.datasets:
+                continue
             for name, curve in unit_curves(unit).items():
                 key = (unit["dataset"], name)
                 pooled[key] = curve if key not in pooled else pooled[key] + curve

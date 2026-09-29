@@ -20,11 +20,10 @@ PY=.venv/bin/python
 PAN=artifacts/pancreas_runs/0b2469810675-45c81b160d78
 COL=artifacts/colon_runs/0b2469810675-c0db6f963e94
 CF=artifacts/paper_evidence/pancreas_crossfit
-NORMAN=artifacts/paper_evidence/norman_crispra
 REP=artifacts/paper_evidence/seed_replicates
 SEEDS=(1730 1731 1732 1733)
-DATASETS=(pancreas colon norman)
-REP_UNITS=(pancreas_0 pancreas_1 pancreas_2 colon norman)
+DATASETS=(pancreas colon)
+REP_UNITS=(pancreas_0 pancreas_1 pancreas_2 colon)
 CPU_TEACHERS=(gene_median svd_impute graph_smooth magic_inductive)
 task="${SLURM_ARRAY_TASK_ID}"
 
@@ -32,7 +31,6 @@ dataset_paths() {
   case "$1" in
     pancreas) truth="${PAN}/data/pancreas_islets/preprocessed.h5ad"; workflow_splits="${PAN}/data/pancreas_islets/splits.parquet"; unit_column=donor ;;
     colon) truth="${COL}/data/colon_epithelial/preprocessed.h5ad"; workflow_splits="${COL}/data/colon_epithelial/splits.parquet"; unit_column=donor ;;
-    norman) truth=external_data/prepared/norman_crispra.h5ad; workflow_splits="${NORMAN}/splits.parquet"; unit_column=condition ;;
   esac
 }
 
@@ -40,7 +38,6 @@ replicate_paths() {
   case "$1" in
     pancreas_*) dataset=pancreas; splits="${CF}/fold_${1##*_}/splits.parquet"; fit=(--fit-split development) ;;
     colon) dataset=colon; splits="${COL}/data/colon_epithelial/splits.parquet"; fit=(--fit-split validation --fit-cells 3852) ;;
-    norman) dataset=norman; splits="${NORMAN}/splits.parquet"; fit=(--fit-split development) ;;
   esac
   data="${REP}/seed_$2/data/${dataset}"
   out="${REP}/seed_$2/$1"
@@ -48,16 +45,16 @@ replicate_paths() {
 
 case "${STAGE}" in
   mask)
-    seed="${SEEDS[task / 3]}"
-    dataset_paths "${DATASETS[task % 3]}"
+    seed="${SEEDS[task / 2]}"
+    dataset_paths "${DATASETS[task % 2]}"
     "${PY}" scripts/make_mask_replicate.py --truth "${truth}" --splits "${workflow_splits}" \
       --unit-column "${unit_column}" --seed "${seed}" \
-      --output-dir "${REP}/seed_${seed}/data/${DATASETS[task % 3]}"
+      --output-dir "${REP}/seed_${seed}/data/${DATASETS[task % 2]}"
     ;;
   teachers)
-    seed="${SEEDS[task / 20]}"
+    seed="${SEEDS[task / 16]}"
     method="${CPU_TEACHERS[task % 4]}"
-    replicate_paths "${REP_UNITS[(task % 20) / 4]}" "${seed}"
+    replicate_paths "${REP_UNITS[(task % 16) / 4]}" "${seed}"
     if [[ "${method}" == magic_inductive ]]; then
       .conda-magic-current/bin/python scripts/run_inductive_teacher.py --method magic \
         --input "${data}/corrupted.h5ad" --coordinates "${data}/coordinates.parquet" \
@@ -70,15 +67,15 @@ case "${STAGE}" in
     fi
     ;;
   scvi_teacher)
-    seed="${SEEDS[task / 5]}"
-    replicate_paths "${REP_UNITS[task % 5]}" "${seed}"
+    seed="${SEEDS[task / 4]}"
+    replicate_paths "${REP_UNITS[task % 4]}" "${seed}"
     .conda-scvi-current/bin/python scripts/run_inductive_teacher.py --method scvi \
       --input "${data}/corrupted.h5ad" --coordinates "${data}/coordinates.parquet" \
       --splits "${splits}" --output "${out}/scvi_inductive" --seed "${seed}"
     ;;
   stack)
-    seed="${SEEDS[task / 5]}"
-    replicate_paths "${REP_UNITS[task % 5]}" "${seed}"
+    seed="${SEEDS[task / 4]}"
+    replicate_paths "${REP_UNITS[task % 4]}" "${seed}"
     mapfile -t teacher_args < <(teacher_contract_args "${out}")
     "${PY}" scripts/run_leakage_safe_method.py --method safe_fusion \
       --input "${data}/corrupted.h5ad" --coordinates "${data}/coordinates.parquet" \
@@ -86,8 +83,8 @@ case "${STAGE}" in
       --value-model "${VALUE_MODEL:-boosted}" --seed "${seed}" "${teacher_args[@]}"
     ;;
   selector)
-    seed="${SEEDS[task / 5]}"
-    replicate_paths "${REP_UNITS[task % 5]}" "${seed}"
+    seed="${SEEDS[task / 4]}"
+    replicate_paths "${REP_UNITS[task % 4]}" "${seed}"
     dataset_paths "${dataset}"
     mapfile -t teacher_args < <(teacher_contract_args "${out}")
     "${PY}" scripts/calibrated_selective_fill.py \
@@ -103,8 +100,8 @@ case "${STAGE}" in
       --seed "${seed}"
     ;;
   magic)
-    seed="${SEEDS[task / 3]}"
-    dataset="${DATASETS[task % 3]}"
+    seed="${SEEDS[task / 2]}"
+    dataset="${DATASETS[task % 2]}"
     dataset_paths "${dataset}"
     data="${REP}/seed_${seed}/data/${dataset}"
     .conda-magic-current/bin/python scripts/run_magic_baseline.py \
@@ -113,8 +110,8 @@ case "${STAGE}" in
       --n-jobs "${SLURM_CPUS_PER_TASK}" --seed "${seed}"
     ;;
   scvi)
-    seed="${SEEDS[task / 3]}"
-    dataset="${DATASETS[task % 3]}"
+    seed="${SEEDS[task / 2]}"
+    dataset="${DATASETS[task % 2]}"
     dataset_paths "${dataset}"
     data="${REP}/seed_${seed}/data/${dataset}"
     .conda-scvi-current/bin/python scripts/run_scvi_baseline.py \

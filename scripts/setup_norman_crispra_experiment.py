@@ -18,6 +18,18 @@ sys.path.insert(0, str(REPOSITORY / "src"))
 from safefusion_benchmark.corruption import corrupt_counts
 
 
+def split_within_conditions(conditions: np.ndarray, test_fraction: float, seed: int) -> np.ndarray:
+    rng = np.random.default_rng(seed)
+    split = np.empty(len(conditions), dtype=object)
+    for condition in sorted(set(conditions)):
+        positions = np.flatnonzero(conditions == condition)
+        permuted = rng.permutation(positions)
+        n_test = int(round(len(positions) * test_fraction))
+        split[permuted[:n_test]] = "test"
+        split[permuted[n_test:]] = "development"
+    return split
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True)
@@ -32,7 +44,6 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rng = np.random.default_rng(args.seed)
     adata = ad.read_h5ad(args.input)
     counts = (adata.layers["counts"].toarray() if sparse.issparse(adata.layers["counts"]) else np.asarray(adata.layers["counts"])).astype(np.float32)
     conditions = adata.obs["condition"].astype(str).to_numpy()
@@ -46,13 +57,7 @@ def main() -> None:
         if not set(split).issubset({"development", "test"}):
             raise ValueError("preassigned split must contain only development/test")
     else:
-        split = np.empty(len(conditions), dtype=object)
-        for condition in sorted(set(conditions)):
-            positions = np.flatnonzero(conditions == condition)
-            permuted = rng.permutation(positions)
-            n_test = int(round(len(positions) * args.test_fraction))
-            split[permuted[:n_test]] = "test"
-            split[permuted[n_test:]] = "development"
+        split = split_within_conditions(conditions, args.test_fraction, args.seed)
     if np.any(split == ""):
         raise AssertionError("every cell must receive a split")
 

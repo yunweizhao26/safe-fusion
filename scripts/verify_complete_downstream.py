@@ -38,7 +38,6 @@ def main() -> None:
         "markers_pancreas_and_de": ROOT / "pancreas_biology",
         "markers_colon": ROOT / "markers/colon",
         "trajectory": ROOT / "trajectory/zebrafish",
-        "grn_norman": ROOT / "grn/norman_crispra",
         "grn_adamson": ROOT / "grn/adamson_crispri",
         "grn_dixit": ROOT / "grn/dixit_ko",
         "grn_papalexi": ROOT / "grn/papalexi_eccite",
@@ -70,7 +69,6 @@ def main() -> None:
         raise ValueError("trajectory stage or test-cell coverage differs from the protocol")
 
     expected_grn = {
-        "grn_norman": ("gain_of_function", 64),
         "grn_adamson": ("loss_of_function", 30),
         "grn_dixit": ("loss_of_function", 10),
         "grn_papalexi": ("loss_of_function", 24),

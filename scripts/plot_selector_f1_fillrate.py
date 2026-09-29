@@ -79,7 +79,7 @@ def main() -> None:
                 **style,
             )
         axis.set_title(dataset)
-        axis.set_xlabel("zeros filled (%)")
+        axis.set_xlabel("fill fraction (% of candidate zeros)")
         axis.set_xscale("log")
         axis.set_xlim(0.1, 100.0)
         axis.set_xticks([0.1, 1, 10, 100])

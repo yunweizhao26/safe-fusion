@@ -3,7 +3,7 @@
 #SBATCH --time=00:10:00
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=8G
-#SBATCH --array=0-2
+#SBATCH --array=0-1
 #SBATCH --output=logs/slurm-pair-mlp-attribution-range-%A_%a.out
 #SBATCH --error=logs/slurm-pair-mlp-attribution-range-%A_%a.err
 
@@ -22,14 +22,9 @@ if (( SLURM_ARRAY_TASK_ID == 0 )); then
     --input-dir "${ROOT}/pancreas/fold_2" \
     --output-dir "${ROOT}/paired/pancreas" \
     --reference-selector full__mlp --bootstrap 2000 --seed 1729
-elif (( SLURM_ARRAY_TASK_ID == 1 )); then
+else
   "${PY}" scripts/combine_selector_attribution.py \
     --input-dir "${ROOT}/colon" \
     --output-dir "${ROOT}/paired/colon" \
-    --reference-selector full__mlp --bootstrap 2000 --seed 1729
-else
-  "${PY}" scripts/combine_selector_attribution.py \
-    --input-dir "${ROOT}/norman_crispra" \
-    --output-dir "${ROOT}/paired/norman_crispra" \
     --reference-selector full__mlp --bootstrap 2000 --seed 1729
 fi

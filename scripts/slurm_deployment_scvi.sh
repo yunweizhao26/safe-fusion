@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --gres=gpu:l40s:1
-#SBATCH --array=0-8
+#SBATCH --array=0-7
 #SBATCH --output=logs/slurm-deployment-scvi-%A_%a.out
 #SBATCH --error=logs/slurm-deployment-scvi-%A_%a.err
 

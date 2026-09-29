@@ -71,6 +71,34 @@ def add_root_arguments(parser: argparse.ArgumentParser) -> None:
         default=None,
         help="Defaults to <evidence-root>/baselines.",
     )
+    parser.add_argument(
+        "--units-manifest",
+        type=Path,
+        default=None,
+        help="JSON list of units with the fields of Unit and repository-relative paths. "
+        "It replaces the production units of build_units.",
+    )
+
+
+def unit_manifest_entry(unit: Unit) -> dict:
+    def relative(path: Path) -> str:
+        return str(Path(path).relative_to(ROOT)) if Path(path).is_absolute() else str(path)
+
+    entry = {name: getattr(unit, name) for name in Unit.__dataclass_fields__}
+    for name in ("corrupted", "coordinates", "splits", "truth", "selector_dir"):
+        entry[name] = relative(entry[name])
+    entry["contracts"] = {name: relative(path) for name, path in unit.contracts.items()}
+    return entry
+
+
+def load_units_manifest(path: Path) -> list[Unit]:
+    units = []
+    for entry in json.loads(Path(path).read_text()):
+        for name in ("corrupted", "coordinates", "splits", "truth", "selector_dir"):
+            entry[name] = ROOT / entry[name]
+        entry["contracts"] = {name: ROOT / value for name, value in entry["contracts"].items()}
+        units.append(Unit(**entry))
+    return units
 
 
 def build_units(evidence: Path, colon_methods: Path, baselines: Path | None = None, seed: int = 1729) -> list[Unit]:
@@ -133,38 +161,12 @@ def build_units(evidence: Path, colon_methods: Path, baselines: Path | None = No
             },
         )
     )
-    norman = evidence / "norman_crispra"
-    units.append(
-        Unit(
-            dataset="CRISPRa",
-            key="norman_crispra",
-            corrupted=norman / "corrupted.h5ad",
-            coordinates=norman / "coordinates.parquet",
-            splits=norman / "splits.parquet",
-            truth=ROOT / "external_data" / "prepared" / "norman_crispra.h5ad",
-            fit_split="development",
-            unit_column="target",
-            tie_seed=seed + 2000,
-            selector_dir=evidence / "selector_mlp_biology_range_fullteachers" / "norman_crispra",
-            contracts={
-                "Gene median": norman / "methods" / "gene_median",
-                "Weighted kNN": norman / "methods" / "graph_smooth",
-                "SVD": norman / "methods" / "svd_impute",
-                "MAGIC (inductive)": norman / "methods" / "magic_inductive",
-                "scVI (inductive)": norman / "methods" / "scvi_inductive",
-                "ALRA": baselines / "alra" / "norman_mask_010",
-                "SAVER": baselines / "saver" / "norman_full_mask_010",
-                "MAGIC": baselines / "magic" / "norman",
-                "scVI": baselines / "scvi" / "norman",
-                "scGCL": baselines / "scgcl" / "norman",
-                "scGPT": baselines / "scgpt_mvc" / "norman",
-            },
-        )
-    )
     return units
 
 
 def units_from_args(args: argparse.Namespace, seed: int = 1729) -> list[Unit]:
+    if args.units_manifest is not None:
+        return load_units_manifest(args.units_manifest)
     return build_units(args.evidence_root, args.colon_methods_root, args.baselines_root, seed)
 
 

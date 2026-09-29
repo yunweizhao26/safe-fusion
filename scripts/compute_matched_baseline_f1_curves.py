@@ -89,19 +89,27 @@ def main() -> None:
     parser.add_argument("--summary-output", type=Path, default=EVIDENCE / "selector_f1_fillrate_baselines_summary.json")
     parser.add_argument("--unit-output", type=Path, default=EVIDENCE / "masked_f1_unit_counts.parquet")
     parser.add_argument("--seed", type=int, default=1729)
+    parser.add_argument(
+        "--comparators",
+        nargs="+",
+        default=[*MAIN_COMPARATORS, *SUPPLEMENTARY_COMPARATORS, *TEACHER_COMPARATORS],
+        help="Comparators to rank (default: the main, supplementary and teacher comparators).",
+    )
     args = parser.parse_args()
 
-    comparators = (*MAIN_COMPARATORS, *SUPPLEMENTARY_COMPARATORS, *TEACHER_COMPARATORS)
+    comparators = tuple(args.comparators)
     family = {
         **{name: "main" for name in MAIN_COMPARATORS},
         **{name: "supplementary" for name in SUPPLEMENTARY_COMPARATORS},
         **{name: "teacher" for name in TEACHER_COMPARATORS},
     }
-    unit_curves: dict[str, dict[str, list]] = {dataset: {name: [] for name in comparators} for dataset in DATASETS}
+    units = units_from_args(args, args.seed)
+    datasets = tuple(dataset for dataset in DATASETS if any(unit.dataset == dataset for unit in units))
+    unit_curves: dict[str, dict[str, list]] = {dataset: {name: [] for name in comparators} for dataset in datasets}
     unit_rows = []
-    scales: dict[str, dict[str, str]] = {dataset: {} for dataset in DATASETS}
+    scales: dict[str, dict[str, str]] = {dataset: {} for dataset in datasets}
     selection_checks = []
-    for unit in units_from_args(args, args.seed):
+    for unit in units:
         data = load_unit(unit)
         test_cells = np.flatnonzero(data.split == "test")
         local_rows, cols = np.where(data.counts[test_cells] == 0)
@@ -141,7 +149,7 @@ def main() -> None:
 
     rows_out = []
     summary: dict[str, dict] = {}
-    for dataset in DATASETS:
+    for dataset in datasets:
         summary[dataset] = {}
         for name in comparators:
             curve = pool_curves(unit_curves[dataset][name])

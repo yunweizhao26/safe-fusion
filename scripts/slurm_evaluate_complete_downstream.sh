@@ -4,7 +4,7 @@
 #SBATCH --time=06:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=24G
-#SBATCH --array=0-8%3
+#SBATCH --array=0-7%3
 #SBATCH --output=logs/slurm-complete-downstream-eval-%A_%a.out
 #SBATCH --error=logs/slurm-complete-downstream-eval-%A_%a.err
 
@@ -22,8 +22,6 @@ CF=artifacts/paper_evidence/pancreas_crossfit
 COL=artifacts/colon_runs/0b2469810675-c0db6f963e94
 COL_METHODS="${COL}/methods/standardized/colon_epithelial/mask_010"
 COL_SELECTOR=artifacts/paper_evidence/selector_mlp_biology_range/colon
-NORMAN=artifacts/paper_evidence/norman_crispra
-NORMAN_SELECTOR=artifacts/paper_evidence/selector_mlp_biology_range_fullteachers/norman_crispra
 COL_MATCHED=artifacts/paper_evidence/matched_fraction/colon
 OUT="${OUT:-artifacts/paper_evidence/downstream_complete}"
 MARKER_PANEL="${MARKER_PANEL:-source}"
@@ -151,22 +149,10 @@ elif (( SLURM_ARRAY_TASK_ID == 4 )); then
 
 else
   case "${SLURM_ARRAY_TASK_ID}" in
-    5)
-      dataset=norman_crispra
-      intervention=gain_of_function
-      root="${NORMAN}"
-      truth=external_data/prepared/norman_crispra.h5ad
-      selector="${NORMAN_SELECTOR}"
-      gene_median="${root}/methods/gene_median"
-      svd="${root}/methods/svd_impute"
-      graph="${root}/methods/graph_smooth"
-      fusion="${root}/methods/safe_fusion"
-      doi=10.1126/science.aax4438
-      ;;
-    6|7|8)
-      datasets=(unused unused unused unused unused unused adamson_crispri dixit_ko papalexi_eccite)
-      interventions=(unused unused unused unused unused unused loss_of_function loss_of_function loss_of_function)
-      dois=(unused unused unused unused unused unused 10.1016/j.cell.2016.11.048 10.1016/j.cell.2016.11.038 10.1038/s41588-021-00778-2)
+    5|6|7)
+      datasets=(unused unused unused unused unused adamson_crispri dixit_ko papalexi_eccite)
+      interventions=(unused unused unused unused unused loss_of_function loss_of_function loss_of_function)
+      dois=(unused unused unused unused unused 10.1016/j.cell.2016.11.048 10.1016/j.cell.2016.11.038 10.1038/s41588-021-00778-2)
       dataset="${datasets[SLURM_ARRAY_TASK_ID]}"
       intervention="${interventions[SLURM_ARRAY_TASK_ID]}"
       doi="${dois[SLURM_ARRAY_TASK_ID]}"

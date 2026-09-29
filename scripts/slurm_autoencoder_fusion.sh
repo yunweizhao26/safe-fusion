@@ -4,7 +4,7 @@
 #SBATCH --time=02:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
-#SBATCH --array=0-9
+#SBATCH --array=0-7
 #SBATCH --output=logs/slurm-autoencoder-%A_%a.out
 #SBATCH --error=logs/slurm-autoencoder-%A_%a.err
 
@@ -17,7 +17,7 @@ export OPENBLAS_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export MKL_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 source scripts/unit_paths.sh
 
-units=(pancreas_0 pancreas_1 pancreas_2 colon norman_crispra)
+units=(pancreas_0 pancreas_1 pancreas_2 colon)
 modes=(resampled masked_positives)
 unit_paths "${units[SLURM_ARRAY_TASK_ID / 2]}"
 mode="${modes[SLURM_ARRAY_TASK_ID % 2]}"

@@ -4,7 +4,7 @@
 #SBATCH --time=01:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=48G
-#SBATCH --array=0-8
+#SBATCH --array=0-7
 #SBATCH --output=logs/slurm-apply-fill-fraction-%A_%a.out
 #SBATCH --error=logs/slurm-apply-fill-fraction-%A_%a.err
 
@@ -19,7 +19,6 @@ PAN=artifacts/pancreas_runs/0b2469810675-45c81b160d78
 CF=artifacts/paper_evidence/pancreas_crossfit
 COL=artifacts/colon_runs/0b2469810675-c0db6f963e94
 COL_METHODS="${COL}/methods/standardized/colon_epithelial/mask_010"
-NORMAN=artifacts/paper_evidence/norman_crispra
 
 case "${SLURM_ARRAY_TASK_ID}" in
   0)
@@ -45,15 +44,8 @@ case "${SLURM_ARRAY_TASK_ID}" in
     knn="${root}/graph_smooth"
     out="${root}/matched_fraction"
     ;;
-  5)
-    corrupted="${NORMAN}/corrupted.h5ad"
-    splits="${NORMAN}/splits.parquet"
-    svd="${NORMAN}/methods/svd_impute"
-    knn="${NORMAN}/methods/graph_smooth"
-    out="${NORMAN}/matched_fraction"
-    ;;
-  6|7|8)
-    datasets=(unused unused unused unused unused unused adamson_crispri dixit_ko papalexi_eccite)
+  5|6|7)
+    datasets=(unused unused unused unused unused adamson_crispri dixit_ko papalexi_eccite)
     root="artifacts/external_perturbseq/${datasets[SLURM_ARRAY_TASK_ID]}"
     corrupted="${root}/corrupted.h5ad"
     splits="${root}/splits.parquet"

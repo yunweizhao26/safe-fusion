@@ -4,7 +4,7 @@
 #SBATCH --time=02:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
-#SBATCH --array=0-8%5
+#SBATCH --array=0-7%5
 #SBATCH --output=logs/slurm-deployment-prepare-%A_%a.out
 #SBATCH --error=logs/slurm-deployment-prepare-%A_%a.err
 

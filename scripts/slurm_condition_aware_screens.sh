@@ -17,7 +17,7 @@ export MKL_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 source scripts/unit_paths.sh
 source scripts/deployment_paths.sh
 
-screens=(norman_crispra adamson_crispri dixit_ko papalexi_eccite)
+screens=(adamson_crispri dixit_ko papalexi_eccite)
 settings=(masked deployment)
 screen="${screens[SLURM_ARRAY_TASK_ID / 2]}"
 setting="${settings[SLURM_ARRAY_TASK_ID % 2]}"

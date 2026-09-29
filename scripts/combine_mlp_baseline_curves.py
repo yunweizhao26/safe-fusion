@@ -141,8 +141,12 @@ def main() -> None:
         "Colon": [evidence / "selector_mlp_biology_range" / "colon" / "calibration_report.json"],
         "CRISPRa": [evidence / "selector_mlp_biology_range_fullteachers" / "norman_crispra" / "calibration_report.json"],
     }
+    baseline = pd.read_csv(args.baseline)
+    baseline = baseline.loc[baseline["method"] != "Safe Fusion"]
     frames = []
     for dataset, paths in mlp_paths.items():
+        if dataset not in set(baseline["dataset"]):
+            continue
         frame = pool_curves(paths)
         frame.insert(0, "comparison", "safe_fusion")
         frame.insert(0, "method", "Safe Fusion MLP")
@@ -159,8 +163,6 @@ def main() -> None:
                 stacked.insert(0, "dataset", dataset)
                 frames.append(stacked)
 
-    baseline = pd.read_csv(args.baseline)
-    baseline = baseline.loc[baseline["method"] != "Safe Fusion"]
     combined = pd.concat([*frames, baseline], ignore_index=True)
     canonical_coverage = np.linspace(0.001, 1.0, 1000)
     normalized = []

@@ -74,6 +74,13 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=1729)
     parser.add_argument("--cells-per-stratum", type=int, default=12)
     parser.add_argument("--variable-genes", type=int, default=1200)
+    parser.add_argument(
+        "--gene-selection-splits",
+        default=None,
+        help="Splits parquet (cell_id, split) of one donor fold. The variable genes are then "
+        "selected on its development cells, and locked_split records that fold's split. "
+        "Default: the development donors of the 50/25/25 donor assignment of --seed.",
+    )
     args = parser.parse_args()
 
     source_path = Path(args.input).resolve()
@@ -89,6 +96,13 @@ def main() -> None:
     if np.any(counts.data < 0) or np.any(counts.data != np.floor(counts.data)):
         raise ValueError("source raw matrix is not non-negative integer counts")
     split = obs["donor_id"].astype(str).map(donor_split).to_numpy()
+    selected_on = "development donors only"
+    if args.gene_selection_splits:
+        fold = pd.read_parquet(args.gene_selection_splits).set_index("cell_id")["split"]
+        split = fold.reindex(obs.index.astype(str)).to_numpy()
+        if pd.isna(split).any():
+            raise ValueError("gene-selection splits do not cover every prepared cell")
+        selected_on = f"development cells of {args.gene_selection_splits}"
     genes, score = select_features(counts, split == "development", source.raw.var, args.variable_genes)
     counts = counts[:, genes].tocsr()
     var = source.raw.var.iloc[genes].copy()
@@ -112,7 +126,7 @@ def main() -> None:
     }
     prepared.uns["benchmark_preparation"] = {
         "seed": args.seed, "cells_per_donor_celltype_condition_stratum": args.cells_per_stratum,
-        "variable_genes_selected_on": "development donors only", "curated_markers_appended": list(CURATED_MARKERS),
+        "variable_genes_selected_on": selected_on, "curated_markers_appended": list(CURATED_MARKERS),
         "donor_assignment": donor_split,
     }
     output = Path(args.output).resolve()
