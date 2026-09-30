@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -14,7 +15,6 @@ from scipy import sparse
 from sklearn.decomposition import PCA
 from sklearn.neighbors import NearestNeighbors
 
-
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
@@ -22,12 +22,10 @@ from safefusion_benchmark.contracts import order_hash, write_output_contract
 from safefusion_benchmark.hashing import sha256_file
 from safefusion_benchmark.splits import FOLDS, training_folds
 
-
 def log1p_cpm(counts: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     library = counts.sum(axis=1, dtype=np.float64)
     scale = np.divide(1e4, library, out=np.zeros_like(library), where=library > 0)
     return np.log1p(counts * scale[:, None]).astype(np.float32), library.astype(np.float32)
-
 
 def gene_medians(counts: np.ndarray, training: np.ndarray) -> np.ndarray:
     result = np.zeros(counts.shape[1], dtype=np.float32)
@@ -38,29 +36,24 @@ def gene_medians(counts: np.ndarray, training: np.ndarray) -> np.ndarray:
             result[gene] = np.median(values)
     return result
 
-
 def fill_zeros(counts: np.ndarray, medians: np.ndarray) -> np.ndarray:
     output = counts.astype(np.float32, copy=True)
     rows, cols = np.where(output == 0)
     output[rows, cols] = medians[cols]
     return output
 
-
 def gene_median(counts: np.ndarray, training: np.ndarray) -> np.ndarray:
     return fill_zeros(counts, gene_medians(counts, training))
-
 
 def fit_pca(normalized: np.ndarray, components: int, seed: int) -> PCA:
     n_components = min(components, normalized.shape[0] - 1, normalized.shape[1] - 1)
     return PCA(n_components=n_components, svd_solver="randomized", random_state=seed).fit(normalized)
-
 
 def svd_reconstruct(model: PCA, counts: np.ndarray) -> np.ndarray:
     normalized, library = log1p_cpm(counts)
     reconstructed = model.inverse_transform(model.transform(normalized))
     reconstructed = np.expm1(np.clip(reconstructed, 0.0, 20.0))
     return np.clip(reconstructed * (library[:, None] / 1e4), 0.0, None).astype(np.float32)
-
 
 class SVDTeacher:
     def __init__(self, counts: np.ndarray, training: np.ndarray, seed: int, components: int):
@@ -74,6 +67,7 @@ class SVDTeacher:
         ]
 
     def training_proposals(self, fit_counts: np.ndarray) -> np.ndarray:
+
         output = np.empty_like(fit_counts, dtype=np.float32)
         for fold, model in enumerate(self.fold_models):
             rows = self.folds == fold
@@ -84,7 +78,6 @@ class SVDTeacher:
         output = svd_reconstruct(self.model, counts)
         output[self.training_rows] = self.training_proposals(counts[self.training_rows])
         return output
-
 
 class GraphTeacher:
     def __init__(self, counts: np.ndarray, training: np.ndarray, pca: PCA, neighbors: int):
@@ -122,6 +115,7 @@ class GraphTeacher:
         return output
 
     def training_proposals(self, fit_counts: np.ndarray) -> np.ndarray:
+
         return self.smooth(fit_counts, np.arange(len(fit_counts)))
 
     def proposals(self, counts: np.ndarray) -> np.ndarray:
@@ -129,8 +123,8 @@ class GraphTeacher:
         self_index[self.training_rows] = np.arange(len(self.training_rows))
         return self.smooth(counts, self_index)
 
-
 class ConditionGraphTeacher:
+
     def __init__(self, counts: np.ndarray, training: np.ndarray, conditions: np.ndarray, pca: PCA, neighbors: int):
         conditions = np.asarray(conditions).astype(str)
         self.groups = {}
@@ -146,17 +140,22 @@ class ConditionGraphTeacher:
             output[rows] = teacher.proposals(counts[rows])
         return output
 
+    def smooth_transductive(self, counts: np.ndarray) -> np.ndarray:
+
+        output = np.empty(counts.shape, dtype=np.float32)
+        for rows, teacher in self.groups.values():
+            output[rows] = teacher.smooth(counts[rows], np.full(len(rows), -1))
+        return output
 
 VALUE_MODELS = ("boosted", "linear")
 MAX_VALUE_FIT_ENTRIES = 600_000
 
-
 def value_features(teacher_logs: np.ndarray, gene_mean: np.ndarray, detection: np.ndarray,
                    library_log: np.ndarray, rows: np.ndarray, cols: np.ndarray) -> np.ndarray:
+
     return np.column_stack(
         [teacher_logs, teacher_logs.std(axis=1), gene_mean[cols], detection[cols], library_log[rows]]
     ).astype(np.float32)
-
 
 def fit_value_model(kind: str, teacher_logs: np.ndarray, features: np.ndarray, target: np.ndarray, seed: int):
     if kind == "linear":
@@ -175,13 +174,11 @@ def fit_value_model(kind: str, teacher_logs: np.ndarray, features: np.ndarray, t
     model.fit(features[keep], target[keep])
     return kind, model
 
-
 def predict_value_model(fitted, teacher_logs: np.ndarray, features: np.ndarray) -> np.ndarray:
     kind, model = fitted
     if kind == "linear":
         return np.column_stack([teacher_logs, np.ones(len(teacher_logs))]) @ model
     return model.predict(features)
-
 
 def fused_value(
     counts: np.ndarray,
@@ -191,6 +188,7 @@ def fused_value(
     kind: str,
     seed: int,
 ) -> tuple[np.ndarray, dict]:
+
     names = list(teachers)
     rows = coordinates["cell_index"].to_numpy(dtype=np.int64)
     cols = coordinates["gene_index"].to_numpy(dtype=np.int64)
@@ -254,7 +252,6 @@ def fused_value(
         details["boosting_iterations"] = int(fitted[1].n_iter_)
     return prediction, details
 
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -289,14 +286,16 @@ def main() -> None:
             "included, without cross-fitting: each cell's proposal comes from a fit that contains its own "
             "counts, and every cell is in its own kNN neighbour set. For safe_fusion, accept count-scale "
             "teacher contracts fitted this way. The fused value is still fitted on the masked positives of "
-            "the model-fitting cells only, and no hidden value is used."
+            "the model-fitting cells only, and no hidden value is used. For graph_smooth, --condition-column "
+            "is supported: the kNN teacher then searches only among all cells (held-out included) with the "
+            "same label, each cell in its own condition-restricted neighbour set."
         ),
     )
     args = parser.parse_args()
     if args.method == "safe_fusion" and len(args.teacher_contract) < 2:
         raise ValueError("safe_fusion needs at least two --teacher-contract directories")
-    if args.transductive and args.condition_column is not None:
-        raise ValueError("--transductive does not support --condition-column")
+    if args.transductive and args.condition_column is not None and args.method != "graph_smooth":
+        raise ValueError("--transductive supports --condition-column only for graph_smooth")
 
     adata = ad.read_h5ad(args.input)
     matrix = adata.layers["corrupted_counts"] if "corrupted_counts" in adata.layers else adata.X
@@ -317,8 +316,12 @@ def main() -> None:
     elif args.method in {"svd_impute", "graph_smooth"}:
         svd = SVDTeacher(counts, training, args.seed, args.components)
     if args.method == "graph_smooth":
-        if args.transductive:
+        if args.transductive and args.condition_column is None:
             graph = GraphTeacher(counts, teacher_cells, transductive_pca, args.neighbors)
+        elif args.transductive:
+            graph = ConditionGraphTeacher(
+                counts, teacher_cells, adata.obs[args.condition_column].to_numpy(), transductive_pca, args.neighbors
+            )
         elif args.condition_column is None:
             assert svd is not None
             graph = GraphTeacher(counts, training, svd.model, args.neighbors)
@@ -351,7 +354,11 @@ def main() -> None:
             prediction = svd.proposals(counts)
     elif args.method == "graph_smooth":
         assert graph is not None
-        if args.transductive:
+        if args.transductive and args.condition_column is not None:
+            assert isinstance(graph, ConditionGraphTeacher)
+            prediction = graph.smooth_transductive(counts)
+        elif args.transductive:
+
             prediction = graph.smooth(counts, np.full(len(counts), -1))
         else:
             prediction = graph.proposals(counts)
@@ -396,7 +403,6 @@ def main() -> None:
     }
     write_output_contract(args.output, prediction, metadata)
     print(json.dumps({"method": args.method, "shape": list(prediction.shape), "parameters": details}, default=str))
-
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -10,8 +11,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[1]
+
 METHOD_STYLES = {
     "Safe Fusion": {"color": "#7B2CBF", "linewidth": 1.1, "linestyle": "-", "zorder": 10},
     "Safe Fusion MLP": {"color": "#7B2CBF", "linewidth": 1.1, "linestyle": "-", "zorder": 10},
@@ -23,7 +24,6 @@ METHOD_STYLES = {
     "scGPT": {"color": "#8C564B", "linewidth": 0.9, "linestyle": "-", "zorder": 3},
     "Weighted kNN": {"color": "#4D4D4D", "linewidth": 0.9, "linestyle": "--", "zorder": 2},
 }
-
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -44,15 +44,36 @@ def main() -> None:
         / "figures"
         / "f1_fillrate_3panel_oup.png",
     )
+    parser.add_argument(
+        "--safe-fusion-method",
+        default=None,
+        help="Method name plotted as the solid Safe Fusion curve (default: autodetect "
+        "'Safe Fusion MLP' then 'Safe Fusion').",
+    )
+    parser.add_argument(
+        "--second-curve-method",
+        default=None,
+        help="An additional method plotted as a dashed second curve in the Safe Fusion colour "
+        "(for example the inductive selector, for reference next to a transductive main curve).",
+    )
+    parser.add_argument(
+        "--second-curve-label",
+        default=None,
+        help="Legend label of --second-curve-method (default: the method name).",
+    )
     args = parser.parse_args()
 
     table = pd.read_csv(args.input)
     datasets = ("Pancreas", "Colon", "CRISPRa")
-    safe_fusion_method = (
-        "Safe Fusion MLP"
-        if "Safe Fusion MLP" in set(table["method"])
-        else "Safe Fusion"
-    )
+    if args.safe_fusion_method is not None:
+        safe_fusion_method = args.safe_fusion_method
+    else:
+        safe_fusion_method = (
+            "Safe Fusion MLP"
+            if "Safe Fusion MLP" in set(table["method"])
+            else "Safe Fusion"
+        )
+
     methods = (
         safe_fusion_method,
         "scVI",
@@ -68,14 +89,27 @@ def main() -> None:
     for axis, dataset in zip(axes, datasets):
         subset = table.loc[table["dataset"] == dataset]
         for method in methods:
-            style = METHOD_STYLES[method]
+            style = METHOD_STYLES.get(method, METHOD_STYLES["Safe Fusion"])
             curve = subset.loc[subset["method"] == method]
             if curve.empty:
                 raise ValueError(f"Missing {dataset} curve for {method}")
             axis.plot(
                 100.0 * curve["realized_fill_fraction"],
                 100.0 * curve["masked_f1"],
-                label="Safe Fusion" if method == "Safe Fusion MLP" else method,
+                label="Safe Fusion" if method in ("Safe Fusion MLP", safe_fusion_method) else method,
+                **style,
+            )
+        if args.second_curve_method is not None:
+            style = dict(METHOD_STYLES["Safe Fusion"])
+            style["linestyle"] = "--"
+            style["zorder"] = style.get("zorder", 10) - 1
+            curve = subset.loc[subset["method"] == args.second_curve_method]
+            if curve.empty:
+                raise ValueError(f"Missing {dataset} curve for {args.second_curve_method}")
+            axis.plot(
+                100.0 * curve["realized_fill_fraction"],
+                100.0 * curve["masked_f1"],
+                label=args.second_curve_label or args.second_curve_method,
                 **style,
             )
         axis.set_title(dataset)
@@ -95,13 +129,12 @@ def main() -> None:
         frameon=False,
         fontsize=8,
         loc="lower center",
-        ncol=len(methods),
+        ncol=len(methods) + (1 if args.second_curve_method is not None else 0),
         bbox_to_anchor=(0.5, -0.01),
     )
     fig.tight_layout(rect=(0.0, 0.07, 1.0, 1.0))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(args.output, dpi=240, bbox_inches="tight")
-
 
 if __name__ == "__main__":
     main()

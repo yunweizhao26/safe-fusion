@@ -1,4 +1,4 @@
-DEPLOY_KEYS=(pancreas_0 pancreas_1 pancreas_2 colon adamson_crispri dixit_ko papalexi_eccite zebrafish)
+DEPLOY_KEYS=(pancreas_0 pancreas_1 pancreas_2 colon norman_crispra adamson_crispri dixit_ko papalexi_eccite zebrafish)
 DEPLOY_ROOT="${DEPLOY_ROOT:-artifacts/paper_evidence/downstream_deployment}"
 
 deployment_paths() {

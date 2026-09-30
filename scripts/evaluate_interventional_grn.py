@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -12,16 +13,13 @@ import pandas as pd
 from scipy import sparse
 from sklearn.metrics import roc_auc_score
 
-
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
 from safefusion_benchmark.metrics import average_precision_tie_aware, spearman
 
-
 def dense(value) -> np.ndarray:
     return value.toarray() if sparse.issparse(value) else np.asarray(value)
-
 
 def parse_method(value: str) -> tuple[str, Path]:
     name, path = value.split("=", 1)
@@ -29,12 +27,10 @@ def parse_method(value: str) -> tuple[str, Path]:
         raise ValueError("methods must use name=contract_directory")
     return name, Path(path)
 
-
 def log2fc(matrix: np.ndarray, condition: np.ndarray, control: np.ndarray) -> np.ndarray:
     return np.log2(matrix[condition].mean(axis=0) + 1.0) - np.log2(
         matrix[control].mean(axis=0) + 1.0
     )
-
 
 def robust_edge_labels(
     reference_effect: np.ndarray,
@@ -53,20 +49,16 @@ def robust_edge_labels(
     labels = eligible & consistent & (np.abs(reference_effect) >= threshold)
     return labels
 
-
 def split_halves(cells: np.ndarray, rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray]:
     reference, scored = np.array_split(rng.permutation(cells), 2)
     return np.sort(reference), np.sort(scored)
-
 
 def jaccard(first: np.ndarray, second: np.ndarray) -> float:
     union = np.sum(first | second)
     return float(np.sum(first & second) / union) if union else 1.0
 
-
 def binary_roc_auc(labels: np.ndarray, scores: np.ndarray) -> float:
     return float(roc_auc_score(labels, scores)) if np.unique(labels).size == 2 else float("nan")
-
 
 def summarize_units(
     unit_metrics: pd.DataFrame,
@@ -114,7 +106,6 @@ def summarize_units(
             })
     return pd.DataFrame(estimates), pd.DataFrame(comparisons)
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", required=True)
@@ -128,6 +119,11 @@ def main() -> None:
     parser.add_argument("--min-cells-per-split", type=int, default=10)
     parser.add_argument("--seed", type=int, default=1729)
     parser.add_argument("--publication-doi", default="")
+    parser.add_argument(
+        "--allow-transductive",
+        action="store_true",
+        help="accept contracts that declare a transductive fit on all cells (standard MAGIC and scVI) and mark them in the leakage table",
+    )
     args = parser.parse_args()
 
     truth_adata = ad.read_h5ad(args.truth)
@@ -164,7 +160,11 @@ def main() -> None:
             and parameters.get("fit_cells") == int(development.sum())
             and (not decision or decision.get("test_labels_used_for_thresholds") is False)
         )
-        leakage.append({"method": name, "passed": passed})
+        record = {"method": name, "passed": passed}
+        if args.allow_transductive:
+            record["transductive"] = parameters.get("transductive") is True and not decision
+            record["passed"] = passed or record["transductive"]
+        leakage.append(record)
     if not all(item["passed"] for item in leakage):
         raise ValueError("one or more method contracts failed leakage checks")
 
@@ -279,7 +279,6 @@ def main() -> None:
     }
     (output / "report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps(report, indent=2, sort_keys=True))
-
 
 if __name__ == "__main__":
     main()

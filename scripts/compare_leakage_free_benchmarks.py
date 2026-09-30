@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -19,6 +20,7 @@ from safefusion_benchmark.corruption import _quantile_bins
 EVIDENCE = REPOSITORY / "artifacts" / "paper_evidence"
 PANCREAS_RUN = REPOSITORY / "artifacts" / "pancreas_runs" / "0b2469810675-45c81b160d78" / "data" / "pancreas_islets"
 COLON_RUN = REPOSITORY / "artifacts" / "colon_runs" / "0b2469810675-c0db6f963e94" / "data" / "colon_epithelial"
+NORMAN_PREPARED = REPOSITORY / "external_data" / "prepared" / "norman_crispra.h5ad"
 
 TABLE_ROWS = (
     ("SVD", "SVD"), ("Weighted kNN", "Weighted kNN"), ("ALRA", "ALRA"), ("SAVER", "SAVER"),
@@ -26,14 +28,12 @@ TABLE_ROWS = (
     ("Selector on SVD", "SVD (stacked)"), ("Selector on MAGIC", "MAGIC (stacked)"),
     ("Selector on scVI", "scVI (stacked)"),
 )
-DATASETS = ("Pancreas", "Colon")
+DATASETS = ("Pancreas", "Colon", "CRISPRa")
 STRATA_BINS = 4
 MASK_FRACTION = 0.10
 
-
 def dense(value) -> np.ndarray:
     return value.toarray() if sparse.issparse(value) else np.asarray(value)
-
 
 def table1(production: Path, rebuilt: Path) -> pd.DataFrame:
     rows = []
@@ -64,16 +64,16 @@ def table1(production: Path, rebuilt: Path) -> pd.DataFrame:
     wide["change_pp"] = wide["leakage_free_estimate_pp"] - wide["production_estimate_pp"]
     return wide.reset_index(drop=True)
 
-
 def training_bins(values: np.ndarray, training: np.ndarray) -> np.ndarray:
+
     reference = np.sort(values[training])
     below = np.searchsorted(reference, values, side="left")
     equal = np.searchsorted(reference, values, side="right") - below
     percentile = (below + (equal + 1) / 2) / len(reference)
     return np.minimum((percentile * STRATA_BINS).astype(int), STRATA_BINS - 1)
 
-
 def strata_change(counts: np.ndarray, training: np.ndarray) -> dict:
+
     library = counts.sum(axis=1)
     library_all = _quantile_bins(library, STRATA_BINS)
     library_training = training_bins(library, training)
@@ -103,12 +103,11 @@ def strata_change(counts: np.ndarray, training: np.ndarray) -> dict:
         "masking_probability_per_stratum": MASK_FRACTION,
     }
 
-
 def split_of(adata: ad.AnnData, path: Path) -> np.ndarray:
     return pd.read_parquet(path).set_index("cell_id").loc[adata.obs_names.astype(str), "split"].to_numpy()
 
-
 def target_activation(prepared: Path) -> dict:
+
     adata = ad.read_h5ad(prepared)
     counts = dense(adata.layers["counts"])
     genes = {gene: index for index, gene in enumerate(adata.var["feature_name"].astype(str))}
@@ -122,7 +121,6 @@ def target_activation(prepared: Path) -> dict:
     values = np.asarray(values)
     return {"targets": int(len(values)), "targets_with_log2fc_at_least_0.5": int(np.sum(values >= 0.5)),
             "median_log2fc": float(np.median(values))}
-
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -161,27 +159,40 @@ def main() -> None:
     colon = ad.read_h5ad(COLON_RUN / "preprocessed.h5ad")
     strata["colon"] = strata_change(dense(colon.layers["counts"]).astype(np.float64),
                                     split_of(colon, COLON_RUN / "splits.parquet") != "test")
+    production_norman = ad.read_h5ad(NORMAN_PREPARED)
+    strata["norman_production"] = strata_change(
+        dense(production_norman.layers["counts"]).astype(np.float64),
+        split_of(production_norman, EVIDENCE / "norman_crispra" / "splits.parquet") != "test")
     rebuilt_norman = ad.read_h5ad(root / "norman_crispra" / "prepared.h5ad")
     strata["norman_leakage_free"] = strata_change(
         dense(rebuilt_norman.layers["counts"]).astype(np.float64),
         split_of(rebuilt_norman, root / "norman_crispra" / "splits.parquet") != "test")
     audit["mask_strata_training_cells_only"] = strata
 
+    production_report = json.loads(NORMAN_PREPARED.with_suffix(".report.json").read_text())
     rebuilt_report = json.loads((root / "norman_crispra" / "prepared.report.json").read_text())
     qc = pd.DataFrame(rebuilt_report["qc_all_conditions"])
+    production_set = {row["condition"] for row in production_report["conditions"]}
+    rebuilt_set = {row["condition"] for row in rebuilt_report["conditions"]}
     audit["norman_conditions"] = {
         "single_gene_conditions": rebuilt_report["single_gene_conditions_total"],
         "target_in_gene_list": int(len(qc)),
         "too_few_cells": int(np.sum(qc["reason"] == "too_few_cells")),
         "tested": int(np.sum(qc["reason"] != "too_few_cells")),
-        "passed_on_development_cells": len(rebuilt_report["conditions"]),
+        "passed_on_all_cells": len(production_set),
+        "passed_on_development_cells": len(rebuilt_set),
+        "passed_on_both": len(production_set & rebuilt_set),
+        "only_all_cells": sorted(production_set - rebuilt_set),
+        "only_development_cells": sorted(rebuilt_set - production_set),
     }
-    audit["norman_target_activation_by_label"] = target_activation(root / "norman_crispra" / "prepared.h5ad")
+    audit["norman_target_activation_by_label"] = {
+        "production": target_activation(NORMAN_PREPARED),
+        "leakage_free": target_activation(root / "norman_crispra" / "prepared.h5ad"),
+    }
     (root / "leakage_audit.json").write_text(json.dumps(audit, indent=2) + "\n")
     with pd.option_context("display.width", 200, "display.max_columns", 20):
         print(table.to_string(index=False, float_format=lambda value: f"{value:.2f}"))
     print(json.dumps(audit, indent=2))
-
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -14,26 +15,21 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor, NearestNeighbors
 
-
 def dense(value) -> np.ndarray:
     return value.toarray() if sparse.issparse(value) else np.asarray(value)
-
 
 def log1p_cpm(counts: np.ndarray) -> np.ndarray:
     library = counts.sum(axis=1, keepdims=True)
     scale = np.divide(10_000.0, library, out=np.zeros_like(library), where=library > 0)
     return np.log1p(counts * scale).astype(np.float32)
 
-
 def parse_method(value: str) -> tuple[str, Path]:
     name, path = value.split("=", 1)
     return name, Path(path)
 
-
 def correlation(first: np.ndarray, second: np.ndarray) -> float:
     value = spearmanr(first, second).statistic
     return float(value) if np.isfinite(value) else 0.0
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -44,6 +40,11 @@ def main() -> None:
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--bootstrap", type=int, default=2000)
     parser.add_argument("--seed", type=int, default=1729)
+    parser.add_argument(
+        "--allow-transductive",
+        action="store_true",
+        help="accept contracts that declare a transductive fit on all cells (standard MAGIC and scVI) and mark them in the leakage table",
+    )
     args = parser.parse_args()
 
     truth_adata = ad.read_h5ad(args.truth)
@@ -82,7 +83,11 @@ def main() -> None:
             and parameters.get("fit_cells") == int(development.sum())
             and decision_passed
         )
-        leakage.append({"method": name, "passed": passed})
+        record = {"method": name, "passed": passed}
+        if args.allow_transductive:
+            record["transductive"] = parameters.get("transductive") is True and not decision
+            record["passed"] = passed or record["transductive"]
+        leakage.append(record)
     if not all(item["passed"] for item in leakage):
         raise ValueError("method failed leakage audit")
 
@@ -192,7 +197,6 @@ def main() -> None:
     }
     (output / "report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps(report, indent=2, sort_keys=True))
-
 
 if __name__ == "__main__":
     main()

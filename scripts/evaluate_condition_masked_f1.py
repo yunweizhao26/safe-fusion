@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -14,6 +15,7 @@ from masked_f1_units import EVIDENCE, ROOT, UNIT_FRACTIONS, Unit, count_scale_va
 from paired_masked_f1_bootstrap import pooled_f1, unit_arrays
 
 SCREENS = ("norman_crispra", "adamson_crispri", "dixit_ko", "papalexi_eccite")
+
 VALUE_METHODS = {
     "svd": "svd_impute",
     "weighted_knn": "graph_smooth",
@@ -25,20 +27,21 @@ VALUE_METHODS = {
 SELECTOR_METHODS = ("safe_fusion", "safe_fusion_condition")
 METHOD_ORDER = ("safe_fusion", "svd", "weighted_knn", "magic", "scvi",
                 "safe_fusion_condition", "knn_condition", "scvi_condition")
+
 LABEL_PAIRS = (("safe_fusion_condition", "safe_fusion"), ("knn_condition", "weighted_knn"), ("scvi_condition", "scvi"))
 LABEL_CONTRACTS = ("knn_condition", "scvi_condition")
 
-
 @dataclass
 class NormanPaths:
+
     benchmark: Path
     methods: Path
     label_methods: Path
     truth: Path
     selector: Path
 
-
 def screen_unit(dataset: str, external: Path, norman: NormanPaths, seed: int) -> tuple[Unit, dict[str, Path]]:
+
     if dataset == "norman_crispra":
         root, methods, label_methods, truth = norman.benchmark, norman.methods, norman.label_methods, norman.truth
         selectors = {"safe_fusion": norman.selector, "safe_fusion_condition": label_methods / "selector_condition"}
@@ -63,7 +66,6 @@ def screen_unit(dataset: str, external: Path, norman: NormanPaths, seed: int) ->
         contracts={name: (label_methods if name in LABEL_CONTRACTS else methods) / contract for name, contract in VALUE_METHODS.items()},
     )
     return unit, selectors
-
 
 def evaluate_screen(unit: Unit, selectors: dict[str, Path]) -> tuple[list[dict], pd.DataFrame]:
     data = load_unit(unit)
@@ -104,12 +106,11 @@ def evaluate_screen(unit: Unit, selectors: dict[str, Path]) -> tuple[list[dict],
             })
     return records, pd.concat(units, ignore_index=True)
 
-
 def interval(point: float, boot: np.ndarray) -> list[float]:
     return [round(100 * point, 3), round(100 * float(np.quantile(boot, 0.025)), 3), round(100 * float(np.quantile(boot, 0.975)), 3)]
 
-
 def paired_screen_intervals(units: pd.DataFrame, draws: int, seed: int) -> dict:
+
     report = {}
     for dataset, frame in units.groupby("dataset", sort=False):
         labels = sorted(frame["unit"].unique())
@@ -129,7 +130,6 @@ def paired_screen_intervals(units: pd.DataFrame, draws: int, seed: int) -> dict:
         report[dataset] = entry
     return report
 
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--evidence-root", type=Path, default=EVIDENCE)
@@ -137,25 +137,23 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=EVIDENCE / "perturbation_zeros")
     parser.add_argument("--unit-output-dir", type=Path, default=None,
                         help="When given, also write masked F1 per screen with intervals over perturbation labels.")
-    parser.add_argument("--norman-benchmark", type=Path, default=None,
-                        help="Defaults to <evidence-root>/review_round2/leakage_free/norman_crispra.")
+    parser.add_argument("--norman-benchmark", type=Path, default=None, help="Defaults to <evidence-root>/norman_crispra.")
     parser.add_argument("--norman-methods", type=Path, default=None, help="Defaults to <norman-benchmark>/methods.")
     parser.add_argument("--norman-label-methods", type=Path, default=None, help="Defaults to <norman-methods>.")
-    parser.add_argument("--norman-truth", type=Path, default=None, help="Defaults to <norman-benchmark>/prepared.h5ad.")
+    parser.add_argument("--norman-truth", type=Path, default=ROOT / "external_data" / "prepared" / "norman_crispra.h5ad")
     parser.add_argument("--norman-selector", type=Path, default=None,
-                        help="Defaults to <evidence-root>/review_round2/leakage_free/selector_mlp_biology_range_fullteachers/norman_crispra.")
+                        help="Defaults to <evidence-root>/selector_mlp_biology_range_fullteachers/norman_crispra.")
     parser.add_argument("--draws", type=int, default=2000)
     parser.add_argument("--seed", type=int, default=1729)
     args = parser.parse_args()
-    leakage_free = args.evidence_root / "review_round2" / "leakage_free"
-    benchmark = args.norman_benchmark or leakage_free / "norman_crispra"
+    benchmark = args.norman_benchmark or args.evidence_root / "norman_crispra"
     methods = args.norman_methods or benchmark / "methods"
     norman = NormanPaths(
         benchmark=benchmark,
         methods=methods,
         label_methods=args.norman_label_methods or methods,
-        truth=args.norman_truth or benchmark / "prepared.h5ad",
-        selector=args.norman_selector or leakage_free / "selector_mlp_biology_range_fullteachers" / "norman_crispra",
+        truth=args.norman_truth,
+        selector=args.norman_selector or args.evidence_root / "selector_mlp_biology_range_fullteachers" / "norman_crispra",
     )
 
     records, unit_frames = [], []
@@ -187,7 +185,6 @@ def main() -> None:
     paired = paired_screen_intervals(units, args.draws, args.seed)
     (args.unit_output_dir / "masked_f1_by_screen.json").write_text(json.dumps(paired, indent=1) + "\n")
     print(json.dumps(paired, indent=1))
-
 
 if __name__ == "__main__":
     main()

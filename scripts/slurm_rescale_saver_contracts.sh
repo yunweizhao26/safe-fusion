@@ -17,3 +17,5 @@ B=artifacts/paper_evidence/baselines/saver
   --corrupted artifacts/pancreas_runs/0b2469810675-45c81b160d78/data/pancreas_islets/corrupted/mask_010.h5ad
 .venv/bin/python scripts/rescale_saver_contracts.py --contract "${B}/colon_mask_010" \
   --corrupted artifacts/colon_runs/0b2469810675-c0db6f963e94/data/colon_epithelial/corrupted/mask_010.h5ad
+.venv/bin/python scripts/rescale_saver_contracts.py --contract "${B}/norman_full_mask_010" \
+  --corrupted artifacts/paper_evidence/norman_crispra/corrupted.h5ad

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -8,7 +9,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
 
 ROOT = Path("artifacts/paper_evidence/downstream_complete")
 OUTPUT = ROOT / "summary"
@@ -20,6 +20,7 @@ SOURCES = [
     ("markers", "colon", ROOT / "markers/colon"),
     ("differential_expression", "pancreas", ROOT / "pancreas_biology"),
     ("trajectory", "zebrafish", ROOT / "trajectory/zebrafish"),
+    ("grn", "norman_crispra", ROOT / "grn/norman_crispra"),
     ("grn", "adamson_crispri", ROOT / "grn/adamson_crispri"),
     ("grn", "dixit_ko", ROOT / "grn/dixit_ko"),
     ("grn", "papalexi_eccite", ROOT / "grn/papalexi_eccite"),
@@ -61,15 +62,12 @@ TASK_METRICS = {
     },
 }
 
-
 def normalize_method(value: str) -> str:
     return "weighted_knn" if value == "graph_smooth" else value
-
 
 def budget_from_method(value: str) -> int | None:
     match = re.fullmatch(r"safe_fusion_(\d+)pct", value)
     return int(match.group(1)) if match else None
-
 
 def relevant_rows(task: str, frame: pd.DataFrame) -> pd.DataFrame:
     frame = frame[frame["metric"].isin(TASK_METRICS[task])].copy()
@@ -78,7 +76,6 @@ def relevant_rows(task: str, frame: pd.DataFrame) -> pd.DataFrame:
     if task == "differential_expression" and "scope" in frame:
         frame = frame[frame["scope"] == "disease_contrast"]
     return frame
-
 
 def load_all() -> tuple[pd.DataFrame, pd.DataFrame, list[dict]]:
     summaries = []
@@ -103,7 +100,6 @@ def load_all() -> tuple[pd.DataFrame, pd.DataFrame, list[dict]]:
         comparisons.append(comparison)
         reports.append({"task": task, "dataset": dataset, "path": str(report_path), "report": json.loads(report_path.read_text())})
     return pd.concat(summaries, ignore_index=True), pd.concat(comparisons, ignore_index=True), reports
-
 
 def build_range_conclusions(summary: pd.DataFrame, comparisons: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict] = []
@@ -166,7 +162,6 @@ def build_range_conclusions(summary: pd.DataFrame, comparisons: pd.DataFrame) ->
         })
     return pd.DataFrame(rows)
 
-
 def write_markdown(conclusions: pd.DataFrame, reports: list[dict]) -> None:
     primary = {
         "clustering": "annotation_ari",
@@ -205,7 +200,6 @@ def write_markdown(conclusions: pd.DataFrame, reports: list[dict]) -> None:
     lines.extend(f"- {item['task']}, {item['dataset']}: `{item['path']}`" for item in reports)
     (OUTPUT / "ANALYSIS.md").write_text("\n".join(lines) + "\n")
 
-
 def main() -> None:
     argparse.ArgumentParser(description=__doc__).parse_args()
     OUTPUT.mkdir(parents=True, exist_ok=True)
@@ -225,7 +219,6 @@ def main() -> None:
     }
     (OUTPUT / "report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps({key: value for key, value in report.items() if key != "reports"}, indent=2, sort_keys=True))
-
 
 if __name__ == "__main__":
     main()

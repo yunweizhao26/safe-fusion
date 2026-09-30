@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -40,21 +41,19 @@ TISSUES = {
     ),
 }
 
-
 def dense(value) -> np.ndarray:
     return value.toarray() if sparse.issparse(value) else np.asarray(value)
-
 
 def counts_of(adata: ad.AnnData) -> sparse.csr_matrix:
     return sparse.csr_matrix(adata.layers["counts"] if "counts" in adata.layers else adata.X)
 
-
 def rows_equal(left: sparse.csr_matrix, right: sparse.csr_matrix) -> float:
+
     difference = abs(sparse.csr_matrix(left, dtype=np.float64) - sparse.csr_matrix(right, dtype=np.float64))
     return float(np.mean(np.asarray(difference.sum(axis=1)).ravel() == 0))
 
-
 def target_change(counts: sparse.csr_matrix, genes: pd.Index, target: np.ndarray, control: np.ndarray) -> dict:
+
     changes = {}
     for name in sorted(set(target[~control]) - {"none"}):
         if name not in genes:
@@ -69,7 +68,6 @@ def target_change(counts: sparse.csr_matrix, genes: pd.Index, target: np.ndarray
         "targets_at_or_below_minus_0.25": int(np.sum(values <= -0.25)),
         "targets_at_or_above_0.5": int(np.sum(values >= 0.5)),
     }
-
 
 def audit_screen(name: str, dataset: str, source_path: Path) -> dict:
     prepared = ad.read_h5ad(PREPARED / f"{name}.h5ad")
@@ -90,8 +88,8 @@ def audit_screen(name: str, dataset: str, source_path: Path) -> dict:
         "target_gene_change_in_labelled_cells": target_change(counts, prepared.var_names, target, is_control),
     }
 
-
 def audit_papalexi_protein(panel_path: Path, mudata_path: Path) -> dict:
+
     import mudata as md
 
     prepared = ad.read_h5ad(PREPARED / "papalexi_eccite_crossmodal.h5ad")
@@ -118,7 +116,6 @@ def audit_papalexi_protein(panel_path: Path, mudata_path: Path) -> dict:
         "cells_with_mudata_rna_counts": rows_equal(prepared_counts, mudata_counts),
     }
 
-
 def audit_zebrafish(source_path: Path) -> dict:
     prepared = ad.read_h5ad(PREPARED / "zebrafish_trajectory.h5ad")
     source = ad.read_h5ad(source_path)
@@ -131,7 +128,6 @@ def audit_zebrafish(source_path: Path) -> dict:
         "cells_with_source_stage": float(np.mean(
             prepared.obs["condition"].astype(str).to_numpy() == source.obs["Stage"].astype(str).to_numpy()[rows])),
     }
-
 
 def audit_tissue(name: str, source_path: Path, columns: dict, derived) -> dict:
     prepared = ad.read_h5ad(PREPARED / f"{name}.h5ad")
@@ -155,8 +151,8 @@ def audit_tissue(name: str, source_path: Path, columns: dict, derived) -> dict:
             prepared.obs[column].astype(str).to_numpy() == rule(source_obs[source_column].astype(str).to_numpy())))
     return result
 
-
 def norman_source_rows(prepared: ad.AnnData, conditions: np.ndarray, control_flag: np.ndarray, report: dict, seed: int) -> np.ndarray:
+
     rng = np.random.default_rng(seed)
     if "qc_all_conditions" in report:
         drawn = [row for row in report["qc_all_conditions"] if row["reason"] != "too_few_cells"]
@@ -174,7 +170,6 @@ def norman_source_rows(prepared: ad.AnnData, conditions: np.ndarray, control_fla
     labels = np.where(control_flag[cells] == 1, "ctrl", conditions[cells])
     kept = np.isin(labels, [*[row["condition"] for row in report["conditions"]], "ctrl"])
     return cells[kept]
-
 
 def audit_norman(prepared_path: Path, source_path: Path) -> dict:
     prepared = ad.read_h5ad(prepared_path)
@@ -195,14 +190,13 @@ def audit_norman(prepared_path: Path, source_path: Path) -> dict:
             counts_of(prepared), genes, prepared.obs["target"].astype(str).to_numpy(), condition == "ctrl"),
     }
 
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
                         default=REPOSITORY / "artifacts" / "paper_evidence" / "review_round2" / "label_audit" / "label_audit.json")
     parser.add_argument("--norman-source", type=Path, required=True, help="GEARS perturb_processed.h5ad")
     parser.add_argument("--norman-rebuilt", type=Path,
-                        default=REPOSITORY / "artifacts" / "paper_evidence" / "review_round2" / "leakage_free" / "norman_crispra" / "prepared.h5ad")
+                        default=REPOSITORY / "artifacts" / "paper_evidence" / "review_round2" / "norman_rebuilt" / "prepared" / "norman_crispra.h5ad")
     parser.add_argument("--zebrafish-source", type=Path,
                         default=REPOSITORY / "external_data" / "trajectory" / "zebrafish_embryogenesis_axial_mesoderm.h5ad")
     parser.add_argument("--papalexi-panel", type=Path,
@@ -210,12 +204,14 @@ def main() -> None:
     parser.add_argument("--papalexi-mudata", type=Path,
                         default=REPOSITORY / "external_data" / "papalexi_multimodal" / "papalexi.h5mu")
     parser.add_argument("--datasets", nargs="+", default=[
-        "norman_rebuilt", *SCREENS, "papalexi_protein_join", "zebrafish_trajectory", *TISSUES])
+        "norman_production", "norman_rebuilt", *SCREENS, "papalexi_protein_join", "zebrafish_trajectory", *TISSUES])
     args = parser.parse_args()
 
     audit = json.loads(args.output.read_text()) if args.output.exists() else {}
     for name in args.datasets:
-        if name == "norman_rebuilt":
+        if name == "norman_production":
+            result = audit_norman(PREPARED / "norman_crispra.h5ad", args.norman_source)
+        elif name == "norman_rebuilt":
             result = audit_norman(args.norman_rebuilt, args.norman_source)
         elif name in SCREENS:
             result = audit_screen(name, *SCREENS[name])
@@ -229,7 +225,6 @@ def main() -> None:
         print(json.dumps({name: result}), flush=True)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(audit, indent=2) + "\n")
-
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -12,7 +13,6 @@ import pandas as pd
 from scipy import sparse
 from scipy.spatial.distance import cdist
 
-
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
@@ -20,24 +20,20 @@ from safefusion_benchmark.downstream import randomized_pca_embedding
 from safefusion_benchmark.marker_panels import PANELS
 from safefusion_benchmark.metrics import average_precision_tie_aware, log1p_mae, spearman
 
-
 INFLAMMATION_MARKERS = {
     "REG1A", "REG3A", "DUOX2", "NOS2", "CXCL1", "CXCL2", "CXCL3", "CXCL8",
     "CCL20", "IL32", "HLA-DRA", "HLA-DPA1", "HLA-DPB1", "HLA-A", "HLA-B",
     "STAT1", "IRF1", "IFITM1", "IFITM3",
 }
 
-
 def dense(value) -> np.ndarray:
     return value.toarray() if sparse.issparse(value) else np.asarray(value)
-
 
 def parse_method(value: str) -> tuple[str, Path]:
     name, path = value.split("=", 1)
     if not name or not path:
         raise ValueError("methods must use name=contract_directory")
     return name, Path(path)
-
 
 def macro_f1(actual: np.ndarray, predicted: np.ndarray) -> float:
     values: list[float] = []
@@ -48,7 +44,6 @@ def macro_f1(actual: np.ndarray, predicted: np.ndarray) -> float:
         denominator = 2 * tp + fp + fn
         values.append(float(2 * tp / denominator) if denominator else 0.0)
     return float(np.mean(values))
-
 
 def centroid_predictions(
     matrix: np.ndarray,
@@ -61,7 +56,6 @@ def centroid_predictions(
     classes = np.unique(labels[train])
     centroids = np.stack([embedding[train & (labels == label)].mean(axis=0) for label in classes])
     return classes[np.argmin(cdist(embedding[test], centroids), axis=1)]
-
 
 def canonical_marker_metrics(
     matrix: np.ndarray,
@@ -97,7 +91,6 @@ def canonical_marker_metrics(
         "ectopic_marker_fill_rate": float(ectopic_filled / ectopic_total) if ectopic_total else float("nan"),
     }
 
-
 def development_marker_metrics(
     matrix: np.ndarray,
     truth: np.ndarray,
@@ -123,11 +116,9 @@ def development_marker_metrics(
         "development_marker_rank_spearman": float(np.mean(correlations)),
     }
 
-
 def bootstrap_indices(donors: np.ndarray, replicates: int, seed: int) -> list[np.ndarray]:
     rng = np.random.default_rng(seed)
     return [rng.integers(0, len(donors), size=len(donors)) for _ in range(replicates)]
-
 
 def summarize_unit_metrics(
     unit_metrics: pd.DataFrame,
@@ -178,7 +169,6 @@ def summarize_unit_metrics(
                 })
     return pd.DataFrame(estimates), pd.DataFrame(comparisons)
 
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--truth", required=True)
@@ -190,6 +180,11 @@ def main() -> None:
     parser.add_argument("--bootstrap", type=int, default=2000)
     parser.add_argument("--seed", type=int, default=1729)
     parser.add_argument("--marker-panel", choices=["source", "original"], default="source")
+    parser.add_argument(
+        "--allow-transductive",
+        action="store_true",
+        help="accept contracts that declare a transductive fit on all cells (standard MAGIC and scVI) and mark them in the leakage table",
+    )
     args = parser.parse_args()
     panel = PANELS["colon"][args.marker_panel]
     selected_markers = sorted(set(panel) | INFLAMMATION_MARKERS)
@@ -242,6 +237,10 @@ def main() -> None:
                 and decision_passed
             ),
         })
+        if args.allow_transductive:
+            transductive = parameters.get("transductive") is True and not decision
+            leakage_checks[-1]["transductive"] = transductive
+            leakage_checks[-1]["passed"] = leakage_checks[-1]["passed"] or transductive
     if not all(item["passed"] for item in leakage_checks):
         raise ValueError("one or more method contracts failed the leakage audit")
 
@@ -311,7 +310,6 @@ def main() -> None:
     }
     (output / "report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps(report, indent=2))
-
 
 if __name__ == "__main__":
     main()

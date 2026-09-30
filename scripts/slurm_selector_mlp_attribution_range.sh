@@ -4,7 +4,7 @@
 #SBATCH --time=01:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=20G
-#SBATCH --array=0-3
+#SBATCH --array=0-4
 #SBATCH --output=logs/slurm-selector-mlp-attribution-range-%A_%a.out
 #SBATCH --error=logs/slurm-selector-mlp-attribution-range-%A_%a.err
 
@@ -32,11 +32,12 @@ common=(
 )
 
 source scripts/unit_paths.sh
-keys=(pancreas_0 pancreas_1 pancreas_2 colon)
+keys=(pancreas_0 pancreas_1 pancreas_2 norman_crispra colon)
 key="${keys[SLURM_ARRAY_TASK_ID]}"
 unit_paths "${key}"
 case "${key}" in
   pancreas_*) output="${OUT}/pancreas/fold_${key##*_}"; fit=(--fit-split development --unit-column donor) ;;
+  norman_crispra) output="${OUT}/norman_crispra"; fit=(--fit-split development --unit-column target) ;;
   colon) output="${OUT}/colon"; fit=(--fit-split validation --unit-column donor) ;;
 esac
 mapfile -t teacher_args < <(teacher_contract_args "${methods_root}")

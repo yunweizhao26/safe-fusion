@@ -1,11 +1,11 @@
-UNITS=(pancreas_0 pancreas_1 pancreas_2 colon adamson_crispri dixit_ko papalexi_eccite zebrafish papalexi_crossmodal)
+UNITS=(pancreas_0 pancreas_1 pancreas_2 colon norman_crispra adamson_crispri dixit_ko papalexi_eccite zebrafish papalexi_crossmodal)
 TEACHERS=(gene_median svd_impute graph_smooth magic_inductive scvi_inductive)
 
 unit_paths() {
   local key="$1"
   local pan=artifacts/pancreas_runs/0b2469810675-45c81b160d78
   local cf=artifacts/paper_evidence/pancreas_crossfit
-  local norman=artifacts/paper_evidence/review_round2/leakage_free/norman_crispra
+  local norman=artifacts/paper_evidence/norman_crispra
   local col=artifacts/colon_runs/0b2469810675-c0db6f963e94
   case "${key}" in
     pancreas_*)
@@ -27,7 +27,7 @@ unit_paths() {
       input="${norman}/corrupted.h5ad"
       coordinates="${norman}/coordinates.parquet"
       splits="${norman}/splits.parquet"
-      truth="${norman}/prepared.h5ad"
+      truth=external_data/prepared/norman_crispra.h5ad
       methods_root="${norman}/methods"
       ;;
     adamson_crispri|dixit_ko|papalexi_eccite)

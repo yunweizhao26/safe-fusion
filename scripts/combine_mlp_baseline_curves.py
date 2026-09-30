@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -8,10 +9,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from masked_f1_units import load_units_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "artifacts" / "paper_evidence"
-
 
 def load_curve(path: Path) -> tuple[list[dict[str, float]], int, int]:
     report = json.loads(path.read_text())
@@ -20,7 +21,6 @@ def load_curve(path: Path) -> tuple[list[dict[str, float]], int, int]:
         int(report["test"]["n_masked_positives"]),
         int(report["test"]["n_zeros"]),
     )
-
 
 def pool_curves(paths: list[Path]) -> pd.DataFrame:
     loaded = [load_curve(path) for path in paths]
@@ -55,13 +55,12 @@ def pool_curves(paths: list[Path]) -> pd.DataFrame:
         )
     return pd.DataFrame(rows)
 
-
 def normalized_auc(x: np.ndarray, y: np.ndarray) -> float:
     area = np.sum(0.5 * (y[1:] + y[:-1]) * np.diff(x))
     return float(area / (x[-1] - x[0]))
 
-
 def summarize(table: pd.DataFrame) -> dict[str, dict]:
+
     result: dict[str, dict] = {}
     ranges = ((0.001, 0.01), (0.001, 0.02), (0.001, 0.05), (0.001, 0.10), (0.001, 0.20), (0.001, 1.0))
     for dataset, frame in table.groupby("dataset", sort=False):
@@ -100,7 +99,6 @@ def summarize(table: pd.DataFrame) -> dict[str, dict]:
         result[str(dataset)] = dataset_summary
     return result
 
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -125,6 +123,13 @@ def main() -> None:
         default=EVIDENCE / "stacked_selector_baselines",
         help="Outputs of stacked_selector_baselines.py; skipped when absent.",
     )
+    parser.add_argument(
+        "--units-manifest",
+        type=Path,
+        default=None,
+        help="Units manifest of masked_f1_units.py. Its units, grouped by dataset, and their selector "
+        "directories replace the production units and selector runs.",
+    )
     args = parser.parse_args()
 
     evidence = args.evidence_root
@@ -141,17 +146,19 @@ def main() -> None:
         "Colon": [evidence / "selector_mlp_biology_range" / "colon" / "calibration_report.json"],
         "CRISPRa": [evidence / "selector_mlp_biology_range_fullteachers" / "norman_crispra" / "calibration_report.json"],
     }
-    baseline = pd.read_csv(args.baseline)
-    baseline = baseline.loc[baseline["method"] != "Safe Fusion"]
+    if args.units_manifest is not None:
+        unit_keys, mlp_paths = {}, {}
+        for unit in load_units_manifest(args.units_manifest):
+            unit_keys.setdefault(unit.dataset, []).append(unit.key)
+            mlp_paths.setdefault(unit.dataset, []).append(unit.selector_dir / "calibration_report.json")
     frames = []
     for dataset, paths in mlp_paths.items():
-        if dataset not in set(baseline["dataset"]):
-            continue
         frame = pool_curves(paths)
         frame.insert(0, "comparison", "safe_fusion")
         frame.insert(0, "method", "Safe Fusion MLP")
         frame.insert(0, "dataset", dataset)
         frames.append(frame)
+
         if args.stacked_root.exists():
             first_unit = args.stacked_root / unit_keys[dataset][0]
             for method_dir in sorted(path for path in first_unit.iterdir() if (path / "report.json").exists()):
@@ -163,6 +170,8 @@ def main() -> None:
                 stacked.insert(0, "dataset", dataset)
                 frames.append(stacked)
 
+    baseline = pd.read_csv(args.baseline)
+    baseline = baseline.loc[baseline["method"] != "Safe Fusion"]
     combined = pd.concat([*frames, baseline], ignore_index=True)
     canonical_coverage = np.linspace(0.001, 1.0, 1000)
     normalized = []
@@ -180,7 +189,6 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     combined.to_csv(args.output, index=False)
     args.summary_output.write_text(json.dumps(summarize(combined), indent=2, sort_keys=True) + "\n")
-
 
 if __name__ == "__main__":
     main()

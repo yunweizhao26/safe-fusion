@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --gres=gpu:h200:1
-#SBATCH --array=0-1
+#SBATCH --array=0-2
 #SBATCH --output=logs/slurm-scgpt-gene-%A_%a.out
 #SBATCH --error=logs/slurm-scgpt-gene-%A_%a.err
 
@@ -24,6 +24,11 @@ case "${SLURM_ARRAY_TASK_ID}" in
     corrupted=artifacts/colon_runs/0b2469810675-c0db6f963e94/data/colon_epithelial/corrupted/mask_010.h5ad
     coordinates=artifacts/colon_runs/0b2469810675-c0db6f963e94/data/colon_epithelial/coordinates/mask_010.parquet
     output=artifacts/paper_evidence/baselines/scgpt_mvc/colon
+    ;;
+  2)
+    corrupted=artifacts/paper_evidence/norman_crispra/corrupted.h5ad
+    coordinates=artifacts/paper_evidence/norman_crispra/coordinates.parquet
+    output=artifacts/paper_evidence/baselines/scgpt_mvc/norman
     ;;
 esac
 

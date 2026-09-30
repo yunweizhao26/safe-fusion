@@ -25,6 +25,7 @@ MANIFEST="${LF}/units_manifest.json"
 task="${SLURM_ARRAY_TASK_ID:-0}"
 
 leakage_free_paths() {
+
   case "$1" in
     pancreas_*)
       data="${LF}/pancreas_crossfit/fold_${1##*_}"
@@ -52,6 +53,7 @@ leakage_free_paths() {
 case "${STAGE}" in
   data)
     if [[ "${task}" == 0 ]]; then
+
       "${PY}" scripts/make_pancreas_crossfit_splits.py \
         --input external_data/prepared/pancreas_islets.h5ad \
         --output-dir "${LF}/pancreas_crossfit" --folds 3 --seed 1729
@@ -65,6 +67,7 @@ case "${STAGE}" in
           --unit-column donor --seed 1729 --output-dir "${data}"
       done
       "${PY}" scripts/write_leakage_free_units.py --root "${LF}"
+
       mkdir -p "${LF}/selector_mlp_biology_range" "${LF}/stacked_selector_baselines"
       ln -sfn "$(pwd)/artifacts/paper_evidence/selector_mlp_biology_range/colon" "${LF}/selector_mlp_biology_range/colon"
       ln -sfn "$(pwd)/artifacts/paper_evidence/stacked_selector_baselines/colon" "${LF}/stacked_selector_baselines/colon"
@@ -147,14 +150,6 @@ case "${STAGE}" in
   stacked)
     "${PY}" scripts/stacked_selector_baselines.py --unit "${LF_UNITS[task]}" \
       --units-manifest "${MANIFEST}" --output-root "${LF}/stacked_selector_baselines" --seed 1729
-    ;;
-  benchmark_data)
-    unit_args=()
-    for key in "${LF_UNITS[@]}"; do
-      leakage_free_paths "${key}"
-      unit_args+=(--unit "${key}" "${input}" "${coordinates}" "${splits}")
-    done
-    "${PY}" scripts/summarize_benchmark_data.py "${unit_args[@]}" --output "${LF}/benchmark_data/benchmark_data.csv"
     ;;
   evaluate)
     "${PY}" scripts/compute_matched_baseline_f1_curves.py --units-manifest "${MANIFEST}" \

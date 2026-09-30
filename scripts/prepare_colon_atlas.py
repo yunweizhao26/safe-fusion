@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -11,7 +12,6 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
-
 CURATED_MARKERS = (
     "BEST4", "OTOP2", "CA7", "GUCA2A", "GUCA2B", "SPIB", "CFTR",
     "MUC2", "TFF1", "TFF3", "AGR2", "SPDEF", "POU2F3", "DCLK1",
@@ -22,14 +22,12 @@ CURATED_MARKERS = (
     "HLA-DPB1", "HLA-A", "HLA-B", "STAT1", "IRF1", "IFITM1", "IFITM3",
 )
 
-
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
-
 
 def donor_assignment(donors: pd.Series, seed: int) -> dict[str, str]:
     units = np.asarray(sorted(donors.astype(str).unique()))
@@ -40,7 +38,6 @@ def donor_assignment(donors: pd.Series, seed: int) -> dict[str, str]:
     assignment.update({unit: "validation" for unit in units[n_dev:n_dev + n_val]})
     assignment.update({unit: "test" for unit in units[n_dev + n_val:]})
     return assignment
-
 
 def stratified_cells(obs: pd.DataFrame, maximum: int, seed: int) -> np.ndarray:
     rng = np.random.default_rng(seed)
@@ -53,7 +50,6 @@ def stratified_cells(obs: pd.DataFrame, maximum: int, seed: int) -> np.ndarray:
         keep.extend(positions.tolist())
     return np.asarray(sorted(keep), dtype=int)
 
-
 def feature_selection(
     matrix: sparse.csr_matrix,
     development: np.ndarray,
@@ -65,6 +61,7 @@ def feature_selection(
     mean_sq = np.asarray(fit.power(2).mean(axis=0)).ravel()
     variance = np.maximum(mean_sq - mean**2, 0.0)
     detected = np.asarray((fit > 0).sum(axis=0)).ravel()
+
     score = np.divide(variance - mean, mean + 1e-8)
     score[detected < max(5, int(0.005 * fit.shape[0]))] = -np.inf
     ranked = np.argsort(-score, kind="stable")
@@ -75,7 +72,6 @@ def feature_selection(
     selected = np.unique(np.concatenate([selected, curated])).astype(int)
     return selected, score[selected]
 
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True)
@@ -84,11 +80,19 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=1729)
     parser.add_argument("--cells-per-stratum", type=int, default=12)
     parser.add_argument("--variable-genes", type=int, default=1200)
+    parser.add_argument(
+        "--gene-selection-splits",
+        default=None,
+        help="Splits parquet (cell_id, split) of one donor fold. The variable genes are then "
+        "selected on its development cells, and locked_split records that fold's split. "
+        "Default: the development donors of the 50/25/25 donor assignment of --seed.",
+    )
     args = parser.parse_args()
 
     source_path = Path(args.input).resolve()
     output_path = Path(args.output).resolve()
     report_path = Path(args.report).resolve()
+
     source = ad.read_h5ad(source_path, backed="r")
     required = {"donor_id", "biosample_id", "Type", "Celltype", "cell_type", "disease", "tissue"}
     missing = required - set(source.obs)
@@ -104,6 +108,13 @@ def main() -> None:
     if np.any(raw.data < 0) or np.any(raw.data != np.floor(raw.data)):
         raise ValueError("source .raw is not non-negative integer counts")
     split = obs["donor_id"].astype(str).map(assignment).to_numpy()
+    selected_on = "development donors only"
+    if args.gene_selection_splits:
+        fold = pd.read_parquet(args.gene_selection_splits).set_index("cell_id")["split"]
+        split = fold.reindex(obs.index.astype(str)).to_numpy()
+        if pd.isna(split).any():
+            raise ValueError("gene-selection splits do not cover every prepared cell")
+        selected_on = f"development cells of {args.gene_selection_splits}"
     selected_genes, selection_score = feature_selection(
         raw, split == "development", source.raw.var, args.variable_genes
     )
@@ -134,7 +145,7 @@ def main() -> None:
     prepared.uns["benchmark_preparation"] = {
         "seed": args.seed,
         "cells_per_donor_celltype_sampletype_stratum": args.cells_per_stratum,
-        "variable_genes_selected_on": "development donors only",
+        "variable_genes_selected_on": selected_on,
         "n_variable_genes_requested": args.variable_genes,
         "curated_markers_appended": list(CURATED_MARKERS),
         "donor_assignment": assignment,
@@ -163,7 +174,6 @@ def main() -> None:
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps(report, indent=2, sort_keys=True))
-
 
 if __name__ == "__main__":
     main()

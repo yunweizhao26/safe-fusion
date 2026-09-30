@@ -4,7 +4,7 @@
 #SBATCH --time=01:30:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
-#SBATCH --array=0-7%5
+#SBATCH --array=0-8%5
 #SBATCH --output=logs/slurm-deployment-fill-%A_%a.out
 #SBATCH --error=logs/slurm-deployment-fill-%A_%a.err
 
@@ -35,6 +35,7 @@ step safe_fusion
 
 fractions=()
 for pct in ${PCTS}; do fractions+=("$(printf '0.%02d' "${pct}")"); done
+
 "${PY}" scripts/calibrated_selective_fill.py \
   --corrupted "${out}/hybrid.h5ad" --truth "${truth}" \
   --coordinates "${out}/coordinates.parquet" --splits "${out}/splits.parquet" \

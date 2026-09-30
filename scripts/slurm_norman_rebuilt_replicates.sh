@@ -20,13 +20,14 @@ PY=.venv/bin/python
 LF="${LEAKAGE_FREE_ROOT:-artifacts/paper_evidence/review_round2/leakage_free}"
 NR="${NORMAN_REBUILT_ROOT:-artifacts/paper_evidence/review_round2/norman_rebuilt}"
 REP="${NR}/seed_replicates"
-TRUTH="${LF}/norman_crispra/prepared.h5ad"
+TRUTH="${NR}/prepared/norman_crispra.h5ad"
 SPLITS="${LF}/norman_crispra/splits.parquet"
 SEEDS=(1730 1731 1732 1733)
 CPU_TEACHERS=(gene_median svd_impute graph_smooth magic_inductive)
 task="${SLURM_ARRAY_TASK_ID:-0}"
 
 replicate_paths() {
+
   data="${REP}/seed_$1/data/norman"
   out="${REP}/seed_$1/norman"
 }

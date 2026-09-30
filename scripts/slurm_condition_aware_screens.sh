@@ -17,7 +17,7 @@ export MKL_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 source scripts/unit_paths.sh
 source scripts/deployment_paths.sh
 
-screens=(adamson_crispri dixit_ko papalexi_eccite)
+screens=(norman_crispra adamson_crispri dixit_ko papalexi_eccite)
 settings=(masked deployment)
 screen="${screens[SLURM_ARRAY_TASK_ID / 2]}"
 setting="${settings[SLURM_ARRAY_TASK_ID % 2]}"
@@ -62,6 +62,7 @@ case "${STAGE:?STAGE must be knn, scvi, select or matched}" in
       "${curve[@]}" --seed 1729
     ;;
   matched)
+
     for spec in "graph_smooth_condition knn_condition" "scvi_inductive_condition scvi_condition" \
                 "scvi_inductive scvi" "magic_inductive magic"; do
       set -- ${spec}

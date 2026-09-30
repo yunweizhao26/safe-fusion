@@ -39,6 +39,11 @@ case "${STAGE}" in
       --output-dir "${NR}/selector_mlp_attribution_range/paired/norman_crispra" \
       --reference-selector full__mlp --bootstrap 2000 --seed 1729
     ;;
+  benchmark_data)
+    "${PY}" scripts/summarize_benchmark_data.py \
+      --unit norman_crispra "${data}/corrupted.h5ad" "${data}/coordinates.parquet" "${data}/splits.parquet" \
+      --output "${NR}/benchmark_data/benchmark_data.csv"
+    ;;
   scgcl)
     .venv-baselines/bin/python scripts/run_scgcl_baseline.py \
       --corrupted "${data}/corrupted.h5ad" --output "${NR}/baselines/scgcl/norman" \

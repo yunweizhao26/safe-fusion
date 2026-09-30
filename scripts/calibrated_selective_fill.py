@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -11,7 +12,6 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 from sklearn.metrics import roc_auc_score, average_precision_score
-
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
@@ -27,25 +27,23 @@ from selector_attribution import (
     teacher_feature_names,
 )
 
-
 def dense(value) -> np.ndarray:
     return value.toarray() if sparse.issparse(value) else np.asarray(value)
-
 
 def score_percentile_from_fit(
     fit_scores_value: np.ndarray,
     values: np.ndarray,
 ) -> np.ndarray:
+
     ordered = np.sort(np.asarray(fit_scores_value, dtype=np.float32))
     return (
         np.searchsorted(ordered, values, side="right") / max(1, len(ordered))
     ).astype(np.float32)
 
-
 def detection_probability(p: np.ndarray, mask_rate: float) -> np.ndarray:
+
     p = np.clip(np.asarray(p, dtype=np.float64), 0.0, 1.0)
     return p / np.maximum(p + mask_rate * (1.0 - p), 1e-12)
-
 
 def cross_fitted_calibration(
     architecture: str,
@@ -59,6 +57,7 @@ def cross_fitted_calibration(
     seed: int,
     make_candidates,
 ):
+
     from sklearn.isotonic import IsotonicRegression
 
     cells = np.unique(fit_rows)
@@ -79,7 +78,6 @@ def cross_fitted_calibration(
     isotonic.fit(out_of_fold, fit_labels.astype(np.float64), sample_weight=weight)
     return isotonic, out_of_fold, weight
 
-
 def reliability_table(probability: np.ndarray, labels: np.ndarray, weight: np.ndarray | None = None, bins: int = 10) -> list[dict]:
     weight = np.ones(len(labels)) if weight is None else weight
     edges = np.quantile(probability, np.linspace(0.0, 1.0, bins + 1))
@@ -97,7 +95,6 @@ def reliability_table(probability: np.ndarray, labels: np.ndarray, weight: np.nd
             "observed_rate": float(np.average(labels[keep], weights=w)),
         })
     return table
-
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -160,6 +157,10 @@ def main() -> None:
         default=None,
         help="Add each gene's mean and zero fraction within the cell's condition (obs column) as selector features.",
     )
+    parser.add_argument(
+        "--condition-feature-source", choices=("fitting", "all_cells"), default="fitting",
+        help="Cells supplying observed-count condition features; all_cells supports transductive held-out donors. Selector labels still come only from fit-split.",
+    )
     args = parser.parse_args()
 
     corrupted_adata = ad.read_h5ad(args.corrupted)
@@ -193,12 +194,13 @@ def main() -> None:
     library = np.log1p(counts.sum(axis=1))
     condition_mean = condition_dropout = condition_code = None
     if args.condition_column is not None:
+
         labels = corrupted_adata.obs[args.condition_column].astype(str).to_numpy()
         condition_names, condition_code = np.unique(labels, return_inverse=True)
         condition_mean = np.zeros((len(condition_names), counts.shape[1]), dtype=np.float32)
         condition_dropout = np.zeros((len(condition_names), counts.shape[1]), dtype=np.float32)
         for index in range(len(condition_names)):
-            members = fit & (condition_code == index)
+            members = (condition_code == index) & (fit if args.condition_feature_source == "fitting" else True)
             if not members.any():
                 raise ValueError(f"condition {condition_names[index]} has no selector-fitting cells")
             condition_mean[index] = np.log1p(counts[members].mean(axis=0))
@@ -206,6 +208,7 @@ def main() -> None:
 
     def feature_frame(split_mask: np.ndarray, split_name: str, max_rows: int | None = None, seed: int = 0) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         rows, cols = np.where((counts == 0) & split_mask[:, None])
+
         split_cells = np.flatnonzero(split_mask)
         split_coordinates = coordinates.loc[
             coordinates["cell_index"].astype(int).isin(split_cells)
@@ -312,6 +315,7 @@ def main() -> None:
         )
 
     def ranking_metrics(labels: np.ndarray, scores: np.ndarray) -> dict:
+
         if labels.min() == labels.max():
             return {"roc_auc": None, "pr_auc": None}
         return {
@@ -339,6 +343,8 @@ def main() -> None:
 
     output_root = Path(args.output_dir)
     output_root.mkdir(parents=True, exist_ok=True)
+    if args.condition_feature_source != "fitting":
+        report["condition_feature_source"] = args.condition_feature_source
     fusion_metadata = json.loads((fusion / "metadata.json").read_text())
     cell_ids = corrupted_adata.obs_names.astype(str).tolist()
     gene_ids = corrupted_adata.var_names.astype(str).tolist()
@@ -573,7 +579,6 @@ def main() -> None:
 
     (output_root / "calibration_report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps(report, indent=2, sort_keys=True))
-
 
 if __name__ == "__main__":
     main()

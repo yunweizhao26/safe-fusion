@@ -4,7 +4,7 @@
 #SBATCH --time=01:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=24G
-#SBATCH --array=0-7
+#SBATCH --array=0-9
 #SBATCH --output=logs/slurm-detection-rule-%A_%a.out
 #SBATCH --error=logs/slurm-detection-rule-%A_%a.err
 
@@ -18,7 +18,7 @@ export MKL_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 source scripts/unit_paths.sh
 source scripts/deployment_paths.sh
 
-keys=(colon pancreas_0 pancreas_1 pancreas_2)
+keys=(colon pancreas_0 pancreas_1 pancreas_2 norman_crispra)
 key="${keys[SLURM_ARRAY_TASK_ID % ${#keys[@]}]}"
 deployment_paths "${key}"
 if (( SLURM_ARRAY_TASK_ID < ${#keys[@]} )); then

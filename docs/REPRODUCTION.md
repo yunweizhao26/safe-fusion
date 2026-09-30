@@ -1,38 +1,65 @@
 # Reproducing the Safe Fusion manuscript
 
-This file gives the commands that reproduce every table and figure of the
-manuscript "Safe Fusion: Selective Zero Imputation for Single-Cell RNA
-Sequencing" (Briefings in Bioinformatics) and of its supplement. Sections 1 to
-3 build the environments, prepare the data, and fit Safe Fusion and the
-comparison methods. Sections 4 to 18 each produce one or more manuscript
-items. Every job depends only on jobs submitted earlier in this file, so the
-sections follow the job dependencies and not the order of the manuscript.
-[PAPER_EXPERIMENTS.md](PAPER_EXPERIMENTS.md) lists the scripts and output
-files of every item.
+Safe Fusion uses transductive teachers in the main analyses. They use all input
+cells without cross-fitting; the fused value and selector still learn from
+masked training entries. The inductive mode fits teachers on training cells and
+cross-fits their training proposals. Detection-weighted deployment inserts the
+fused count multiplied by the calibrated detection probability.
 
-| Manuscript item | Section |
-|---|---|
-| Table 1 (masked F1 differences) | [4](#4-table-1-figure-1-and-supplementary-table-s4-lower-block-masked-recovery), [5](#5-table-1-lower-blocks-and-supplementary-table-s5-sources-of-the-ranking-gain) |
-| Table 2 (zeros with known status) | [13](#13-table-2-and-supplementary-table-s13-zeros-with-known-status) |
-| Table 3 (filling recorded zeros) | [10](#10-table-3-and-supplementary-tables-s17-and-s21-downstream-analyses-and-the-fill-fraction-rule) |
-| Figure 1 | [4](#4-table-1-figure-1-and-supplementary-table-s4-lower-block-masked-recovery) |
-| Figure 2 | [14](#14-figure-2-and-supplementary-tables-s15-and-s16-agreement-with-surface-protein) |
-| Supplementary Table S1 | [15](#15-supplementary-table-s1-fill-decisions-of-standard-imputers) |
-| Supplementary Table S2 | [16](#16-supplementary-table-s2-benchmark-data) |
-| Supplementary Table S3 and Section S3 | [17](#17-supplementary-table-s3-and-section-s3-comparison-methods) |
-| Supplementary Table S4 | [4](#4-table-1-figure-1-and-supplementary-table-s4-lower-block-masked-recovery) (lower block), [6](#6-supplementary-table-s4-upper-block-mask-and-seed-replicates) (upper block) |
-| Supplementary Table S5 | [5](#5-table-1-lower-blocks-and-supplementary-table-s5-sources-of-the-ranking-gain) |
-| Supplementary Table S6 | [7](#7-supplementary-table-s6-selector-feature-groups) |
-| Supplementary Tables S7 and S8 | [8](#8-supplementary-tables-s7-and-s8-binomial-thinning-and-recall-by-count) |
-| Supplementary Tables S9 and S10 | [9](#9-supplementary-tables-s9-and-s10-accuracy-of-the-inserted-value) |
-| Supplementary Tables S11 and S12 | [11](#11-supplementary-tables-s11-and-s12-values-inserted-into-recorded-zeros-and-their-bias) |
-| Supplementary Table S13 | [13](#13-table-2-and-supplementary-table-s13-zeros-with-known-status) |
-| Supplementary Table S14 | [12](#12-supplementary-tables-s14-and-s18-to-s20-disease-and-control-checks) |
-| Supplementary Tables S15 and S16 | [14](#14-figure-2-and-supplementary-tables-s15-and-s16-agreement-with-surface-protein) |
-| Supplementary Table S17 | [10](#10-table-3-and-supplementary-tables-s17-and-s21-downstream-analyses-and-the-fill-fraction-rule) |
-| Supplementary Tables S18, S19 and S20 | [12](#12-supplementary-tables-s14-and-s18-to-s20-disease-and-control-checks) |
-| Supplementary Table S21 | [10](#10-table-3-and-supplementary-tables-s17-and-s21-downstream-analyses-and-the-fill-fraction-rule) |
-| Supplementary Table S22 | [18](#18-supplementary-table-s22-runtime) |
+The table below covers Tables 1–3, Figures 1–2 and Supplementary Tables S1–S29.
+The supplementary labels follow their order in `supplementary_results.tex`.
+Supplementary Sections S1–S9 cover fill rates; data; models; recovery; thinning
+and values; known zeros; downstream and protein; budgets and scale; and lupus.
+
+Sections 1–18 build the shared inputs, comparator contracts and inductive
+reference evaluations. Their reference outputs are prerequisites, not substitutes
+for the final transductive results. Sections 19–26 produce the final analyses.
+Read each section's prerequisites before submitting it. Complete its jobs
+successfully before starting the next dependent section. Commands containing
+`sbatch --wait` wait for successful completion; launchers with `submit` print
+job IDs that must finish before continuing. Do not run two copies of a stage.
+
+Only source code is distributed here. Download public inputs using [DATA.md](DATA.md)
+and the fetch commands below. No fitted contracts or analysis outputs are included.
+Run all commands from this repository's root. Never link the output tree to
+another run that must remain unchanged.
+
+| Manuscript item | Content | Section |
+|---|---|---|
+| Table 1 | Masked recovery | 21 |
+| Table 2 | Zeros with known status | 22, 23 |
+| Table 3 | Error against deeper counts | 23 |
+| Figure 1 | Overview and masked F1 | 21 |
+| Figure 2 | CD274 RNA and PD-L1 protein | 22 |
+| Supplementary Table S1 | Standard-imputer fill rates | 15 |
+| Supplementary Table S2 | Benchmark data | 19 |
+| Supplementary Table S3 | Comparison settings | 17, 19 |
+| Supplementary Table S4 | Mask and model replicates | 21 |
+| Supplementary Table S5 | All comparison rankings | 21 |
+| Supplementary Table S6 | Teacher and classifier ablations | 21 |
+| Supplementary Table S7 | Selector feature groups | 21 |
+| Supplementary Table S8 | Inductive settings | 20 |
+| Supplementary Table S9 | Alternative training targets | 20, 25 |
+| Supplementary Table S10 | Binomial thinning | 21 |
+| Supplementary Table S11 | Recall by count | 8.3 |
+| Supplementary Table S12 | Inserted-value accuracy | 9 |
+| Supplementary Table S13 | Value accuracy by budget and stratum | 9 |
+| Supplementary Table S14 | Values at recorded zeros | 11 |
+| Supplementary Table S15 | Thinning value bias | 11, 20 |
+| Supplementary Table S16 | Perturbation zero controls | 22 |
+| Supplementary Table S17 | Masked F1 per screen | 22 |
+| Supplementary Table S18 | Sex-linked zero controls | 22, 23 |
+| Supplementary Table S19 | Protein agreement | 22 |
+| Supplementary Table S20 | Protein agreement within state | 22 |
+| Supplementary Table S21 | Masked downstream endpoints | 23 |
+| Supplementary Table S22 | Recorded-count downstream endpoints | 23 |
+| Supplementary Table S23 | Disease effects and null tests | 23 |
+| Supplementary Table S24 | Reference mapping changes | 23 |
+| Supplementary Table S25 | Correlation null | 23 |
+| Supplementary Table S26 | Fill-fraction rule | 10.3, 10.4 |
+| Supplementary Table S27 | Runtime | 18 |
+| Supplementary Table S28 | Scaling study | 26 |
+| Supplementary Table S29 | Lupus Treg example | 24 |
 
 ## Conventions
 
@@ -95,13 +122,13 @@ Two benchmark builds feed the manuscript.
   `artifacts/paper_evidence/review_round2/leakage_free/`, holds the pancreas
   donor folds with variable genes selected within each fold and the Norman
   CRISPR activation screen with conditions selected on development cells.
-  Table 1, Figure 1, the lower block of Supplementary Table S4, Supplementary
-  Tables S5 and S8, the pancreas fold rows of Supplementary Table S2 and every
+  inductive masked-recovery reference, inductive F1 plot, the lower block of the corresponding inductive reference, Supplementary
+  the corresponding inductive reference and S11, the pancreas fold rows of Supplementary Table S2 and every
   Norman number come from this build. The analyses that use the Norman
   benchmark beyond masked recovery write to
   `artifacts/paper_evidence/review_round2/norman_rebuilt/`.
 
-The analyses added for the revision write to
+Additional reference analyses write to
 `artifacts/paper_evidence/review_round2/<analysis>/` and
 `artifacts/paper_evidence/disease_control_checks/`. The launchers read the
 colon and pancreas workflow runs of section 2.2 from the fixed directories
@@ -129,11 +156,11 @@ steps.
 
 | Environment | Built from | Runs |
 |---|---|---|
-| `.venv` | `pyproject.toml`, `uv.lock` | Workflow, gene median, SVD and weighted kNN teachers, fused value, selector, ALRA (Python port), SAVER driver, autoencoder fusion network, evaluations and Figure 1 |
+| `.venv` | `pyproject.toml`, `uv.lock` | Workflow, gene median, SVD and weighted kNN teachers, fused value, selector, ALRA (Python port), SAVER driver, autoencoder fusion network, evaluations and inductive F1 plot |
 | `.conda-scvi-current` | `workflow/envs/scvi.yaml` | scVI teacher, standard scVI, the probability of a nonzero count (`nonzero_probability.py`), Papalexi RNA-protein preparation and audit, label audit |
 | `.conda-magic-current` | `workflow/envs/magic.yaml` | MAGIC teacher, standard MAGIC |
 | `.conda-r-baselines` | `scripts/sbatch_setup_r_baselines.s` | SAVER (`scripts/run_saver_baseline.R`, called by `run_saver_baseline.py --rscript`) |
-| `.venv-baselines` | `scripts/sbatch_setup_python_baselines.s` | scGPT (checkpoint in `external_data/baselines/scgpt_human`), the scGCL adapter (which also imports `scanpy` and `faiss`), and the Figure 2 plot |
+| `.venv-baselines` | `scripts/sbatch_setup_python_baselines.s` | scGPT (checkpoint in `external_data/baselines/scgpt_human`), the scGCL adapter (which also imports `scanpy` and `faiss`), and the inductive protein plot plot |
 | `.venv-pertpy` | `scripts/sbatch_setup_pertpy_env.s` | Mixscape classes of the Papalexi cells (pertpy 1.3.0, scanpy 1.12.4, mudata 0.4.1) |
 | `.venv-scanpy` | `scripts/slurm_disease_control_analysis.sh` on first use | Module scores and Leiden clusters of section 12 (scanpy 1.11.5, leidenalg 0.12.0, igraph 1.0.0 on the numerical stack of `.venv`) |
 | `.conda-standard-imputers` | `scripts/standard_imputers/environment.yaml` | The six imputers of Supplementary Table S1, created by `slurm_standard_imputers.sh` on first use |
@@ -330,7 +357,7 @@ audit=$(sbatch --parsable --dependency=afterok:${fetch} scripts/slurm_audit_papa
   cells and writes
   `artifacts/paper_evidence/papalexi_crossmodal/audit/matched_rna_adt_panel.parquet`
   and `audit_report.json` (20,729 cells, 285 barcodes shared by more than one
-  cell, 20,156 matched cells; Supplementary Section S7).
+  cell, 20,156 matched cells; Supplementary Section S10).
 
 ### 2.8 Label audit
 
@@ -348,7 +375,7 @@ sbatch --mem=96G -c 4 --time=01:00:00 --dependency=afterok:${lf_norman}:${audit}
 
 It writes `artifacts/paper_evidence/review_round2/label_audit/label_audit.json`.
 The Dixit entry gives the median log2 fold change of the knocked-out targets,
--0.009 (Supplementary Section S6), and the Norman entry confirms that every
+-0.009 (Supplementary Section S7), and the Norman entry confirms that every
 prepared Norman cell carries its source condition.
 
 ## 3. Safe Fusion and the comparison methods
@@ -381,7 +408,7 @@ cell's counts.
 gradient-boosted regression of the log count on the masked positives of the
 training cells (`--value-model boosted`, the default). It takes the five
 teacher contracts with `--teacher-contract`. `--value-model linear` fits the
-linear combination of Supplementary Table S9 instead. The contract metadata
+linear combination of the corresponding inductive reference instead. The contract metadata
 records the five-fold cross-validated error of both value models
 (`parameters.value_model_cross_validation`).
 
@@ -507,7 +534,7 @@ lf_baselines=${lf_alra}:${lf_saver}:${lf_saver_norman}:${lf_magic}:${lf_scvi}:${
 The directory `leakage_free/` stands for
 `artifacts/paper_evidence/review_round2/leakage_free/` here and below.
 
-## 4. Table 1, Figure 1 and Supplementary Table S4 (lower block): masked recovery
+## 4. Inductive masked-recovery reference
 
 ```bash
 stacked=$(sbatch --parsable --dependency=afterok:${teachers}:${scvi}:${baselines} scripts/slurm_stacked_selector_baselines.sh)
@@ -534,7 +561,7 @@ lf_evaluate=$(sbatch --parsable --array=0 --mem=64G \
   Supplementary Section S3 read these files.
 - The `evaluate` stage runs the same three scripts on
   `leakage_free/units_manifest.json` (pancreas folds, colon, Norman), plots
-  Figure 1 with `plot_selector_f1_fillrate.py`, and runs
+  inductive F1 plot with `plot_selector_f1_fillrate.py`, and runs
   `compare_leakage_free_benchmarks.py`.
 
 The outputs are in `leakage_free/`:
@@ -543,26 +570,26 @@ The outputs are in `leakage_free/`:
   Fusion minus each comparison and each stacked selector, at 1%, 2%, 5% and
   10% and averaged over the fill fractions 1% to 10%
   (`mean_difference_1_to_10`), with intervals from 2000 draws of donors or
-  perturbation targets. The comparison rows give the upper block of Table 1,
+  perturbation targets. The comparison rows give the upper block of inductive masked-recovery reference,
   and the rows of the stacked selectors (`<method> (stacked)`) give the
-  selector rows of Table 1 and the lower block of Supplementary Table S4.
+  selector rows of inductive masked-recovery reference and the lower block of the corresponding inductive reference.
 - `selector_f1_fillrate_mlp_baselines_summary.json`: in
   `<dataset>/main/0.001_0.100/fraction_mlp_best`, the share of the 100 fill
   fractions from 0.1% to 10% at which Safe Fusion has the highest F1 (row
-  "Fractions with highest F1" of Table 1).
+  "Fractions with highest F1" of inductive masked-recovery reference).
 - `selector_f1_fillrate_baselines_1000_points.csv`,
   `selector_f1_fillrate_mlp_baselines_1000_points.csv` and
   `masked_f1_unit_counts.parquet`: the curves and per-unit counts.
-- Figure 1: `figures/f1_fillrate_3panel_oup.png`.
-- `table1_old_vs_new.csv`: every Table 1 cell of the production and the
+- inductive F1 plot: `figures/f1_fillrate_3panel_oup.png`.
+- `table1_old_vs_new.csv`: every inductive masked-recovery reference cell of the production and the
   leakage-free pancreas benchmark. Its `change_pp` column gives the effect of
   the gene set on each pancreas difference (Methods, Datasets and splits).
   `leakage_audit.json` compares the gene sets and the mask strata.
 
-## 5. Table 1 lower blocks and Supplementary Table S5: sources of the ranking gain
+## 5. Inductive and transductive teacher fits
 
 `scripts/slurm_fusion_value.sh` refits the selector variants of
-Supplementary Table S5 on the units of `leakage_free/units_manifest.json`
+the corresponding inductive reference on the units of `leakage_free/units_manifest.json`
 (`pancreas_0` to `pancreas_2`, `colon`, `norman_crispra`). It requests the
 `cs` partition, on which these variants reproduce the production selectors
 entry for entry.
@@ -596,12 +623,12 @@ fusion_value=$(sbatch --parsable --dependency=afterok:${fv_selectors}:${fv_trans
 
 The outputs are in
 `artifacts/paper_evidence/review_round2/fusion_value/evaluation/`:
-`summary_table.csv` holds Supplementary Table S5 and the rows "scVI
-probability" and "Transductive, minus ..." of Table 1, with
+`summary_table.csv` holds the corresponding inductive reference and the rows "scVI
+probability" and "Transductive, minus ..." of inductive masked-recovery reference, with
 `paired_differences.csv`, `absolute.csv` and `summary.json` (intervals and
 average precision).
 
-## 6. Supplementary Table S4 (upper block): mask and seed replicates
+## 6. Inductive mask replicates
 
 Each replicate draws a new stratified 10% mask (`make_mask_replicate.py`) and
 refits the five teachers, the fused value, the selector, and standard MAGIC
@@ -650,7 +677,7 @@ The tissue columns of the upper block come from
 `seed_replicate_f1_curves.csv`), and the CRISPRa column from the same files in
 `artifacts/paper_evidence/review_round2/norman_rebuilt/seed_replicates/summary/`.
 
-## 7. Supplementary Table S6: selector feature groups
+## 7. Inductive feature reference
 
 ```bash
 ablation=$(sbatch --parsable --dependency=afterok:${stack} scripts/slurm_selector_mlp_attribution_range.sh)
@@ -670,10 +697,10 @@ of `slurm_norman_rebuilt_supplement.sh` does both for the Norman screen. In
 `artifacts/paper_evidence/selector_mlp_attribution_range/{pancreas/fold_<k>,colon}/`
 and `artifacts/paper_evidence/review_round2/norman_rebuilt/selector_mlp_attribution_range/norman_crispra/`,
 the column `test_pr_auc` holds the test precision-recall AUC of each variant,
-next to the masked positive counts. The pancreas values of Table S6 are the
+next to the masked positive counts. The pancreas values of the corresponding inductive reference are the
 means over the three folds.
 
-## 8. Supplementary Tables S7 and S8: binomial thinning and recall by count
+## 8. Thinning inputs and inductive reference
 
 ### 8.1 Thinning benchmark with thinning-trained selectors
 
@@ -700,12 +727,12 @@ The outputs are under `artifacts/paper_evidence/thinning/`: the inputs in
 `data/<dataset>/`, the teachers, fused value and selector of each unit in
 `<unit>/`, the comparators in `comparators/<dataset>/`, and the evaluation in
 `evaluation/matched_fraction_summary.{csv,json}`, which holds the weighted kNN
-row of Table S7.
+row of the corresponding inductive reference.
 
 ### 8.2 Thinning transfer
 
 `scripts/slurm_thinning_transfer.sh` adds the Norman screen thinned to 50%
-(from the benchmark of section 2.4) and the second design of Table S7: the
+(from the benchmark of section 2.4) and the second design of the corresponding inductive reference: the
 fitting cells receive the stratified 10% mask on top of their thinned counts,
 the teachers, fused value and selector are fitted as in the main method, and
 the held-out thinning positives are evaluated. It also trains the selector on
@@ -723,7 +750,7 @@ Submit it after `thin_sel`, `thin_eval` and `lf_norman` have finished (the
 `artifacts/paper_evidence/review_round2/thinning_transfer/`:
 
 - `evaluation/transfer_summary.{csv,json}` and
-  `evaluation/transfer_paired_differences.csv`: Table S7 except the weighted
+  `evaluation/transfer_paired_differences.csv`: the corresponding inductive reference except the weighted
   kNN row, the count-one recall at 5%, the expected-count baseline and the
   share of positives with an original count of one
   (`composition.positive_count_1_share`).
@@ -742,10 +769,10 @@ Submit it after `lf_evaluate` has finished. The `stacked` stage (array 0-9,
 task = 2 × unit + method) trains the selector on standard scVI or standard
 MAGIC for each unit of `leakage_free/units_manifest.json` and saves its
 held-out scores (`stacked_selector_scores.py`). The `evaluate` stage runs
-`evaluate_count_stratified_recall.py` and writes Table S8 to
+`evaluate_count_stratified_recall.py` and writes the corresponding inductive reference to
 `artifacts/paper_evidence/review_round2/thinning_transfer/count_stratified_recall/count_stratified_recall.{csv,json}`.
 
-## 9. Supplementary Tables S9 and S10: accuracy of the inserted value
+## 9. Linear and autoencoder value references
 
 ```bash
 stack_lin=$(sbatch --parsable --array=0-3 --dependency=afterok:${teachers}:${scvi} \
@@ -782,21 +809,21 @@ sbatch --array=0 --mem=64G \
 The outputs are in
 `artifacts/paper_evidence/review_round2/norman_rebuilt/value_accuracy/`:
 
-- `error_removed.csv`: the error removed at 1% to 10% (Table S9 and the top
-  of Table S10) and the paired differences between values with bootstrap
+- `error_removed.csv`: the error removed at 1% to 10% (the corresponding inductive reference and the top
+  of the corresponding inductive reference) and the paired differences between values with bootstrap
   intervals, for example the boosted fused value minus the linear
   combination at 5% quoted in the Results.
-- `log_error.csv`: the mean absolute log error (Table S9).
+- `log_error.csv`: the mean absolute log error (the corresponding inductive reference).
 - `log_error_strata.csv`: the error by true count and gene detection rate
-  (Table S10).
+  (the corresponding inductive reference).
 - `cross_validation.csv`: the out-of-fold error of the boosted and linear
-  value models (Supplementary Section S5).
+  value models (Supplementary Section S6).
 - `replicates.csv` and `summary.json`: the mask replicate and thinning units
   and the bootstrap summaries.
 
-## 10. Table 3 and Supplementary Tables S17 and S21: downstream analyses and the fill-fraction rule
+## 10. Deployment inputs and inductive downstream references
 
-### 10.1 Recorded counts of held-out cells (Table 3)
+### 10.1 Recorded counts of held-out cells (inductive recorded-count reference)
 
 The deployment analysis applies every method to the recorded counts of the
 held-out cells. The training cells keep the benchmark mask, so the selector
@@ -837,10 +864,10 @@ python scripts/summarize_fill_evaluations.py \
   `artifacts/paper_evidence/downstream_deployment/evaluation/`.
 
 `summary_key_metrics.csv` next to `summary.csv` holds the colon, pancreas and
-zebrafish rows of Table 3. The pancreas disease-effect row is the
+zebrafish rows of inductive recorded-count reference. The pancreas disease-effect row is the
 `AAB_vs_Control` contrast of `disease_logfc_spearman`.
 
-### 10.2 Masked benchmark (Supplementary Table S17)
+### 10.2 Masked benchmark (the corresponding inductive reference)
 
 The downstream benchmark uses the donor-held-out pancreas and colon data, the
 held-out zebrafish cells, and the Adamson, Dixit and Papalexi interventions.
@@ -867,7 +894,7 @@ python scripts/summarize_fill_evaluations.py \
 - `slurm_evaluate_complete_downstream.sh` (array 0-7) writes
   `artifacts/paper_evidence/downstream_complete/{clustering,markers,pancreas_biology,trajectory,grn}/`.
   `slurm_finalize_complete_downstream.sh` writes the combined tables
-  (`all_bootstrap_summaries.csv`, every row of Table S17 except Norman) and a
+  (`all_bootstrap_summaries.csv`, every row of the corresponding inductive reference except Norman) and a
   five-panel figure to `artifacts/paper_evidence/downstream_complete/summary/`.
   It fails unless all five tasks, all ten fill fractions, all 24 pancreas
   donors, all 9 colon donors, all 12 zebrafish stages and the 64 regulators of
@@ -884,7 +911,7 @@ python scripts/summarize_fill_evaluations.py \
   from these files. The pancreas share of masked positives pools the
   `decomposition_counts.csv` of the three folds.
 
-### 10.3 Fill-fraction rule (Supplementary Table S21)
+### 10.3 Fill-fraction rule (Supplementary Table S26)
 
 `slurm_detection_rule.sh` refits the selector with the production settings,
 calibrates its scores by isotonic regression on cross-fitted scores of the
@@ -905,7 +932,7 @@ holds the chosen fill fraction, its masked F1, and the fraction and F1 with
 the highest F1 in hindsight. In
 `artifacts/paper_evidence/downstream_deployment/{colon,pancreas/fold_<k>}/detection_rule/calibration_report.json`,
 `detection_rule.test_fill_fraction` is the share of recorded zeros that the
-rule fills (last column of Table S21).
+rule fills (last column of Table S26).
 
 ### 10.4 The Norman screen
 
@@ -934,10 +961,10 @@ fills and evaluation in `deployment/`, and the rule in
 `detection_rule/norman_crispra/` and
 `deployment/norman_crispra/detection_rule/`. The `summarize` stage runs
 `summarize_norman_rebuilt_downstream.py` and writes
-`norman_downstream_rows.csv`, whose rows with `table` 3, S17 and S21 hold the
-Norman rows of Table 3 and Supplementary Tables S17 and S21.
+`norman_downstream_rows.csv`, whose stored `table` keys are `3`, `S17` and `S21`. The `S21` key supplies
+the Norman row of final Table S26; the other keys supply inductive reference endpoints.
 
-## 11. Supplementary Tables S11 and S12: values inserted into recorded zeros and their bias
+## 11. Inductive inserted-value reference
 
 ```bash
 read -r iv_prep iv_scvi iv_fill iv_eval <<< \
@@ -955,15 +982,15 @@ with the commands of section 10.1. The `evaluate` stage runs
 
 - `recorded_zero_fills.csv`: the median value that Safe Fusion and SVD insert
   into recorded zeros of held-out cells and the share of filled zeros whose
-  expected count exceeds 2 (Table S11). It reads the production deployment of
+  expected count exceeds 2 (the corresponding inductive reference). It reads the production deployment of
   section 10.1 for every dataset except Norman.
 - `thinning_positive_bias.csv`: the signed bias against the count expected at
-  the thinned depth (Table S12, rows with `design` mask-trained and
+  the thinned depth (the corresponding inductive reference, rows with `design` mask-trained and
   `recorded_count` all) and the absolute log error against the count before
-  thinning (`abs_error_vs_recorded_count`, Supplementary Section S5), from
+  thinning (`abs_error_vs_recorded_count`, Supplementary Section S6), from
   the thinning units of sections 8.1 and 8.2.
 
-## 12. Supplementary Tables S14 and S18 to S20: disease and control checks
+## 12. Disease, sex and annotation reference checks
 
 These checks use the recorded counts of the held-out tissue cells from
 section 10.1 and the masked tissue benchmark.
@@ -991,18 +1018,18 @@ sbatch --array=0,1,4-9 --cpus-per-task=4 --mem=32G --time=01:00:00 \
 
 The outputs are under `artifacts/paper_evidence/disease_control_checks/`:
 
-- Table S14 and the Sex column of Table 2:
+- the corresponding inductive reference and the Sex column of inductive zero-control reference:
   `sex_zeros/<tissue>/auroc.csv`, with `fill_rates.csv`, `zero_counts.csv`
   and `donor_sex.csv` for the donor-sex paragraph.
-- Table S18: `disease_effects/<tissue>/observed_summary.csv` (slopes and
+- the corresponding inductive reference: `disease_effects/<tissue>/observed_summary.csv` (slopes and
   discoveries) and `permutation_null.csv` (false discoveries under permuted
   donor labels).
-- Table S19: `module_scores/<tissue>/disease_effect.csv`.
-- Table S20: `annotation/<tissue>/reference_mapping_overall.csv`.
+- the corresponding inductive reference: `module_scores/<tissue>/disease_effect.csv`.
+- the corresponding inductive reference: `annotation/<tissue>/reference_mapping_overall.csv`.
 - `condition/<tissue>/depth.csv` and `fill_rate.csv`: library size, zero
-  fraction and fill rate per condition (Supplementary Section S7).
+  fraction and fill rate per condition (Supplementary Section S10).
 
-## 13. Table 2 and Supplementary Table S13: zeros with known status
+## 13. Perturbation references and label controls
 
 This analysis ranks the zeros of the perturbed gene in the recorded counts of
 the held-out screen cells and reports masked F1 on the four masked screen
@@ -1101,12 +1128,12 @@ The outputs are under `artifacts/paper_evidence/review_round2/knockdown/`:
 
 - `evaluation/report.json`: in `screens.<screen>.auroc["<method>|fill_order"]`,
   the unadjusted AUROC (`none`) and the AUROC within library-size quintiles
-  (`depth_strata`) of Table 2 and Table S13, and in
+  (`depth_strata`) of inductive zero-control reference and the corresponding inductive reference, and in
   `knockdown_effect_shift["<method>|10"]` the shift of the held-out
-  perturbation log2 fold change at 10% (Table S13). It also holds the
+  perturbation log2 fold change at 10% (the corresponding inductive reference). It also holds the
   library-size AUROC, the continuous AUROC, the comparison of the Adamson and
   Papalexi screens, the held-out fold changes (`heldout_log2fc_recorded`) and
-  the Mixscape fill rates (`mixscape_papalexi`) of Supplementary Section S6.
+  the Mixscape fill rates (`mixscape_papalexi`) of Supplementary Section S7.
   `auroc.csv`, `effects.csv`, `fills.csv`, `targets.csv`, `mixscape.csv` and
   `per_target_table.csv` hold the per-target values. The fill rates of all
   Papalexi control zeros quoted next to the Mixscape classes pool the
@@ -1114,12 +1141,12 @@ The outputs are under `artifacts/paper_evidence/review_round2/knockdown/`:
   weighted by `n_control_zero` of `targets.csv`.
 - `masked_f1/masked_f1_report.json`: the mean masked F1 over the fill
   fractions 1% to 10%, averaged over the four screens (Masked F1 column of
-  Table 2), and `masked_f1/masked_f1_by_screen.json` the value of each screen
+  inductive zero-control reference), and `masked_f1/masked_f1_by_screen.json` the value of each screen
   with and without labels, with intervals over perturbation labels.
 
-The Sex column of Table 2 comes from section 12.
+The Sex column of inductive zero-control reference comes from section 12.
 
-## 14. Figure 2 and Supplementary Tables S15 and S16: agreement with surface protein
+## 14. RNA-protein inputs and inductive reference
 
 ```bash
 after=afterok:${audit}:${pdl1_scvi}:${pdl1_selector}
@@ -1133,7 +1160,7 @@ sbatch --dependency=${after} scripts/slurm_evaluate_protein_within_state.sh
   for CD274 on centered log ratio and raw PD-L1
   (`benchmark/evaluation_cd274/`, `benchmark/evaluation_cd274_raw_counts/`),
   then `evaluate_pdl1_state_baselines.py` (`benchmark/evaluation_pdl1_state/`).
-  It then plots Figure 2 with `plot_biological_range_figures.py --pdl1-only`
+  It then plots inductive protein plot with `plot_biological_range_figures.py --pdl1-only`
   in `.venv-baselines`, which writes `pdl1_range_validation.{png,pdf}` to
   `artifacts/paper_evidence/figures/`. `PAPER_DIR=<dir>` writes an extra PNG
   copy to `<dir>`.
@@ -1154,20 +1181,20 @@ directory, `protein_threshold_range_metrics.csv` holds the threshold AUROC,
 `fill_range_protein_enrichment.csv` and `range_leaders.csv` the enrichment of
 the filled cells and the methods with the highest value at each threshold and
 fraction, `replicate_association.csv` the correlation within each replicate,
-and `permutation_tests.csv` the permutation tests. Table S15 takes its
+and `permutation_tests.csv` the permutation tests. the corresponding inductive reference takes its
 replicate columns from `evaluation_cd274/replicate_association.csv`, the raw
 column from `evaluation_cd274_raw_counts/continuous_protein_association.csv`,
 and the CD86, PD-L2 and TIM-3 columns from
 `evaluation/continuous_protein_association.csv`. In
 `review_round2/protein/evaluation/`, `pdl1_pooled_rankings.csv` holds the
 pooled correlations, mean AUROC and paired differences with intervals over
-perturbation targets (Pooled column of Table S16 and the protein paragraph of
+perturbation targets (Pooled column of the corresponding inductive reference and the protein paragraph of
 the Results), `association.csv` the correlations within targets, in the
 control cells, after adjustment (`partial_spearman`) and of detected RNA with
-protein (Table S16 and Supplementary Section S7), and `global_fill.csv` the
+protein (the corresponding inductive reference and Supplementary Section S10), and `global_fill.csv` the
 CD274 zeros filled at global fill fractions.
 
-### Figure 2 and Table S16 from the released inputs
+### inductive protein plot and the corresponding inductive reference from the released inputs
 
 `data/papalexi_crossmodal_inputs.tar.gz`, stored with Git LFS, holds the
 inputs of these evaluations: the prepared RNA-protein file, the audit panel,
@@ -1185,12 +1212,11 @@ sbatch scripts/slurm_evaluate_papalexi_crossmodal_raw.sh
 sbatch scripts/slurm_evaluate_protein_within_state.sh
 ```
 
-These launchers need `.venv`, and the Figure 2 plot also needs
+These launchers need `.venv`, and the inductive protein plot plot also needs
 `.venv-baselines` (section 1). On an Intel Xeon Platinum 8592+ node,
-`slurm_evaluate_protein_within_state.sh` reproduces the files of
-`review_round2/protein/evaluation/` of the paper byte for byte.
+`slurm_evaluate_protein_within_state.sh` runs the inductive reference evaluators.
 
-## 15. Supplementary Table S1: fill decisions of standard imputers
+## 15. Standard-imputer fill rates
 
 ```bash
 jid=$(sbatch --parsable scripts/slurm_standard_imputers.sh)
@@ -1210,7 +1236,7 @@ decisions and the agreement analysis of Supplementary Section S1.
 [scripts/standard_imputers/README.md](../scripts/standard_imputers/README.md)
 describes the imputer settings and environment.
 
-## 16. Supplementary Table S2: benchmark data
+## 16. Benchmark counts for shared inputs
 
 ```bash
 sbatch --dependency=afterok:${pdl1_prep} scripts/slurm_summarize_benchmark_data.sh
@@ -1228,7 +1254,7 @@ caption. The `benchmark_data` stage of the leakage-free launcher covers the
 pancreas folds and the Norman screen and writes
 `leakage_free/benchmark_data/benchmark_data.csv`.
 
-## 17. Supplementary Table S3 and Section S3: comparison methods
+## 17. Comparison-method settings
 
 Table S3 lists the settings of the comparison launchers of sections 3.3 and
 3.4. The ALRA rank is `chosen_k` in the `metadata.json` of each ALRA contract:
@@ -1275,7 +1301,7 @@ scGCL to a random ranking divides the mean scGCL F1 over the fill fractions
 the training loss compares the first and the last loss recorded in the
 `metadata.json` of each scGCL contract.
 
-## 18. Supplementary Table S22: runtime
+## 18. Runtime
 
 ```bash
 python3 scripts/summarize_runtime.py
@@ -1289,5 +1315,414 @@ memory. To summarize your own run, replace the job IDs in
 `selectors` jobs and, for Norman, of `lf_teachers`, `lf_scvi_teacher`,
 `lf_stack` and `lf_selector`. `--sacct-file` reads a saved pipe-delimited
 `sacct` dump instead of querying Slurm. The script writes `runtime_table.csv`
-(Table S22), `runtime_by_dataset.csv` and `sacct_records.txt` to
+(Table S27), `runtime_by_dataset.csv` and `sacct_records.txt` to
 `artifacts/paper_evidence/runtime/`.
+
+
+## 19. Final donor folds and comparison methods
+
+Prerequisites: sections 1–18, including rebuilt pancreas and Norman inputs,
+inductive deployment inputs, perturbation controls and RNA-protein fits.
+Colon uses three folds over all 34 donors. Pancreas uses the rebuilt fold-specific
+gene panels. These commands also build both modes' teachers and selectors.
+
+```bash
+export SBATCH_ACCOUNT=torch_pr_634_general
+mkdir -p logs
+bash scripts/slurm_colon_crossfit.sh submit
+```
+
+After those jobs finish:
+
+```bash
+bash scripts/slurm_colon_crossfit_thinning.sh submit
+bash scripts/slurm_pancreas_rebuilt_thinning.sh submit
+sbatch --wait -A torch_pr_634_general scripts/slurm_r3_comparators_setup.sh
+sbatch --wait --array=0-15 --export=ALL,STAGE=kcluster scripts/slurm_r3_comparators.sh
+for method in dca dca_zinb scimpute screcover enimpute; do
+  sbatch --wait --array=0-15 --export=ALL,STAGE=fit,METHOD=$method scripts/slurm_r3_comparators.sh
+done
+sbatch --wait --array=0-15 -p l40s_public --gres=gpu:l40s:1 --export=ALL,STAGE=scvi_zinb scripts/slurm_r3_comparators.sh
+sbatch --wait --export=ALL,STAGE=units scripts/slurm_r3_comparators_evaluate.sh
+sbatch --wait --array=0-47 --export=ALL,STAGE=stacked scripts/slurm_r3_comparators_evaluate.sh
+for stage in fills masked masked_cf known_zeros; do
+  if [[ $stage == fills ]]; then array=0-5; else array=0; fi
+  sbatch --wait --array=$array --export=ALL,STAGE=$stage scripts/slurm_r3_comparators_evaluate.sh
+done
+```
+
+DCA, scImpute, scRecover, EnImpute and zero-inflated variants use
+`scripts/standard_imputers/run_r3_comparator.py`, its R/Python runners and
+`scripts/standard_imputers/r3_units.sh`. Table S3 is a settings table, read from
+these launchers and the comparison launchers in section 17. It is not fitted
+or generated by a table-writing script.
+
+Table S2 reads the production and leakage-free `benchmark_data.csv` files of
+section 16, with the colon rows replaced by these fold counts:
+
+```bash
+args=()
+for fold in 0 1 2; do
+  d=artifacts/paper_evidence/review_round3/colon_crossfit/fold_$fold
+  args+=(--unit colon_$fold "$d/corrupted.h5ad" "$d/coordinates.parquet" "$d/splits.parquet")
+done
+srun -A torch_pr_634_general -p cs -c 2 --mem=8G -t 00:30:00 .venv/bin/python scripts/summarize_benchmark_data.py "${args[@]}" --output artifacts/paper_evidence/review_round3/colon_crossfit/benchmark_data.csv
+```
+
+The comparator evaluations write
+`artifacts/paper_evidence/review_round3/comparators/evaluation/{masked,masked_colon_crossfit}/{absolute,paired_differences}.csv`.
+These feed the final masked comparisons in section 21. Package versions are pinned in the setup launchers, which install the required environments.
+
+## 20. Inductive settings, training targets and alternative values
+
+Prerequisites: section 19 and its completed thinning jobs. These analyses supply
+Table S8, the molecule-masking column of Table S9 and the value references used
+by section 21. The selection rule uses inner validation; test outputs do not
+select a model.
+
+```bash
+S=scripts/slurm_v2_selector.sh
+sbatch --wait --array=0-39 -c 2 --mem=24G --time=00:30:00 "$S" inner_inputs
+sbatch --wait --array=0-159 --mem=32G "$S" inner_cpu
+sbatch --wait --array=0-39 -p l40s_public --gres=gpu:l40s:1 --mem=32G "$S" inner_gpu
+sbatch --wait --array=0-79 -p cs "$S" inner_selector
+sbatch --wait -c 2 --mem=8G --time=00:20:00 "$S" inner_evaluate
+T=scripts/slurm_v2_selector_test.sh
+sbatch --wait --array=0-27 -c 2 --mem=24G --time=00:30:00 "$T" inputs
+sbatch --wait --array=0-111 --mem=32G "$T" cpu
+sbatch --wait --array=0-27 -p l40s_public --gres=gpu:l40s:1 --mem=32G "$T" gpu
+sbatch --wait --array=0-27 -p cs "$T" selector
+sbatch --wait --array=0-7 -p cs "$T" current_selector
+sbatch --wait --array=0-23 --mem=32G "$T" trans_cpu
+sbatch --wait --array=0-7 --mem=32G "$T" trans_magic
+sbatch --wait --array=0-7 -p l40s_public --gres=gpu:l40s:1 --mem=32G "$T" trans_scvi
+sbatch --wait --array=0-7 -p cs "$T" trans_selector
+sbatch --wait -c 8 --mem=64G --time=03:00:00 "$T" evaluate
+```
+
+The target choice is
+`artifacts/paper_evidence/review_round3/selector_v2/inner/evaluation_colon_crossfit/selection.json`.
+Table S9 reads `test/evaluation/masked/{absolute,paired_differences}.csv`,
+`test/evaluation/thinned/{summary,paired_differences}.csv`
+and the known-zero and protein tables written by `v2_selector_test_evaluate.py`
+under `test/evaluation/references/`: `knockdown_summary.csv`,
+`sex_paired.csv` and `pdl1_paired.csv`.
+
+```bash
+S=scripts/slurm_v2_ablation.sh
+for stage in mask_input mask_teachers mask_scvi mask_stack mask_selector nocf_teachers nocf_scvi nocf_stack nocf_selector selector_size value_boosting; do
+  gpu=()
+  case $stage in
+    mask_input|mask_stack|mask_selector) array=0-15 ;;
+    mask_teachers) array=0-63 ;;
+    mask_scvi) array=0-15; gpu=(-p l40s_public --gres=gpu:l40s:1) ;;
+    nocf_teachers|selector_size) array=0-23 ;;
+    nocf_scvi) array=0-7; gpu=(-p l40s_public --gres=gpu:l40s:1) ;;
+    nocf_stack|nocf_selector) array=0-7 ;;
+    value_boosting) array=0-47 ;;
+  esac
+  sbatch --wait -p cs "${gpu[@]}" --array=$array --export=ALL,STAGE=$stage "$S"
+done
+sbatch --wait -p cs --array=0 --cpus-per-task=4 --mem=64G --time=01:00:00 --export=ALL,STAGE=evaluate "$S"
+V=scripts/slurm_v2_value.sh
+sbatch --wait --array=0-15 --export=ALL,STAGE=inner "$V"
+sbatch --wait --export=ALL,STAGE=select "$V"
+sbatch --wait --array=0-10,20-28 --export=ALL,STAGE=fit "$V"
+sbatch --wait --export=ALL,STAGE=evaluate "$V"
+```
+
+Table S8 reads
+`artifacts/paper_evidence/review_round3/value_v2_ablations/ablations/evaluation/paired_differences.csv`.
+The value selection is `value/selection/selection.json`; its held-out value
+reference is `value/test/value_accuracy.csv`. `scripts/v2_value_models.py`
+implements the conditional, detection-weighted and count-rate alternatives.
+
+## 21. Main masked recovery, thinning and inserted values
+
+Prerequisites: sections 19–20, including all comparison fits, the reference
+fusion evaluation in section 5, and the Norman replicate fits in section 6.
+The following stages use unchanged biological-unit bootstrap kernels.
+
+```bash
+O=artifacts/paper_evidence/review_round4/transductive_main
+C=scripts/analyses/transductive_main
+mkdir -p "$O/logs"
+python "$C/submit.py" replicate
+python "$C/submit.py" recorded
+bash scripts/slurm_thinning_transductive.sh submit
+```
+
+Wait for all three chains. Then run:
+
+```bash
+sbatch --wait --array=0-48 "$C/run.sh" fit_s5.py
+sbatch --wait --array=0-13 "$C/run.sh" attribution_exact.py
+sbatch --wait --array=0-2 "$C/run.sh" masked.py 0
+sbatch --wait "$C/run.sh" feature_eval.py
+sbatch --wait "$C/run.sh" replicate_eval.py
+sbatch --wait "$C/run.sh" thinning.py
+sbatch --wait "$C/run.sh" value.py masked
+sbatch --wait "$C/run.sh" value.py thinning
+sbatch --wait "$C/run.sh" recorded_eval.py
+srun -A torch_pr_634_general -p cs -c 2 --mem=8G -t 00:30:00 .venv/bin/python scripts/build_transductive_fillrate_summary.py --output-dir "$O"
+srun -A torch_pr_634_general -p cs -c 2 --mem=8G -t 00:30:00 .venv/bin/python scripts/plot_overview_f1.py --curves "$O/selector_f1_fillrate_transductive_1000_points.csv" --output "$O/figures/f1_fillrate_3panel_oup.png"
+```
+
+Files below are relative to `$O`:
+
+| Item | Output read by the manuscript | Calculation |
+|---|---|---|
+| Table 1 | `masked/{Pancreas,Colon,CRISPRa}/{paired_differences,new_comparators_paired_differences}.csv`; `selector_f1_fillrate_transductive_1000_points.csv` | `masked.py`, `fusion_value_bootstrap.py`, `build_transductive_fillrate_summary.py` |
+| Figure 1 | `figures/f1_fillrate_3panel_oup.png` | `scripts/plot_overview_f1.py`, from the transductive/inductive curves |
+| S4 | `rebuilt_replicates/evaluation/{per_seed,across_seeds,paired_differences,wins}.csv` | `replicate_eval.py` |
+| S5 | `masked/{Pancreas,Colon,CRISPRa}/{paired_differences,new_comparators_paired_differences}.csv` | Both comparison tables, all three statistics |
+| S6 | `item3_evaluation/{Pancreas,Colon,CRISPRa}/paired_differences.csv` | Transductive teacher-removal and classifier variants |
+| S7 | `item3_evaluation/feature_pr_auc_exact.csv` | `attribution_exact.py`, `feature_eval.py` |
+| S10 | `thinning_evaluation/{absolute,paired_differences}.csv` | `thinning.py`, thinning-trained and mask-trained designs |
+| S11 | `artifacts/paper_evidence/review_round2/thinning_transfer/count_stratified_recall/count_stratified_recall.csv` | Inductive masked recall; section 8.3 |
+| S12 | `artifacts/paper_evidence/review_round2/norman_rebuilt/value_accuracy/{error_removed,log_error,cross_validation}.csv` | Inductive values on the captioned benchmarks; section 9 |
+| S13 | `artifacts/paper_evidence/review_round2/norman_rebuilt/value_accuracy/{error_removed,log_error_strata,replicates}.csv` | Inductive budget and stratum rows; section 9 |
+| S14 | `artifacts/paper_evidence/review_round2/inserted_value/recorded_zero_fills.csv` | Inductive recorded-zero values; section 11 |
+| S15 | `artifacts/paper_evidence/review_round2/inserted_value/thinning_positive_bias.csv`; `artifacts/paper_evidence/review_round3/value_v2_ablations/value/test/value_accuracy.csv` | Inductive bias; section 11; `conditional_detection`, `bias_selected` rows from section 20 |
+
+The transductive value results in the surrounding text read
+`value_accuracy/{masked,recorded,thinning}.csv`. Tables S11–S15 retain the
+inductive benchmarks explicitly identified in their captions.
+
+The transductive mode is the reference for the main comparisons. The inductive
+rows retain their own scores, values, training splits and intervals. Counts of
+winning fractions are descriptive counts, not bootstrap estimates.
+
+## 22. Perturbation, sex and protein controls
+
+Prerequisites: sections 13–14 and 19–21. The setup script rebuilds input and
+comparator links inside this clone. It does not copy data or contracts into Git.
+
+```bash
+bash scripts/analyses/transductive_references/reproduce.sh
+```
+
+This launcher waits at each stage: inductive evaluator checks; masked and
+recorded perturbation fits; rebuilt tissue inputs; label-free and donor-aware
+teachers/selectors; matched sex evaluation; then protein fitting, evaluation
+and plotting. CPU selectors use `cs`; scVI uses L40S. The evaluators are
+`evaluate_knockdown_zero_analyses.py`, `evaluate_condition_masked_f1.py`,
+`sex_evaluate.py`, `evaluate_papalexi_crossmodal.py` and `protein_matched.py`.
+
+The final outputs are under
+`artifacts/paper_evidence/review_round4/transductive_references/`:
+
+| Item | Output |
+|---|---|
+| Table 2, perturbation columns; S16 | `knockdown/evaluation_matched/report.json`, `auroc.csv`, `effects.csv`, `fills.csv` and `targets.csv`; additional comparator rows in `artifacts/paper_evidence/review_round3/comparators/evaluation/known_zeros/` |
+| S17 | `knockdown/masked_f1/masked_f1_by_screen.json`, `masked_f1_report.json` |
+| Table 2, sex columns; S18, Safe Fusion rows | `sex_zeros/evaluation/{pancreas,colon}/{auroc,fill_rates}.csv` |
+| Figure 2 | `protein_cs/figures/pdl1_range_validation.png` and `.pdf` |
+| S19 | `protein_cs/evaluation_cd274/replicate_association.csv`, `protein_cs/evaluation_cd274_raw_counts/continuous_protein_association.csv`, `protein_cs/evaluation/continuous_protein_association.csv` |
+| S20 | `protein_cs/evaluation_within_state/{association,pdl1_pooled_rankings,paired_differences,global_fill}.csv` |
+
+Table 2's DCA, scImpute and EnImpute perturbation rows use
+`scripts/standard_imputers/evaluate_r3_known_zeros.py` from section 19. Sex-linked
+comparator fits require the matched deployment fits of section 23; that section
+finishes Table 2 and S18. The gene-panel availability rule excludes missing genes,
+not missing donors from the bootstrap universe.
+
+## 23. Downstream analyses and sex-linked comparators
+
+Prerequisites: sections 19–22 and the deployment, thinning, disease and annotation
+references in sections 8–14. First produce the standard-method references:
+
+```bash
+bash scripts/slurm_r3_downstream.sh submit
+```
+
+After completion, submit each following chain separately and wait for it:
+
+```bash
+bash scripts/slurm_r3_downstream_thinning.sh submit
+bash scripts/slurm_r3_downstream_null.sh submit
+sbatch --wait -p cs --mem=64G --time=03:00:00 scripts/slurm_r3_downstream_null.sh correlation recorded
+sbatch --wait scripts/slurm_r3_downstream_table1.sh
+bash scripts/analyses/transductive_downstream/reproduce_all.sh
+```
+
+`build_manifest.py` enumerates the masked, deployment, thinning and permuted
+inputs. `pipeline.py` fits the teachers and values, `selector.py` produces
+conditional and detection-weighted fills, and the original biological evaluators
+compute the endpoints. `summarize.py`, `disease.py`, `disease_endpoints.py`,
+`correlation.py` and `report.py` assemble the outputs.
+
+Files below are relative to
+`artifacts/paper_evidence/review_round4/transductive_downstream/`:
+
+| Item | Output |
+|---|---|
+| Table 3 | `summary/thinning_reference.csv`, `summary/thinning_unit_values.csv` |
+| S21 | `summary/endpoint_changes.csv`, `summary/s17_absolute.csv`, `summary/decomposition_counts.csv`, masked evaluation files |
+| S22 | `summary/endpoint_changes.csv`, deployment evaluation files |
+| S23 | `summary/disease_all.csv`, `disease/<tissue>_<fold>/deployment/disease_effects/<tissue>/{observed_summary,permutation_null}.csv` |
+| S24 | `disease/<tissue>_<fold>/deployment/annotation/<tissue>/overall.csv` |
+| S25 | `correlation/null/counts/{summary,versus_reference}.csv` |
+
+Table 3 measures reduced error against independent unthinned counts. S22 measures
+change from the recorded matrix. These are different endpoints. Disease tables
+retain fold-specific gene panels; a fold without an estimable contrast stays NA.
+
+After the downstream fits complete, reproduce the sex-linked comparators:
+
+```bash
+bash scripts/analyses/sex_zero_comparators/reproduce.sh
+```
+
+This submits fits, verification, evaluation and report in dependency order.
+`fit.sh` runs the comparison methods; `evaluate.py` reuses the sex-zero kernel.
+By default results go to
+`artifacts/paper_evidence/review_round4/sex_zero_comparators/reproduction_run/`.
+Table 2 and S18 read `evaluation/{pancreas,colon}/auroc.csv`; associated fill
+rates read `fill_rates.csv`. The manuscript has unavailable EnImpute entries
+where its saved fits did not cover every required fold. A fresh longer fit may
+complete those cells; it does not change which values are printed in the manuscript.
+
+## 24. Lupus regulatory-T-cell example
+
+Prerequisites: the environments of section 1. Fetch and prepare the Perez and
+Hao inputs before the fold pipeline. Each command below waits for completion.
+
+```bash
+sbatch --wait scripts/slurm_sle_fetch.sh
+sbatch --wait scripts/slurm_sle_fetch_citeseq.sh
+sbatch --wait scripts/slurm_sle_setup_env.sh
+P=scripts/slurm_sle_pipeline.sh
+sbatch --wait --array=0-2 --mem=96G --export=ALL,STAGE=prepare "$P"
+sbatch --wait --array=0-8 --export=ALL,STAGE=build "$P"
+sbatch --wait --array=0-47 --mem=48G --time=06:00:00 --export=ALL,STAGE=teachers "$P"
+sbatch --wait --array=0-11 -p l40s_public --gres=gpu:l40s:1 --mem=48G --time=10:00:00 --export=ALL,STAGE=scvi_teacher "$P"
+sbatch --wait --array=0-11 --export=ALL,STAGE=magic "$P"
+sbatch --wait --array=0-11 -p l40s_public --gres=gpu:l40s:1 --mem=48G --export=ALL,STAGE=scvi "$P"
+sbatch --wait --array=0-11 --mem=48G --time=03:00:00 --export=ALL,STAGE=stack "$P"
+sbatch --wait --array=0-11 -p cs --mem=128G --time=10:00:00 --export=ALL,STAGE=selector "$P"
+sbatch --wait --array=0-11 --export=ALL,STAGE=fills "$P"
+sbatch --wait --array=0-6 --mem=128G --time=08:00:00 --export=ALL,STAGE=evaluate "$P"
+bash scripts/analyses/sle_transductive/reproduce.sh
+```
+
+`sle_prepare.py`, `sle_prepare_citeseq.py` and `sle_build_fold.py` prepare the
+sets and gene panels using `configs/sle_treg_genes.json`. The transductive
+launcher reuses matching MAGIC/scVI fits, refits the other teachers, and runs
+`sle_evaluate_zeros.py`, `sle_evaluate_focus_fills.py`, `sle_evaluate_clustering.py`,
+`sle_evaluate_deploy.py`, `sle_evaluate_protein.py` and `sle_evaluate_masked.py`.
+
+Table S29 reads the `conditional` and `conditional_detection` outputs under
+`artifacts/paper_evidence/review_round4/sle_transductive/` and the corresponding
+inductive files under `artifacts/paper_evidence/sle_treg_case/`:
+`results/masked/paired_bootstrap.csv`, `results/q1_zeros_sex/per_gene.csv`,
+`results/q3_clustering/treg_calls_summary.csv`, `results/q3_clustering/clustering_mean_over_folds.csv`,
+`results/focus_fills/focus_fill_counts.csv`, `results/deploy_main/q4_effects.csv`,
+`results/deploy_main/q4_null_de.csv`
+and `results/q7_protein/fcrl3_protein_agreement.csv`. `comparisons/` contains the
+same endpoints side by side; `ap_bootstrap.py` supplies masked AP intervals.
+Hao supplies FcRL3 protein, not TLR5 protein, and is a healthy-donor reference.
+
+## 25. Dropout-probability training target
+
+Prerequisites: sections 20–22. This section supplies the dropout-probability
+column of Table S9. It preserves the source score formula, seeds, calibration
+and endpoint bootstraps. The manifest builders encode the matching input and
+teacher paths; no saved manifest or fit is shipped.
+
+```bash
+O=artifacts/paper_evidence/review_round4/dropout_posterior
+C=scripts/analyses/dropout_posterior
+mkdir -p "$O/logs"
+python "$C/build_manifest.py"
+python "$C/extend_manifest.py"
+sbatch --wait -A torch_pr_634_general -p cs --array=0-13,15-53%8 "$C/run.sh"
+for dataset in Pancreas Colon CRISPRa; do
+  sbatch --wait "$C/evaluate.sh" masked "$dataset"
+done
+for dataset in 'Colon 050' 'Colon 025' 'Pancreas 050'; do
+  sbatch --wait "$C/evaluate.sh" thinning "$dataset"
+done
+sbatch --wait "$C/evaluate.sh" known adamson_crispri
+for tissue in Pancreas Colon; do
+  sbatch --wait -c 2 --mem=16G "$C/evaluate.sh" sex "$tissue"
+done
+sbatch --wait -c 2 --mem=16G "$C/evaluate.sh" protein
+```
+
+Table S9 reads `evaluation/masked/{Pancreas,Colon,CRISPRa}/results.csv`,
+`evaluation/thinning/{Colon_050,Colon_025,Pancreas_050}/results.csv`, `evaluation/known/adamson_crispri/results.csv`,
+`evaluation/sex/{Pancreas,Colon}/results.csv` and `evaluation/protein/results.csv`
+under `$O`. Select the transductive primary posterior and its paired change
+from the matching Safe Fusion chain. The excluded inductive Norman thinning
+chain cannot reproduce its saved calibration selection on the tested hardware;
+Table S9 does not require that endpoint. Missing dispersion limits the optional
+negative-binomial sensitivity, not the primary Poisson posterior.
+
+## 26. Scaling study
+
+Prerequisites: sections 19 and 24's Perez download. No SLE model fits are needed.
+`slurm_scale.sh submit` records new job IDs for resource accounting and accepts
+`AFTER` to enforce stage dependencies. Prepare first:
+
+```bash
+sbatch --wait --array=0 --time=04:00:00 --mem=64G --export=ALL,STAGE=prepare scripts/slurm_scale.sh
+bash scripts/slurm_scale.sh submit mask
+```
+
+After masking completes:
+
+```bash
+AFTER=mask bash scripts/slurm_scale.sh submit teachers
+AFTER=mask bash scripts/slurm_scale.sh submit scvi_teacher
+AFTER=mask bash scripts/slurm_scale.sh submit magic
+AFTER=mask bash scripts/slurm_scale.sh submit scvi
+AFTER=mask bash scripts/slurm_scale.sh submit alra
+AFTER=mask bash scripts/slurm_scale.sh submit saver
+AFTER="teachers scvi_teacher" bash scripts/slurm_scale.sh submit stack
+AFTER=stack bash scripts/slurm_scale.sh submit selector
+AFTER=scvi bash scripts/slurm_scale.sh submit scvi_probability
+AFTER="magic scvi" bash scripts/slurm_scale.sh submit transductive_teachers
+AFTER=transductive_teachers bash scripts/slurm_scale.sh submit transductive_stack
+AFTER=transductive_stack bash scripts/slurm_scale.sh submit transductive_selector
+AFTER="teachers scvi_teacher" bash scripts/slurm_scale.sh submit without_magic_stack
+AFTER=without_magic_stack bash scripts/slurm_scale.sh submit without_magic_selector
+```
+
+Wait for all chains, then run:
+
+```bash
+sbatch --wait --array=0-11 --mem=160G --time=24:00:00 --export=ALL,STAGE=stack_replicate scripts/slurm_scale.sh
+sbatch --wait --array=0-1 --time=02:00:00 --mem=32G --export=ALL,STAGE=check scripts/slurm_scale.sh
+sbatch --wait --array=0 --mem=96G --time=08:00:00 --export=ALL,STAGE=evaluate scripts/slurm_scale.sh
+sbatch --wait --array=0 --mem=16G --time=01:00:00 --export=ALL,STAGE=report scripts/slurm_scale.sh
+```
+
+Table S28 reads `results/paired_differences.csv` and
+`results/{resources,safe_fusion_totals,accuracy_summary}.csv` under
+`artifacts/paper_evidence/review_round3/scale/`. `scale_prepare.py` constructs
+the nested samples, `scale_selector.py` computes the bounded-memory selector,
+`scale_evaluate.py` computes accuracy and `scale_report.py` queries Slurm costs.
+Exact wall time and sampled memory require the accounting records of the run;
+new runs measure their own cost. No Slurm records are distributed by this update.
+
+## Verification
+
+Run this from the repository root on a compute node. It checks every Python file,
+every shell launcher and each literal script path in this guide.
+
+```bash
+srun -A torch_pr_634_general -p cs -c 2 --mem=8G -t 00:30:00 python - <<'PYCODE'
+from pathlib import Path
+import re, subprocess, sys
+root = Path.cwd()
+python_files = sorted(root.rglob("*.py"))
+subprocess.run([sys.executable, "-m", "py_compile", *map(str, python_files)], check=True)
+for path in sorted(root.rglob("*")):
+    if path.is_file() and path.suffix in {".sh", ".s", ".sbatch"}:
+        subprocess.run(["bash", "-n", str(path)], check=True)
+paths = set(re.findall(r"(?:scripts|src|fusion)/[\w/.-]+\.(?:py|sh|s|R)", (root / "docs/REPRODUCTION.md").read_text()))
+assert all((root / path).is_file() for path in paths)
+print(f"Compiled {len(python_files)} Python files; shell syntax and {len(paths)} script paths passed.")
+PYCODE
+```

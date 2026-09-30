@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -11,13 +12,11 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from safefusion_benchmark.contracts import order_hash, write_output_contract
 from safefusion_benchmark.hashing import sha256_file
-
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -27,6 +26,10 @@ def main() -> None:
     parser.add_argument("--output", required=True)
     parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--seed", type=int, default=1729)
+    parser.add_argument(
+        "--condition-column", default=None,
+        help="Obs column used as a categorical covariate of the decoder, so the standard fit is label-aware.",
+    )
     args = parser.parse_args()
 
     import scvi
@@ -39,7 +42,11 @@ def main() -> None:
     model_adata.obs_names = source.obs_names.copy()
     model_adata.var_names = source.var_names.copy()
 
-    scvi.model.SCVI.setup_anndata(model_adata)
+    batch_key = None
+    if args.condition_column is not None:
+        model_adata.obs["condition"] = model_adata.obs[args.condition_column].astype(str).astype("category")
+        batch_key = "condition"
+    scvi.model.SCVI.setup_anndata(model_adata, batch_key=batch_key)
     model = scvi.model.SCVI(
         model_adata,
         n_hidden=128,
@@ -92,6 +99,7 @@ def main() -> None:
             "gene_likelihood": "nb",
             "maximum_epochs": args.epochs,
             "epochs_trained": int(model.history["elbo_train"].shape[0]),
+            "condition_column": args.condition_column,
             "disclosure": "Standard scVI is fit to the full corrupted matrix without masking labels or original hidden values. It is a transductive sensitivity baseline, not a heldout projection result.",
         },
         "seed": args.seed,
@@ -101,7 +109,6 @@ def main() -> None:
     write_output_contract(args.output, mean, metadata)
     model.save(str(Path(args.output) / "model"), overwrite=True, save_anndata=False)
     print(json.dumps({"method": "scvi", "shape": list(mean.shape), "parameters": metadata["parameters"]}))
-
 
 if __name__ == "__main__":
     main()

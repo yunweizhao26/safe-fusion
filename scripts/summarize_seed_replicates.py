@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -14,6 +15,7 @@ EVIDENCE = Path("artifacts/paper_evidence")
 PAN = Path("artifacts/pancreas_runs/0b2469810675-45c81b160d78")
 COL = Path("artifacts/colon_runs/0b2469810675-c0db6f963e94")
 CF = EVIDENCE / "pancreas_crossfit"
+NORMAN = EVIDENCE / "norman_crispra"
 REP = EVIDENCE / "seed_replicates"
 GRID = np.linspace(0.001, 1.0, 1000)[:100]
 INTEGER = np.arange(9, 100, 10)
@@ -24,8 +26,8 @@ COUNT_SCALE = {
     "log1p_cpm": lambda value, library: np.expm1(value) * (library / 1e4),
 }
 
-
 def units(seed: int, evidence: Path = EVIDENCE, replicates: Path = REP) -> list[dict]:
+
     crossfit = evidence / "pancreas_crossfit"
     norman = evidence / "norman_crispra"
     production = seed == 1729
@@ -64,8 +66,8 @@ def units(seed: int, evidence: Path = EVIDENCE, replicates: Path = REP) -> list[
                    "MAGIC": baselines / "magic/norman", "scVI": baselines / "scvi/norman"}))
     return out
 
-
 def unit_curves(unit: dict) -> dict[str, np.ndarray]:
+
     source = ad.read_h5ad(unit["corrupted"])
     matrix = source.layers["corrupted_counts"]
     counts = (matrix.toarray() if sparse.issparse(matrix) else np.asarray(matrix)).astype(np.float32)
@@ -96,11 +98,9 @@ def unit_curves(unit: dict) -> dict[str, np.ndarray]:
     curves["Safe Fusion"] = np.array([[p["n_selected"], p["n_true_positive"], positives, n] for p in curve])
     return curves
 
-
 def f1(pooled: np.ndarray) -> np.ndarray:
     selected, true_positive, positives = pooled[:, 0], pooled[:, 1], pooled[:, 2]
     return 100 * 2 * true_positive / (selected + positives)
-
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -109,7 +109,7 @@ def main() -> None:
                         help="Root of the seed-1729 runs (pancreas_crossfit, norman_crispra, baselines, selectors).")
     parser.add_argument("--replicate-root", type=Path, default=None,
                         help="Root of the seed replicates. Defaults to <evidence-root>/seed_replicates.")
-    parser.add_argument("--datasets", nargs="+", default=["Pancreas", "Colon"])
+    parser.add_argument("--datasets", nargs="+", default=["Pancreas", "Colon", "CRISPRa"])
     parser.add_argument("--output-dir", type=Path, default=None, help="Defaults to <replicate-root>/summary.")
     args = parser.parse_args()
     replicate_root = args.replicate_root or args.evidence_root / "seed_replicates"
@@ -156,7 +156,6 @@ def main() -> None:
     pd.set_option("display.width", 250)
     print(summary.round(2).to_string(index=False))
     print(across.round(2).T.to_string())
-
 
 if __name__ == "__main__":
     main()

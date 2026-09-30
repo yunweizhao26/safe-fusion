@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -32,21 +33,21 @@ WINDOWS = {
 }
 FRACTIONS = tuple(sorted(set(WINDOWS["mean_f1_1_to_10"]) | set(WINDOWS["mean_f1_1_to_2"])))
 STATISTICS = (*WINDOWS, "average_precision")
+
 PROBABILITY_SCORES = {"scVI P(X>0)": "scvi", "SAVER P(X>0)": "saver"}
 REFERENCES = ("Safe Fusion", "Safe Fusion (transductive)")
 KEY_COMPARATORS = ("scVI (stacked)", "MAGIC (stacked)")
 DRAW_CHUNK = 250
 
-
 @dataclass
 class Group:
+
     unit: object
     rows: np.ndarray
     cols: np.ndarray
     labels: np.ndarray
     codes: np.ndarray
     unit_index: np.ndarray
-
 
 def method_families() -> dict[str, str]:
     families = {name: "table_1" for name in MAIN_COMPARATORS}
@@ -55,8 +56,8 @@ def method_families() -> dict[str, str]:
     families.update({variant.name: f"selector_{variant.family}" for variant in variants()})
     return families
 
-
 def ranking(method: str, group: Group, data, args) -> np.ndarray:
+
     unit = group.unit
     rows, cols = group.rows, group.cols
     selectors = {variant.name: variant for variant in variants()}
@@ -76,8 +77,8 @@ def ranking(method: str, group: Group, data, args) -> np.ndarray:
     rank[order] = np.arange(len(order))
     return rank
 
-
 def group_statistics(rank: np.ndarray, group: Group, weights: np.ndarray) -> dict[str, np.ndarray]:
+
     labels = group.labels.astype(bool)
     n_units = len(group.unit_index)
     local = np.searchsorted(group.unit_index, group.codes)
@@ -118,7 +119,6 @@ def group_statistics(rank: np.ndarray, group: Group, weights: np.ndarray) -> dic
         "unit_counts": (selected, true_positive, positives),
     }
 
-
 def statistics_from_sums(sums: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
     f1 = 2.0 * sums["true_positive"] / (sums["selected"] + sums["positives"][:, None])
     result = {
@@ -128,12 +128,11 @@ def statistics_from_sums(sums: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
     result["average_precision"] = sums["ap_numerator"] / sums["positives"]
     return result
 
-
 def interval(values: np.ndarray) -> tuple[float, float]:
     return float(np.quantile(values, 0.025)), float(np.quantile(values, 0.975))
 
-
 def summary_table(absolute: pd.DataFrame, differences: pd.DataFrame) -> pd.DataFrame:
+
     bounds = {"estimate": "estimate", "lower": "lower", "upper": "upper"}
     parts = [absolute.rename(columns={f"{key}_percent": value for key, value in bounds.items()}).assign(quantity="value (%)")]
     for reference in REFERENCES:
@@ -149,13 +148,16 @@ def summary_table(absolute: pd.DataFrame, differences: pd.DataFrame) -> pd.DataF
     wide.columns = [f"{statistic} | {quantity} | {bound}" for statistic, quantity, bound in wide.columns]
     return wide.reset_index()
 
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     add_root_arguments(parser)
     parser.add_argument("--selector-root", type=Path, default=FUSION_VALUE_ROOT / "selectors")
     parser.add_argument("--probability-root", type=Path, default=FUSION_VALUE_ROOT / "nonzero_probability")
     parser.add_argument("--output-dir", type=Path, default=FUSION_VALUE_ROOT / "evaluation")
+    parser.add_argument(
+        "--unit-keys", nargs="+", default=list(UNIT_KEYS),
+        help="Units of the manifest to evaluate; units of one dataset are pooled (default: the fusion-value units).",
+    )
     parser.add_argument("--draws", type=int, default=2000)
     parser.add_argument("--seed", type=int, default=1729)
     args = parser.parse_args()
@@ -164,7 +166,7 @@ def main() -> None:
     methods = list(families)
     units = {unit.key: unit for unit in units_from_args(args, args.seed)}
     by_dataset: dict[str, list[str]] = {}
-    for key in UNIT_KEYS:
+    for key in args.unit_keys:
         by_dataset.setdefault(units[key].dataset, []).append(key)
 
     absolute_rows, difference_rows, count_frames = [], [], []
@@ -258,7 +260,6 @@ def main() -> None:
         "key_question": key_question,
     }
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
-
 
 if __name__ == "__main__":
     main()

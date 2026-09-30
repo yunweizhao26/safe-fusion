@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -13,7 +14,6 @@ from scipy import sparse
 from sklearn.cluster import KMeans
 from sklearn.neighbors import NearestNeighbors
 
-
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
@@ -23,17 +23,14 @@ from safefusion_benchmark.downstream import (
     randomized_pca_embedding,
 )
 
-
 def dense(value) -> np.ndarray:
     return value.toarray() if sparse.issparse(value) else np.asarray(value)
-
 
 def parse_method(value: str) -> tuple[str, Path]:
     name, path = value.split("=", 1)
     if not name or not path:
         raise ValueError("methods must use name=contract_directory")
     return name, Path(path)
-
 
 def neighbor_purity_by_cell(embedding: np.ndarray, labels: np.ndarray, neighbors: int) -> np.ndarray:
     k = min(neighbors + 1, len(embedding))
@@ -43,7 +40,6 @@ def neighbor_purity_by_cell(embedding: np.ndarray, labels: np.ndarray, neighbors
     if not indices.shape[1]:
         return np.full(len(embedding), np.nan)
     return np.mean(labels[indices] == labels[:, None], axis=1)
-
 
 def bootstrap_summary(
     unit_seed_metrics: pd.DataFrame,
@@ -96,7 +92,6 @@ def bootstrap_summary(
             })
     return pd.DataFrame(estimates), pd.DataFrame(comparisons)
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--truth", required=True)
@@ -111,6 +106,11 @@ def main() -> None:
     parser.add_argument("--cluster-seeds", type=int, default=20)
     parser.add_argument("--bootstrap", type=int, default=2000)
     parser.add_argument("--seed", type=int, default=1729)
+    parser.add_argument(
+        "--allow-transductive",
+        action="store_true",
+        help="accept contracts that declare a transductive fit on all cells (standard MAGIC and scVI) and mark them in the leakage table",
+    )
     args = parser.parse_args()
 
     truth_adata = ad.read_h5ad(args.truth)
@@ -152,7 +152,11 @@ def main() -> None:
                 or decision.get("test_labels_used_for_thresholds") is False
             )
         )
-        leakage.append({"method": name, "passed": passed})
+        record = {"method": name, "passed": passed}
+        if args.allow_transductive:
+            record["transductive"] = parameters.get("transductive") is True and not decision
+            record["passed"] = passed or record["transductive"]
+        leakage.append(record)
     if not all(item["passed"] for item in leakage):
         raise ValueError("one or more method contracts failed leakage checks")
 
@@ -217,7 +221,6 @@ def main() -> None:
     }
     (output / "report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps(report, indent=2, sort_keys=True))
-
 
 if __name__ == "__main__":
     main()

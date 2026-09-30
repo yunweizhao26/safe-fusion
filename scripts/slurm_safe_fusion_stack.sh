@@ -4,7 +4,7 @@
 #SBATCH --time=01:30:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
-#SBATCH --array=0-8
+#SBATCH --array=0-9
 #SBATCH --output=logs/slurm-stack-%A_%a.out
 #SBATCH --error=logs/slurm-stack-%A_%a.err
 

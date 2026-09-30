@@ -16,15 +16,16 @@ export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export OPENBLAS_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export MKL_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 
-ROOT=artifacts/paper_evidence/review_round2/fusion_value
+ROOT="${ROOT:-artifacts/paper_evidence/review_round2/fusion_value}"
 TRANSDUCTIVE="${ROOT}/transductive"
 MANIFEST="${MANIFEST:-artifacts/paper_evidence/review_round2/leakage_free/units_manifest.json}"
 STAGE="${STAGE:?set STAGE to teachers, stack, selectors, probability or evaluate}"
-units=(pancreas_0 pancreas_1 pancreas_2 colon norman_crispra)
+
+units=(${UNITS:-pancreas_0 pancreas_1 pancreas_2 colon norman_crispra})
 
 unit_paths() {
   read -r input coordinates splits magic scvi saver < <(.venv/bin/python scripts/fusion_value_selectors.py \
-    --units-manifest "${MANIFEST}" --unit "$1" --unit-paths)
+    --units-manifest "${MANIFEST}" --unit "$1" --unit-keys "${units[@]}" --unit-paths)
 }
 
 case "${STAGE}" in
@@ -58,7 +59,9 @@ case "${STAGE}" in
       --output "${TRANSDUCTIVE}/${key}/safe_fusion" --seed 1729 "${teacher_args[@]}"
     ;;
   selectors)
+
     .venv/bin/python scripts/fusion_value_selectors.py --units-manifest "${MANIFEST}" \
+      --unit-keys "${units[@]}" --output-root "${ROOT}/selectors" --transductive-root "${TRANSDUCTIVE}" \
       --array-index "${SLURM_ARRAY_TASK_ID}" \
       --families ${FAMILIES:-fusion leave_one_out architecture stacked} --seed 1729
     ;;

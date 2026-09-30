@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -12,7 +13,6 @@ import pandas as pd
 from scipy import sparse
 from scipy.spatial.distance import cdist
 
-
 REPOSITORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY / "src"))
 
@@ -20,20 +20,16 @@ from safefusion_benchmark.downstream import randomized_pca_embedding
 from safefusion_benchmark.marker_panels import PANELS
 from safefusion_benchmark.metrics import average_precision_tie_aware, log1p_mae, spearman
 
-
 DISEASE_MARKERS = {"CXCL10", "STAT1", "B2M", "IFITM1", "IFITM3"}
-
 
 def dense(value) -> np.ndarray:
     return value.toarray() if sparse.issparse(value) else np.asarray(value)
-
 
 def parse_named_subdir(value: str) -> tuple[str, str]:
     name, subdir = value.split("=", 1)
     if not name or not subdir:
         raise ValueError("extra methods must use name=subdirectory")
     return name, subdir
-
 
 def macro_f1(actual: np.ndarray, predicted: np.ndarray) -> float:
     values: list[float] = []
@@ -44,7 +40,6 @@ def macro_f1(actual: np.ndarray, predicted: np.ndarray) -> float:
         denominator = 2 * tp + fp + fn
         values.append(float(2 * tp / denominator) if denominator else 0.0)
     return float(np.mean(values))
-
 
 def centroid_predictions(
     matrix: np.ndarray,
@@ -57,7 +52,6 @@ def centroid_predictions(
     classes = np.unique(labels[train])
     centroids = np.stack([embedding[train & (labels == label)].mean(axis=0) for label in classes])
     return classes[np.argmin(cdist(embedding[test], centroids), axis=1)]
-
 
 def canonical_marker_metrics(
     matrix: np.ndarray,
@@ -93,7 +87,6 @@ def canonical_marker_metrics(
         "ectopic_marker_fill_rate": float(ectopic_filled / ectopic_total) if ectopic_total else float("nan"),
     }
 
-
 def development_marker_metrics(
     matrix: np.ndarray,
     truth: np.ndarray,
@@ -119,7 +112,6 @@ def development_marker_metrics(
         "development_marker_rank_spearman": float(np.mean(correlations)),
     }
 
-
 def stratified_bootstrap_indices(frame: pd.DataFrame, replicates: int, seed: int) -> list[np.ndarray]:
     rng = np.random.default_rng(seed)
     result: list[np.ndarray] = []
@@ -131,7 +123,6 @@ def stratified_bootstrap_indices(frame: pd.DataFrame, replicates: int, seed: int
             selected.extend(rng.choice(positions, size=len(positions), replace=True).tolist())
         result.append(np.asarray(selected, dtype=int))
     return result
-
 
 def summarize_unit_metrics(
     unit_metrics: pd.DataFrame,
@@ -184,7 +175,6 @@ def summarize_unit_metrics(
                 })
     return pd.DataFrame(estimates), pd.DataFrame(comparisons)
 
-
 def pseudobulk_logcpm(
     matrix: np.ndarray,
     donors: np.ndarray,
@@ -204,7 +194,6 @@ def pseudobulk_logcpm(
                 result[donor_index, cell_index] = np.log1p(total * (1e6 / library)).astype(np.float32)
     return result
 
-
 def contrast_metrics(reference_effect: np.ndarray, predicted_effect: np.ndarray) -> dict[str, float]:
     valid = np.isfinite(reference_effect) & np.isfinite(predicted_effect)
     truth = reference_effect[valid]
@@ -215,7 +204,6 @@ def contrast_metrics(reference_effect: np.ndarray, predicted_effect: np.ndarray)
         "disease_logfc_spearman": spearman(truth, predicted),
         "disease_direction_top_decile": float(np.mean(np.sign(truth[strong]) == np.sign(predicted[strong]))),
     }
-
 
 def summarize_disease_contrasts(
     matrices: dict[str, np.ndarray],
@@ -338,7 +326,6 @@ def summarize_disease_contrasts(
                     })
     return pd.DataFrame(summaries), pd.DataFrame(comparisons), pd.DataFrame(marker_rows)
 
-
 def main() -> None:
     import time as _time
 
@@ -354,6 +341,11 @@ def main() -> None:
     parser.add_argument("--safe-fusion-subdir", default="safe_fusion")
     parser.add_argument("--extra-method", action="append", default=[], help="name=fold_subdirectory")
     parser.add_argument("--marker-panel", choices=["source", "original"], default="source")
+    parser.add_argument(
+        "--allow-transductive",
+        action="store_true",
+        help="accept contracts that declare a transductive fit on all cells (standard MAGIC and scVI) and mark them in the leakage table",
+    )
     args = parser.parse_args()
     panel = PANELS["pancreas"][args.marker_panel]
 
@@ -422,6 +414,10 @@ def main() -> None:
                 "test_used_for_fit": parameters.get("test_used_for_fit"),
                 "passed": bool(parameters.get("test_used_for_fit") is False and parameters.get("fit_cells") == int(train.sum()) and decision_passed),
             })
+            if args.allow_transductive:
+                transductive = parameters.get("transductive") is True and not decision
+                leakage_checks[-1]["transductive"] = transductive
+                leakage_checks[-1]["passed"] = leakage_checks[-1]["passed"] or transductive
 
         coordinate_rows = coordinates["cell_index"].to_numpy(dtype=int)
         fold_coordinates = coordinates[np.isin(coordinate_rows, np.flatnonzero(test))]
@@ -499,7 +495,6 @@ def main() -> None:
     }
     (output / "report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps(report, indent=2))
-
 
 if __name__ == "__main__":
     main()

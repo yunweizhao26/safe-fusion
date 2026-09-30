@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -31,10 +32,15 @@ from stacked_selector_baselines import candidate_keys, exact_budget_curve
 
 FUSION_VALUE_ROOT = EVIDENCE / "review_round2" / "fusion_value"
 UNIT_KEYS = ("pancreas_0", "pancreas_1", "pancreas_2", "colon", "norman_crispra")
-INDUCTIVE_TEACHERS = ("Gene median", "SVD", "Weighted kNN", "MAGIC (inductive)", "scVI (inductive)")
-TRANSDUCTIVE_TEACHERS = ("gene_median", "svd_impute", "graph_smooth", "magic", "scvi")
-FAMILIES = ("fusion", "leave_one_out", "architecture", "stacked", "transductive")
 
+INDUCTIVE_TEACHERS = ("Gene median", "SVD", "Weighted kNN", "MAGIC (inductive)", "scVI (inductive)")
+
+TRANSDUCTIVE_TEACHERS = ("gene_median", "svd_impute", "graph_smooth", "magic", "scvi")
+
+DEFAULT_FAMILIES = ("fusion", "leave_one_out", "architecture", "stacked", "transductive")
+FAMILIES = (
+    *DEFAULT_FAMILIES, "transductive_leave_one_out", "transductive_architecture", "transductive_feature_group",
+)
 
 @dataclass(frozen=True)
 class Variant:
@@ -43,12 +49,14 @@ class Variant:
     sources: tuple[str, ...]
     architecture: str
 
+    feature_variant: str = "full"
+
     @property
     def slug(self) -> str:
         return re.sub(r"[^a-z0-9]+", "_", self.name.lower()).strip("_")
 
-
 def variants() -> list[Variant]:
+    transductive_sources = tuple(f"transductive:{name}" for name in TRANSDUCTIVE_TEACHERS)
     result = [Variant("Safe Fusion", "fusion", INDUCTIVE_TEACHERS, "mlp")]
     result += [
         Variant(f"Safe Fusion without {teacher}", "leave_one_out",
@@ -60,35 +68,49 @@ def variants() -> list[Variant]:
         Variant("Safe Fusion (gradient boosting)", "architecture", INDUCTIVE_TEACHERS, "hist_gbdt"),
     ]
     result += [Variant(f"{name} (stacked)", "stacked", (name,), "mlp") for name in STACKED_COMPARATORS]
-    result.append(Variant(
-        "Safe Fusion (transductive)", "transductive",
-        tuple(f"transductive:{name}" for name in TRANSDUCTIVE_TEACHERS), "mlp",
-    ))
+    result.append(Variant("Safe Fusion (transductive)", "transductive", transductive_sources, "mlp"))
+    result += [
+        Variant(f"Safe Fusion (transductive) without {teacher}", "transductive_leave_one_out",
+                tuple(f"transductive:{name}" for name in TRANSDUCTIVE_TEACHERS if name != teacher), "mlp")
+        for teacher in TRANSDUCTIVE_TEACHERS
+    ]
+    result += [
+        Variant("Safe Fusion (transductive, logistic)", "transductive_architecture", transductive_sources, "logistic"),
+        Variant("Safe Fusion (transductive, gradient boosting)", "transductive_architecture", transductive_sources, "hist_gbdt"),
+    ]
+    result += [
+        Variant("Safe Fusion (transductive), teacher features only", "transductive_feature_group",
+                transductive_sources, "mlp", feature_variant="teacher_only"),
+        Variant("Safe Fusion (transductive), context features only", "transductive_feature_group",
+                transductive_sources, "mlp", feature_variant="context_only"),
+    ]
     return result
-
 
 def source_contract(source: str, unit, transductive_root: Path) -> Path:
     if source.startswith("transductive:"):
         return transductive_root / unit.key / source.split(":", 1)[1]
     return unit.contracts[source]
 
-
 def source_values(contract: Path, data: UnitData, fit: tuple[np.ndarray, np.ndarray],
                   test: tuple[np.ndarray, np.ndarray]) -> tuple[np.ndarray, np.ndarray, str]:
     fit_values, scale = count_scale_values(contract, data, *fit)
     test_values, _ = count_scale_values(contract, data, *test)
     if scale in NATIVE_SCALES:
+
         offset = float(np.min(fit_values))
         fit_values, test_values = fit_values - offset, test_values - offset
     return fit_values, test_values, scale
 
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     add_root_arguments(parser)
-    parser.add_argument("--unit", choices=UNIT_KEYS, help="Unit to fit (with --variants), or use --array-index.")
+    parser.add_argument("--unit", help="Unit to fit (with --variants), or use --array-index. One of --unit-keys.")
+    parser.add_argument(
+        "--unit-keys", nargs="+", default=list(UNIT_KEYS),
+        help="Units of the manifest that --unit and --array-index address, in array order (default: the fusion-value units).",
+    )
     parser.add_argument("--variants", nargs="+", default=None, help="Variant names (default: every variant of --families).")
-    parser.add_argument("--families", nargs="+", choices=FAMILIES, default=list(FAMILIES))
+    parser.add_argument("--families", nargs="+", choices=FAMILIES, default=list(DEFAULT_FAMILIES))
     parser.add_argument(
         "--array-index", type=int, default=None,
         help="Fit one (unit, variant) pair: unit index // number of variants, variant index % number of variants.",
@@ -105,6 +127,8 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=1729)
     args = parser.parse_args()
 
+    if args.unit is not None and args.unit not in args.unit_keys:
+        parser.error(f"--unit must be one of {args.unit_keys}")
     selected = [variant for variant in variants() if variant.family in args.families]
     if args.variants is not None:
         by_name = {variant.name: variant for variant in variants()}
@@ -114,7 +138,7 @@ def main() -> None:
         selected = [by_name[name] for name in args.variants]
     if args.list_variants:
         print("\n".join(f"{variant.family}\t{variant.name}" for variant in selected))
-        print(f"array tasks for these variants: 0-{len(UNIT_KEYS) * len(selected) - 1}", file=sys.stderr)
+        print(f"array tasks for these variants: 0-{len(args.unit_keys) * len(selected) - 1}", file=sys.stderr)
         return
     if args.unit_paths:
         unit = {unit.key: unit for unit in units_from_args(args, args.seed)}[args.unit]
@@ -124,7 +148,7 @@ def main() -> None:
         )))
         return
     if args.array_index is not None:
-        unit_key = UNIT_KEYS[args.array_index // len(selected)]
+        unit_key = args.unit_keys[args.array_index // len(selected)]
         selected = [selected[args.array_index % len(selected)]]
     elif args.unit is not None:
         unit_key = args.unit
@@ -171,7 +195,7 @@ def main() -> None:
             )
 
         fit_score, test_score, model_report = fit_scores(
-            "full", variant.architecture,
+            variant.feature_variant, variant.architecture,
             candidates(fit_rows, fit_cols, fit_labels, fit_stack),
             candidates(test_rows, test_cols, test_labels, test_stack),
             args.max_fit_rows, args.score_batch_rows, args.seed,
@@ -215,7 +239,6 @@ def main() -> None:
             "unit": unit.key, "variant": variant.name, "test_pr_auc": round(report["test"]["pr_auc"], 5),
             "elapsed_seconds": round(report["elapsed_seconds"], 1),
         }), flush=True)
-
 
 if __name__ == "__main__":
     main()

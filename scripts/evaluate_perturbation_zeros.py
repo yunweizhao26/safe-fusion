@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from __future__ import annotations
 
 import argparse
@@ -19,18 +20,13 @@ SCREENS = {
     "papalexi_eccite": "knockdown",
 }
 SPLITS = {
-    "norman_crispra": Path("artifacts/paper_evidence/review_round2/leakage_free/norman_crispra/splits.parquet"),
+    "norman_crispra": Path("artifacts/paper_evidence/norman_crispra/splits.parquet"),
     "adamson_crispri": Path("artifacts/external_perturbseq/adamson_crispri/splits.parquet"),
     "dixit_ko": Path("artifacts/external_perturbseq/dixit_ko/splits.parquet"),
     "papalexi_eccite": Path("artifacts/external_perturbseq/papalexi_eccite/splits.parquet"),
 }
-PREPARED = {
-    "norman_crispra": Path("artifacts/paper_evidence/review_round2/leakage_free/norman_crispra/prepared.h5ad"),
-    "adamson_crispri": Path("external_data/prepared/adamson_crispri.h5ad"),
-    "dixit_ko": Path("external_data/prepared/dixit_ko.h5ad"),
-    "papalexi_eccite": Path("external_data/prepared/papalexi_eccite.h5ad"),
-}
 FRACTIONS = list(range(1, 11))
+
 SPARSE_METHODS = {
     "safe_fusion": "safe_fusion_{pct}pct",
     "safe_fusion_condition": "selector_condition/safe_fusion_calibrated_mlp_topk_{suffix}",
@@ -44,17 +40,15 @@ SPARSE_METHODS = {
 VALUE_METHODS = ("gene_median", "svd_impute", "graph_smooth", "magic_inductive", "scvi_inductive",
                  "graph_smooth_condition", "scvi_inductive_condition")
 
-
 def dense(value) -> np.ndarray:
     return value.toarray() if sparse.issparse(value) else np.asarray(value)
-
 
 def fraction_suffix(pct: int) -> str:
     return "0p1" if pct == 10 else f"0p0{pct}"
 
-
 @dataclass
 class Screen:
+
     dataset: str
     direction: str
     cell_ids: np.ndarray
@@ -77,9 +71,9 @@ class Screen:
     def test(self) -> np.ndarray:
         return self.split == "test"
 
-
 @dataclass
 class Target:
+
     gene: str
     g: int
     control_zero: np.ndarray
@@ -90,7 +84,6 @@ class Target:
     @property
     def cells(self) -> np.ndarray:
         return np.concatenate([self.control_zero, self.perturbed_zero])
-
 
 def load_screen(dataset: str, deploy_root: Path, splits_path: Path, prepared_path: Path) -> Screen:
     prepared = ad.read_h5ad(prepared_path)
@@ -113,12 +106,12 @@ def load_screen(dataset: str, deploy_root: Path, splits_path: Path, prepared_pat
         normalized=np.log1p(recorded / np.maximum(library, 1) * 1e4),
     )
 
-
 def mean_log2_ratio(numerator: np.ndarray, denominator: np.ndarray) -> float:
+
     return float(np.log2((np.mean(numerator) + 1e-3) / (np.mean(denominator) + 1e-3)))
 
-
 def eligible_targets(screen: Screen, min_detection: float) -> list[Target]:
+
     recorded, normalized, target = screen.recorded, screen.normalized, screen.target
     development, test, control = screen.development, screen.test, screen.control
     targets = []
@@ -127,6 +120,7 @@ def eligible_targets(screen: Screen, min_detection: float) -> list[Target]:
             continue
         g = screen.gene_index[gene]
         dev_control, dev_perturbed = development & control, development & (target == gene)
+
         expressing = dev_control if screen.direction == "knockdown" else dev_perturbed
         if dev_perturbed.sum() < 5:
             continue
@@ -150,13 +144,13 @@ def eligible_targets(screen: Screen, min_detection: float) -> list[Target]:
         ))
     return targets
 
-
 def likely_dropout_labels(screen: Screen, item: Target) -> np.ndarray:
+
     labels = np.concatenate([np.ones(len(item.control_zero)), np.zeros(len(item.perturbed_zero))])
     return 1 - labels if screen.direction == "activation" else labels
 
-
 def first_fill_order(screen: Screen, deploy_root: Path) -> dict[str, np.ndarray]:
+
     first_fill = {}
     for method, template in SPARSE_METHODS.items():
         if not (deploy_root / template.format(pct=1, suffix="0p01")).exists():
@@ -168,7 +162,6 @@ def first_fill_order(screen: Screen, deploy_root: Path) -> dict[str, np.ndarray]
             order[filled] = pct
         first_fill[method] = order
     return first_fill
-
 
 def evaluate_screen(dataset: str, deploy_root: Path, splits_path: Path, prepared_path: Path, min_detection: float) -> pd.DataFrame:
     screen = load_screen(dataset, deploy_root, splits_path, prepared_path)
@@ -199,7 +192,6 @@ def evaluate_screen(dataset: str, deploy_root: Path, splits_path: Path, prepared
                          "directional_difference": np.nan, "auroc": roc_auc_score(likely_dropout, score)})
     return pd.DataFrame(rows)
 
-
 def bootstrap(frame: pd.DataFrame, column: str, reference: str, seed: int, draws: int = 2000) -> dict:
     wide = frame.pivot_table(index=["dataset", "gene"], columns="method", values=column)
     rng = np.random.default_rng(seed)
@@ -214,7 +206,6 @@ def bootstrap(frame: pd.DataFrame, column: str, reference: str, seed: int, draws
         out[method] = entry
     return out
 
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--deploy-root", default="artifacts/paper_evidence/downstream_deployment")
@@ -222,7 +213,7 @@ def main() -> None:
     parser.add_argument("--min-detection", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=1729)
     args = parser.parse_args()
-    frames = [evaluate_screen(ds, Path(args.deploy_root) / ds, SPLITS[ds], PREPARED[ds], args.min_detection) for ds in SCREENS]
+    frames = [evaluate_screen(ds, Path(args.deploy_root) / ds, SPLITS[ds], Path(f"external_data/prepared/{ds}.h5ad"), args.min_detection) for ds in SCREENS]
     frame = pd.concat(frames, ignore_index=True)
     output = Path(args.output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -247,7 +238,6 @@ def main() -> None:
             }
     (output / "report.json").write_text(json.dumps(report, indent=1) + "\n")
     print(json.dumps(report, indent=1)[:6000])
-
 
 if __name__ == "__main__":
     main()
