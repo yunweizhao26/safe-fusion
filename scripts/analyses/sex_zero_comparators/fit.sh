@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --account=torch_pr_634_general
 #SBATCH --partition=cs
-#SBATCH --time=01:20:00
+#SBATCH --time=06:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --output=artifacts/paper_evidence/review_round4/sex_zero_comparators/logs/%x-%A_%a.log
