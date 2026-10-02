@@ -13,14 +13,16 @@ and values; known zeros; downstream and protein; budgets and scale; and lupus.
 
 Sections 1–18 build the shared inputs, comparator contracts and inductive
 reference evaluations. Their reference outputs are prerequisites, not substitutes
-for the final transductive results. Sections 19–26 build the preceding analyses; sections 27–35 complete the final revision.
+for the final transductive results. Sections 19–35 produce the manuscript
+analyses listed below.
 Read each section's prerequisites before submitting it. Complete its jobs
 successfully before starting the next dependent section. Commands containing
 `sbatch --wait` wait for successful completion; launchers with `submit` print
 job IDs that must finish before continuing. Do not run two copies of a stage.
 
-This update distributes source code only. Download public inputs using [DATA.md](DATA.md)
-and the fetch commands below. No fitted contracts or analysis outputs are included.
+Saved inputs for the protein evaluations are distributed through Git LFS
+(see sections 14 and 22 and [data/README.md](../data/README.md)). Download the
+other public inputs using [DATA.md](DATA.md) and the fetch commands below.
 Run all commands from this repository's root. Never link the output tree to
 another run that must remain unchanged.
 
@@ -126,10 +128,10 @@ Two benchmark builds feed the manuscript.
   `artifacts/paper_evidence/review_round2/leakage_free/`, holds the pancreas
   donor folds with variable genes selected within each fold and the Norman
   CRISPR activation screen with conditions selected on development cells.
-  inductive masked-recovery reference, inductive F1 plot, the lower block of the corresponding inductive reference, Supplementary
-  the corresponding inductive reference and S11, the pancreas fold rows of Supplementary Table S2 and every
-  Norman number come from this build. The analyses that use the Norman
-  benchmark beyond masked recovery write to
+  This build supplies the earlier inductive masked-recovery, selector,
+  thinning and value comparisons, Supplementary Table S11, the pancreas fold
+  rows of Supplementary Table S2 and the Norman analyses. The Norman analyses
+  beyond masked recovery write to
   `artifacts/paper_evidence/review_round2/norman_rebuilt/`.
 
 Additional reference analyses write to
@@ -160,11 +162,11 @@ steps.
 
 | Environment | Built from | Runs |
 |---|---|---|
-| `.venv` | `pyproject.toml`, `uv.lock` | Workflow, gene median, SVD and weighted kNN teachers, fused value, selector, ALRA (Python port), SAVER driver, autoencoder fusion network, evaluations and inductive F1 plot |
+| `.venv` | `pyproject.toml`, `uv.lock` | Workflow, gene median, SVD and weighted kNN teachers, fused value, selector, ALRA (Python port), SAVER driver, autoencoder fusion network, evaluations and inductive F1 curves |
 | `.conda-scvi-current` | `workflow/envs/scvi.yaml` | scVI teacher, standard scVI, the probability of a nonzero count (`nonzero_probability.py`), Papalexi RNA-protein preparation and audit, label audit |
 | `.conda-magic-current` | `workflow/envs/magic.yaml` | MAGIC teacher, standard MAGIC |
 | `.conda-r-baselines` | `scripts/sbatch_setup_r_baselines.s` | SAVER (`scripts/run_saver_baseline.R`, called by `run_saver_baseline.py --rscript`) |
-| `.venv-baselines` | `scripts/sbatch_setup_python_baselines.s` | scGPT (checkpoint in `external_data/baselines/scgpt_human`), the scGCL adapter (which also imports `scanpy` and `faiss`), and the inductive protein plot plot |
+| `.venv-baselines` | `scripts/sbatch_setup_python_baselines.s` | scGPT (checkpoint in `external_data/baselines/scgpt_human`), the scGCL adapter (which also imports `scanpy` and `faiss`), and the protein plots |
 | `.venv-pertpy` | `scripts/sbatch_setup_pertpy_env.s` | Mixscape classes of the Papalexi cells (pertpy 1.3.0, scanpy 1.12.4, mudata 0.4.1) |
 | `.venv-scanpy` | `scripts/slurm_disease_control_analysis.sh` on first use | Module scores and Leiden clusters of section 12 (scanpy 1.11.5, leidenalg 0.12.0, igraph 1.0.0 on the numerical stack of `.venv`) |
 | `.conda-standard-imputers` | `scripts/standard_imputers/environment.yaml` | The six imputers of Supplementary Table S1, created by `slurm_standard_imputers.sh` on first use |
@@ -412,8 +414,8 @@ cell's counts.
 gradient-boosted regression of the log count on the masked positives of the
 training cells (`--value-model boosted`, the default). It takes the five
 teacher contracts with `--teacher-contract`. `--value-model linear` fits the
-linear combination of the corresponding inductive reference instead. The contract metadata
-records the five-fold cross-validated error of both value models
+linear combination used in the value comparisons of section 9 instead. The
+contract metadata records the five-fold cross-validated error of both value models
 (`parameters.value_model_cross_validation`).
 
 `scripts/calibrated_selective_fill.py --architecture mlp --budget-mode
@@ -538,7 +540,7 @@ lf_baselines=${lf_alra}:${lf_saver}:${lf_saver_norman}:${lf_magic}:${lf_scvi}:${
 The directory `leakage_free/` stands for
 `artifacts/paper_evidence/review_round2/leakage_free/` here and below.
 
-## 4. Inductive masked-recovery reference
+## 4. Earlier inductive masked-recovery analysis
 
 ```bash
 stacked=$(sbatch --parsable --dependency=afterok:${teachers}:${scvi}:${baselines} scripts/slurm_stacked_selector_baselines.sh)
@@ -565,7 +567,7 @@ lf_evaluate=$(sbatch --parsable --array=0 --mem=64G \
   Supplementary Section S3 read these files.
 - The `evaluate` stage runs the same three scripts on
   `leakage_free/units_manifest.json` (pancreas folds, colon, Norman), plots
-  inductive F1 plot with `plot_selector_f1_fillrate.py`, and runs
+  inductive F1 curves with `plot_selector_f1_fillrate.py`, and runs
   `compare_leakage_free_benchmarks.py`.
 
 The outputs are in `leakage_free/`:
@@ -574,26 +576,26 @@ The outputs are in `leakage_free/`:
   Fusion minus each comparison and each stacked selector, at 1%, 2%, 5% and
   10% and averaged over the fill fractions 1% to 10%
   (`mean_difference_1_to_10`), with intervals from 2000 draws of donors or
-  perturbation targets. The comparison rows give the upper block of inductive masked-recovery reference,
-  and the rows of the stacked selectors (`<method> (stacked)`) give the
-  selector rows of inductive masked-recovery reference and the lower block of the corresponding inductive reference.
+  perturbation targets. The comparison rows report the earlier inductive
+  masked-recovery comparisons. Rows marked `<method> (stacked)` report the
+  selector comparisons.
 - `selector_f1_fillrate_mlp_baselines_summary.json`: in
   `<dataset>/main/0.001_0.100/fraction_mlp_best`, the share of the 100 fill
-  fractions from 0.1% to 10% at which Safe Fusion has the highest F1 (row
-  "Fractions with highest F1" of inductive masked-recovery reference).
+  fractions from 0.1% to 10% at which Safe Fusion has the highest F1 in the
+  earlier inductive analysis.
 - `selector_f1_fillrate_baselines_1000_points.csv`,
   `selector_f1_fillrate_mlp_baselines_1000_points.csv` and
   `masked_f1_unit_counts.parquet`: the curves and per-unit counts.
-- inductive F1 plot: `figures/f1_fillrate_3panel_oup.png`.
-- `table1_old_vs_new.csv`: every inductive masked-recovery reference cell of the production and the
-  leakage-free pancreas benchmark. Its `change_pp` column gives the effect of
-  the gene set on each pancreas difference (Methods, Datasets and splits).
+- Inductive F1 curves: `figures/f1_fillrate_3panel_oup.png`.
+- `table1_old_vs_new.csv`: the inductive masked-recovery results for the
+  production and leakage-free pancreas benchmarks. Its `change_pp` column
+  gives the effect of the gene set on each pancreas difference (Methods, Datasets and splits).
   `leakage_audit.json` compares the gene sets and the mask strata.
 
 ## 5. Inductive and transductive teacher fits
 
-`scripts/slurm_fusion_value.sh` refits the selector variants of
-the corresponding inductive reference on the units of `leakage_free/units_manifest.json`
+`scripts/slurm_fusion_value.sh` refits the teacher and classifier variants
+on the units of `leakage_free/units_manifest.json`
 (`pancreas_0` to `pancreas_2`, `colon`, `norman_crispra`). It requests the
 `cs` partition, on which these variants reproduce the production selectors
 entry for entry.
@@ -627,8 +629,8 @@ fusion_value=$(sbatch --parsable --dependency=afterok:${fv_selectors}:${fv_trans
 
 The outputs are in
 `artifacts/paper_evidence/review_round2/fusion_value/evaluation/`:
-`summary_table.csv` holds the corresponding inductive reference and the rows "scVI
-probability" and "Transductive, minus ..." of inductive masked-recovery reference, with
+`summary_table.csv` holds the teacher and classifier comparisons, including
+the scVI probability and transductive variants, with
 `paired_differences.csv`, `absolute.csv` and `summary.json` (intervals and
 average precision).
 
@@ -681,7 +683,7 @@ The tissue columns of the upper block come from
 `seed_replicate_f1_curves.csv`), and the CRISPRa column from the same files in
 `artifacts/paper_evidence/review_round2/norman_rebuilt/seed_replicates/summary/`.
 
-## 7. Inductive feature reference
+## 7. Inductive feature comparisons
 
 ```bash
 ablation=$(sbatch --parsable --dependency=afterok:${stack} scripts/slurm_selector_mlp_attribution_range.sh)
@@ -701,10 +703,10 @@ of `slurm_norman_rebuilt_supplement.sh` does both for the Norman screen. In
 `artifacts/paper_evidence/selector_mlp_attribution_range/{pancreas/fold_<k>,colon}/`
 and `artifacts/paper_evidence/review_round2/norman_rebuilt/selector_mlp_attribution_range/norman_crispra/`,
 the column `test_pr_auc` holds the test precision-recall AUC of each variant,
-next to the masked positive counts. The pancreas values of the corresponding inductive reference are the
-means over the three folds.
+next to the masked positive counts. The pancreas values are the means over
+the three folds.
 
-## 8. Thinning inputs and inductive reference
+## 8. Thinning inputs and inductive evaluation
 
 ### 8.1 Thinning benchmark with thinning-trained selectors
 
@@ -730,13 +732,13 @@ thin_lin=$(sbatch --parsable --job-name=sf-thin-stack --array=0-4 \
 The outputs are under `artifacts/paper_evidence/thinning/`: the inputs in
 `data/<dataset>/`, the teachers, fused value and selector of each unit in
 `<unit>/`, the comparators in `comparators/<dataset>/`, and the evaluation in
-`evaluation/matched_fraction_summary.{csv,json}`, which holds the weighted kNN
-row of the corresponding inductive reference.
+`evaluation/matched_fraction_summary.{csv,json}`, which holds the weighted
+kNN comparison for the thinning-trained selectors.
 
 ### 8.2 Thinning transfer
 
 `scripts/slurm_thinning_transfer.sh` adds the Norman screen thinned to 50%
-(from the benchmark of section 2.4) and the second design of the corresponding inductive reference: the
+(from the benchmark of section 2.4) and a mask-trained design: the
 fitting cells receive the stratified 10% mask on top of their thinned counts,
 the teachers, fused value and selector are fitted as in the main method, and
 the held-out thinning positives are evaluated. It also trains the selector on
@@ -754,9 +756,9 @@ Submit it after `thin_sel`, `thin_eval` and `lf_norman` have finished (the
 `artifacts/paper_evidence/review_round2/thinning_transfer/`:
 
 - `evaluation/transfer_summary.{csv,json}` and
-  `evaluation/transfer_paired_differences.csv`: the corresponding inductive reference except the weighted
-  kNN row, the count-one recall at 5%, the expected-count baseline and the
-  share of positives with an original count of one
+  `evaluation/transfer_paired_differences.csv`: the thinning comparisons
+  other than weighted kNN, the count-one recall at 5%, the expected-count
+  baseline and the share of positives with an original count of one
   (`composition.positive_count_1_share`).
 - `mask_trained/<unit>/input/manifest.json`: the share of masked positives
   of the thinned fitting cells with a thinned count of one
@@ -773,10 +775,10 @@ Submit it after `lf_evaluate` has finished. The `stacked` stage (array 0-9,
 task = 2 × unit + method) trains the selector on standard scVI or standard
 MAGIC for each unit of `leakage_free/units_manifest.json` and saves its
 held-out scores (`stacked_selector_scores.py`). The `evaluate` stage runs
-`evaluate_count_stratified_recall.py` and writes the corresponding inductive reference to
+`evaluate_count_stratified_recall.py` and writes Supplementary Table S11 to
 `artifacts/paper_evidence/review_round2/thinning_transfer/count_stratified_recall/count_stratified_recall.{csv,json}`.
 
-## 9. Linear and autoencoder value references
+## 9. Linear and autoencoder value comparisons
 
 ```bash
 stack_lin=$(sbatch --parsable --array=0-3 --dependency=afterok:${teachers}:${scvi} \
@@ -813,21 +815,19 @@ sbatch --array=0 --mem=64G \
 The outputs are in
 `artifacts/paper_evidence/review_round2/norman_rebuilt/value_accuracy/`:
 
-- `error_removed.csv`: the error removed at 1% to 10% (the corresponding inductive reference and the top
-  of the corresponding inductive reference) and the paired differences between values with bootstrap
-  intervals, for example the boosted fused value minus the linear
-  combination at 5% quoted in the Results.
-- `log_error.csv`: the mean absolute log error (the corresponding inductive reference).
-- `log_error_strata.csv`: the error by true count and gene detection rate
-  (the corresponding inductive reference).
+- `error_removed.csv`: the error removed at 1% to 10% and the paired
+  differences between values with bootstrap intervals, including the boosted
+  fused value minus the linear combination at 5%.
+- `log_error.csv`: the mean absolute log error.
+- `log_error_strata.csv`: the error by true count and gene detection rate.
 - `cross_validation.csv`: the out-of-fold error of the boosted and linear
   value models (Supplementary Section S6).
 - `replicates.csv` and `summary.json`: the mask replicate and thinning units
   and the bootstrap summaries.
 
-## 10. Deployment inputs and inductive downstream references
+## 10. Deployment inputs and inductive downstream evaluation
 
-### 10.1 Recorded counts of held-out cells (inductive recorded-count reference)
+### 10.1 Inductive evaluation on recorded counts of held-out cells
 
 The deployment analysis applies every method to the recorded counts of the
 held-out cells. The training cells keep the benchmark mask, so the selector
@@ -868,10 +868,10 @@ python scripts/summarize_fill_evaluations.py \
   `artifacts/paper_evidence/downstream_deployment/evaluation/`.
 
 `summary_key_metrics.csv` next to `summary.csv` holds the colon, pancreas and
-zebrafish rows of inductive recorded-count reference. The pancreas disease-effect row is the
+zebrafish rows of the earlier inductive recorded-count analysis. The pancreas disease-effect row is the
 `AAB_vs_Control` contrast of `disease_logfc_spearman`.
 
-### 10.2 Masked benchmark (the corresponding inductive reference)
+### 10.2 Inductive downstream evaluation on the masked benchmark
 
 The downstream benchmark uses the donor-held-out pancreas and colon data, the
 held-out zebrafish cells, and the Adamson, Dixit and Papalexi interventions.
@@ -898,8 +898,8 @@ python scripts/summarize_fill_evaluations.py \
 - `slurm_evaluate_complete_downstream.sh` (array 0-7) writes
   `artifacts/paper_evidence/downstream_complete/{clustering,markers,pancreas_biology,trajectory,grn}/`.
   `slurm_finalize_complete_downstream.sh` writes the combined tables
-  (`all_bootstrap_summaries.csv`, every row of the corresponding inductive reference except Norman) and a
-  five-panel figure to `artifacts/paper_evidence/downstream_complete/summary/`.
+  (`all_bootstrap_summaries.csv`, the inductive downstream results except
+  Norman) and a five-panel figure to `artifacts/paper_evidence/downstream_complete/summary/`.
   It fails unless all five tasks, all ten fill fractions, all 24 pancreas
   donors, all 9 colon donors, all 12 zebrafish stages and the 64 regulators of
   the three screens are present and pass the leakage checks.
@@ -915,7 +915,7 @@ python scripts/summarize_fill_evaluations.py \
   from these files. The pancreas share of masked positives pools the
   `decomposition_counts.csv` of the three folds.
 
-### 10.3 Inductive fill-fraction reference for section 30
+### 10.3 Inductive fill-fraction analysis for section 30
 
 `slurm_detection_rule.sh` refits the selector with the production settings,
 calibrates its scores by isotonic regression on cross-fitted scores of the
@@ -968,7 +968,7 @@ fills and evaluation in `deployment/`, and the rule in
 `norman_downstream_rows.csv`, whose stored `table` keys are `3`, `S17` and `S21`. The `S21` key supplies
 the Norman row of final Table S26; the other keys supply inductive reference endpoints.
 
-## 11. Inductive inserted-value reference
+## 11. Inductive inserted-value evaluation
 
 ```bash
 read -r iv_prep iv_scvi iv_fill iv_eval <<< \
@@ -986,15 +986,15 @@ with the commands of section 10.1. The `evaluate` stage runs
 
 - `recorded_zero_fills.csv`: the median value that Safe Fusion and SVD insert
   into recorded zeros of held-out cells and the share of filled zeros whose
-  expected count exceeds 2 (the corresponding inductive reference). It reads the production deployment of
+  expected count exceeds 2. It reads the production deployment of
   section 10.1 for every dataset except Norman.
 - `thinning_positive_bias.csv`: the signed bias against the count expected at
-  the thinned depth (the corresponding inductive reference, rows with `design` mask-trained and
+  the thinned depth (rows with `design` mask-trained and
   `recorded_count` all) and the absolute log error against the count before
   thinning (`abs_error_vs_recorded_count`, Supplementary Section S6), from
   the thinning units of sections 8.1 and 8.2.
 
-## 12. Disease, sex and annotation reference checks
+## 12. Disease, sex and annotation checks
 
 These checks use the recorded counts of the held-out tissue cells from
 section 10.1 and the masked tissue benchmark.
@@ -1022,18 +1022,18 @@ sbatch --array=0,1,4-9 --cpus-per-task=4 --mem=32G --time=01:00:00 \
 
 The outputs are under `artifacts/paper_evidence/disease_control_checks/`:
 
-- the corresponding inductive reference and the Sex column of inductive zero-control reference:
+- Sex-linked zero controls:
   `sex_zeros/<tissue>/auroc.csv`, with `fill_rates.csv`, `zero_counts.csv`
   and `donor_sex.csv` for the donor-sex paragraph.
-- the corresponding inductive reference: `disease_effects/<tissue>/observed_summary.csv` (slopes and
+- Disease effects: `disease_effects/<tissue>/observed_summary.csv` (slopes and
   discoveries) and `permutation_null.csv` (false discoveries under permuted
   donor labels).
-- the corresponding inductive reference: `module_scores/<tissue>/disease_effect.csv`.
-- the corresponding inductive reference: `annotation/<tissue>/reference_mapping_overall.csv`.
+- Module scores: `module_scores/<tissue>/disease_effect.csv`.
+- Reference mapping: `annotation/<tissue>/reference_mapping_overall.csv`.
 - `condition/<tissue>/depth.csv` and `fill_rate.csv`: library size, zero
   fraction and fill rate per condition (Supplementary Section S10).
 
-## 13. Perturbation references and label controls
+## 13. Perturbation analyses and label controls
 
 This analysis ranks the zeros of the perturbed gene in the recorded counts of
 the held-out screen cells and reports masked F1 on the four masked screen
@@ -1132,9 +1132,9 @@ The outputs are under `artifacts/paper_evidence/review_round2/knockdown/`:
 
 - `evaluation/report.json`: in `screens.<screen>.auroc["<method>|fill_order"]`,
   the unadjusted AUROC (`none`) and the AUROC within library-size quintiles
-  (`depth_strata`) of inductive zero-control reference and the corresponding inductive reference, and in
+  (`depth_strata`) of the earlier inductive zero-control analysis, and in
   `knockdown_effect_shift["<method>|10"]` the shift of the held-out
-  perturbation log2 fold change at 10% (the corresponding inductive reference). It also holds the
+  perturbation log2 fold change at 10%. It also holds the
   library-size AUROC, the continuous AUROC, the comparison of the Adamson and
   Papalexi screens, the held-out fold changes (`heldout_log2fc_recorded`) and
   the Mixscape fill rates (`mixscape_papalexi`) of Supplementary Section S7.
@@ -1144,13 +1144,18 @@ The outputs are under `artifacts/paper_evidence/review_round2/knockdown/`:
   `fill_control` values of `fills.csv` (method `safe_fusion`) over targets,
   weighted by `n_control_zero` of `targets.csv`.
 - `masked_f1/masked_f1_report.json`: the mean masked F1 over the fill
-  fractions 1% to 10%, averaged over the four screens (Masked F1 column of
-  inductive zero-control reference), and `masked_f1/masked_f1_by_screen.json` the value of each screen
+  fractions 1% to 10%, averaged over the four screens in the earlier
+  inductive analysis, and `masked_f1/masked_f1_by_screen.json` the value of each screen
   with and without labels, with intervals over perturbation labels.
 
-The Sex column of inductive zero-control reference comes from section 12.
+Section 12 provides the earlier inductive sex-linked zero controls.
 
-## 14. RNA-protein inputs and inductive reference
+## 14. Earlier inductive RNA-protein analysis
+
+This section and `data/papalexi_crossmodal_inputs.tar.gz` reproduce the earlier
+inductive protein analysis (Safe Fusion pooled Spearman 0.530). They do not
+reproduce the manuscript's Figure 2 or Supplementary Tables S19 and S20.
+Use the saved-input quick path in section 22 for those results.
 
 ```bash
 after=afterok:${audit}:${pdl1_scvi}:${pdl1_selector}
@@ -1164,8 +1169,8 @@ sbatch --dependency=${after} scripts/slurm_evaluate_protein_within_state.sh
   for CD274 on centered log ratio and raw PD-L1
   (`benchmark/evaluation_cd274/`, `benchmark/evaluation_cd274_raw_counts/`),
   then `evaluate_pdl1_state_baselines.py` (`benchmark/evaluation_pdl1_state/`).
-  It then plots inductive protein plot with `plot_biological_range_figures.py --pdl1-only`
-  in `.venv-baselines`, which writes `pdl1_range_validation.{png,pdf}` to
+  It then plots the earlier inductive protein analysis with
+  `plot_biological_range_figures.py --pdl1-only` in `.venv-baselines`, which writes `pdl1_range_validation.{png,pdf}` to
   `artifacts/paper_evidence/figures/`. `PAPER_DIR=<dir>` writes an extra PNG
   copy to `<dir>`.
 - `slurm_evaluate_papalexi_crossmodal.sh` and
@@ -1185,27 +1190,26 @@ directory, `protein_threshold_range_metrics.csv` holds the threshold AUROC,
 `fill_range_protein_enrichment.csv` and `range_leaders.csv` the enrichment of
 the filled cells and the methods with the highest value at each threshold and
 fraction, `replicate_association.csv` the correlation within each replicate,
-and `permutation_tests.csv` the permutation tests. the corresponding inductive reference takes its
-replicate columns from `evaluation_cd274/replicate_association.csv`, the raw
-column from `evaluation_cd274_raw_counts/continuous_protein_association.csv`,
+and `permutation_tests.csv` the permutation tests. For this earlier inductive
+analysis, the replicate correlations come from
+`evaluation_cd274/replicate_association.csv`, the raw column from `evaluation_cd274_raw_counts/continuous_protein_association.csv`,
 and the CD86, PD-L2 and TIM-3 columns from
 `evaluation/continuous_protein_association.csv`. In
 `review_round2/protein/evaluation/`, `pdl1_pooled_rankings.csv` holds the
 pooled correlations, mean AUROC and paired differences with intervals over
-perturbation targets (Pooled column of the corresponding inductive reference and the protein paragraph of
-the Results), `association.csv` the correlations within targets, in the
-control cells, after adjustment (`partial_spearman`) and of detected RNA with
-protein (the corresponding inductive reference and Supplementary Section S10), and `global_fill.csv` the
+perturbation targets. `association.csv` holds the correlations within targets,
+in the control cells, after adjustment (`partial_spearman`) and of detected
+RNA with protein. `global_fill.csv` holds the
 CD274 zeros filled at global fill fractions.
 
-### inductive protein plot and the corresponding inductive reference from the released inputs
+### Earlier inductive protein analysis from saved inputs
 
 `data/papalexi_crossmodal_inputs.tar.gz`, stored with Git LFS, holds the
 inputs of these evaluations: the prepared RNA-protein file, the audit panel,
 the masked benchmark, the five teacher contracts, the fused value, standard
 scVI and the selector scores (see [data/README.md](../data/README.md) for
 the checksum and contents). Unpack it at the repository root and run the
-evaluations without the chain above:
+evaluations below. The within-state launcher refits the selector:
 
 ```bash
 git lfs pull --include "data/papalexi_crossmodal_inputs.tar.gz"
@@ -1216,9 +1220,9 @@ sbatch scripts/slurm_evaluate_papalexi_crossmodal_raw.sh
 sbatch scripts/slurm_evaluate_protein_within_state.sh
 ```
 
-These launchers need `.venv`, and the inductive protein plot plot also needs
-`.venv-baselines` (section 1). On an Intel Xeon Platinum 8592+ node,
-`slurm_evaluate_protein_within_state.sh` runs the inductive reference evaluators.
+These launchers need `.venv`, and plotting also needs `.venv-baselines`
+(section 1). The within-state launcher refits the inductive selector on an
+Intel Xeon Platinum 8592+ node before evaluation.
 
 ## 15. Standard-imputer fill rates
 
@@ -1493,6 +1497,54 @@ rows retain their own scores, values, training splits and intervals. Counts of
 winning fractions are descriptive counts, not bootstrap estimates.
 
 ## 22. Perturbation, sex and protein controls
+
+### Quick path: Figure 2 and Supplementary Tables S19 and S20 from saved inputs
+
+This path uses `data/papalexi_protein_current_inputs.tar.gz`. It needs only
+Git LFS and the `.venv` and `.venv-baselines` environments from section 1.
+It does not need the earlier protein archive or any teacher, fused-value or
+selector refits. Run from the repository root, with unpacking on a compute
+node. Set your Slurm account and partition as described under Conventions.
+
+```bash
+set -euo pipefail
+git lfs install
+git lfs pull --include "data/papalexi_protein_current_inputs.tar.gz"
+echo "ff1082d83c9f67a578fa0304d5cc6838ce9df099cdedc66c38afb72db53be932  data/papalexi_protein_current_inputs.tar.gz" | sha256sum --check
+tar -xzf data/papalexi_protein_current_inputs.tar.gz
+mkdir -p logs
+sbatch --wait --cpus-per-task=8 --mem=48G --time=06:00:00 \
+  --export=ALL,STAGE=evaluate scripts/analyses/transductive_references/protein_cs.sh && \
+sbatch --wait --cpus-per-task=8 --mem=48G --time=01:00:00 \
+  --export=ALL,STAGE=plot scripts/analyses/transductive_references/protein_cs.sh
+```
+
+Compare the archive checksum with [data/README.md](../data/README.md) before
+unpacking. The archive contains regular files at the paths read by the
+launchers, including resolved copies of linked inputs. No setup script is
+needed. The `evaluate` stage runs the protein, state-baseline and matched
+within-state evaluators. The `plot` stage reads the new evaluation CSVs.
+Both stages write under
+`artifacts/paper_evidence/review_round4/transductive_references/protein_cs/`:
+
+- Figure 2: `figures/pdl1_range_validation.png` and `.pdf`, from
+  `evaluation_cd274/protein_threshold_range_metrics.csv` and
+  `evaluation_cd274/fill_range_protein_enrichment.csv`.
+- Supplementary Table S19: `evaluation_cd274/replicate_association.csv`,
+  `evaluation_cd274_raw_counts/continuous_protein_association.csv` and
+  `evaluation/continuous_protein_association.csv`.
+- Supplementary Table S20: `evaluation_within_state/association.csv`,
+  `pdl1_pooled_rankings.csv`, `paired_differences.csv` and `global_fill.csv`.
+
+The expected Safe Fusion pooled Spearman correlation is 0.547 and the mean
+AUROC across the 41 PD-L1 thresholds is 76.5%. The manuscript reports the
+paired Safe Fusion minus SVD correlation as 0.040 [0.006, 0.080]. The saved
+inputs give 0.039463 [0.006076, 0.079894], which rounds to
+0.039 [0.006, 0.080]. The point estimate therefore differs from the printed
+manuscript by 0.001; the interval agrees. The archive preserves the saved
+values without adjustment.
+
+### Full perturbation, sex and protein workflow
 
 Prerequisites: sections 13–14 and 19–21. The setup script rebuilds input and
 comparator links inside this clone. It does not copy data or contracts into Git.
