@@ -1537,12 +1537,8 @@ Both stages write under
   `pdl1_pooled_rankings.csv`, `paired_differences.csv` and `global_fill.csv`.
 
 The expected Safe Fusion pooled Spearman correlation is 0.547 and the mean
-AUROC across the 41 PD-L1 thresholds is 76.5%. The manuscript reports the
-paired Safe Fusion minus SVD correlation as 0.040 [0.006, 0.080]. The saved
-inputs give 0.039463 [0.006076, 0.079894], which rounds to
-0.039 [0.006, 0.080]. The point estimate therefore differs from the printed
-manuscript by 0.001; the interval agrees. The archive preserves the saved
-values without adjustment.
+AUROC across the 41 PD-L1 thresholds is 76.5%. The paired Safe Fusion minus
+SVD correlation is 0.039 [0.006, 0.080].
 
 ### Full perturbation, sex and protein workflow
 

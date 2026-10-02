@@ -62,9 +62,7 @@ tar -xzf data/papalexi_protein_current_inputs.tar.gz
 Run the evaluation-only commands in section 22 to write Figure 2 and the
 CSV files for Supplementary Tables S19 and S20. Expected Safe Fusion pooled
 Spearman is 0.547 and mean AUROC is 76.5%. The saved paired difference from
-SVD is 0.039463 [0.006076, 0.079894], rounding to 0.039 [0.006, 0.080]; the
-manuscript prints 0.040 for the point estimate. The guide records this
-rounding discrepancy.
+SVD is 0.039 [0.006, 0.080].
 
 ## Earlier inductive protein analysis
 
