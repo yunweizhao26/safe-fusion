@@ -6,60 +6,64 @@ masked training entries. The inductive mode fits teachers on training cells and
 cross-fits their training proposals. Detection-weighted deployment inserts the
 fused count multiplied by the calibrated detection probability.
 
-The table below covers Tables 1–3, Figures 1–2 and Supplementary Tables S1–S29.
+The table below covers Tables 1–3, Figures 1–2, Supplementary Figure S1 and Supplementary Tables S1–S29.
 The supplementary labels follow their order in `supplementary_results.tex`.
 Supplementary Sections S1–S9 cover fill rates; data; models; recovery; thinning
 and values; known zeros; downstream and protein; budgets and scale; and lupus.
 
 Sections 1–18 build the shared inputs, comparator contracts and inductive
 reference evaluations. Their reference outputs are prerequisites, not substitutes
-for the final transductive results. Sections 19–26 produce the final analyses.
+for the final transductive results. Sections 19–26 build the preceding analyses; sections 27–35 complete the final revision.
 Read each section's prerequisites before submitting it. Complete its jobs
 successfully before starting the next dependent section. Commands containing
 `sbatch --wait` wait for successful completion; launchers with `submit` print
 job IDs that must finish before continuing. Do not run two copies of a stage.
 
-Only source code is distributed here. Download public inputs using [DATA.md](DATA.md)
+This update distributes source code only. Download public inputs using [DATA.md](DATA.md)
 and the fetch commands below. No fitted contracts or analysis outputs are included.
 Run all commands from this repository's root. Never link the output tree to
 another run that must remain unchanged.
 
-| Manuscript item | Content | Section |
-|---|---|---|
-| Table 1 | Masked recovery | 21 |
-| Table 2 | Zeros with known status | 22, 23 |
-| Table 3 | Error against deeper counts | 23 |
-| Figure 1 | Overview and masked F1 | 21 |
-| Figure 2 | CD274 RNA and PD-L1 protein | 22 |
-| Supplementary Table S1 | Standard-imputer fill rates | 15 |
-| Supplementary Table S2 | Benchmark data | 19 |
-| Supplementary Table S3 | Comparison settings | 17, 19 |
-| Supplementary Table S4 | Mask and model replicates | 21 |
-| Supplementary Table S5 | All comparison rankings | 21 |
-| Supplementary Table S6 | Teacher and classifier ablations | 21 |
-| Supplementary Table S7 | Selector feature groups | 21 |
-| Supplementary Table S8 | Inductive settings | 20 |
-| Supplementary Table S9 | Alternative training targets | 20, 25 |
-| Supplementary Table S10 | Binomial thinning | 21 |
-| Supplementary Table S11 | Recall by count | 8.3 |
-| Supplementary Table S12 | Inserted-value accuracy | 9 |
-| Supplementary Table S13 | Value accuracy by budget and stratum | 9 |
-| Supplementary Table S14 | Values at recorded zeros | 11 |
-| Supplementary Table S15 | Thinning value bias | 11, 20 |
-| Supplementary Table S16 | Perturbation zero controls | 22 |
-| Supplementary Table S17 | Masked F1 per screen | 22 |
-| Supplementary Table S18 | Sex-linked zero controls | 22, 23 |
-| Supplementary Table S19 | Protein agreement | 22 |
-| Supplementary Table S20 | Protein agreement within state | 22 |
-| Supplementary Table S21 | Masked downstream endpoints | 23 |
-| Supplementary Table S22 | Recorded-count downstream endpoints | 23 |
-| Supplementary Table S23 | Disease effects and null tests | 23 |
-| Supplementary Table S24 | Reference mapping changes | 23 |
-| Supplementary Table S25 | Correlation null | 23 |
-| Supplementary Table S26 | Fill-fraction rule | 10.3, 10.4 |
-| Supplementary Table S27 | Runtime | 18 |
-| Supplementary Table S28 | Scaling study | 26 |
-| Supplementary Table S29 | Lupus Treg example | 24 |
+| Manuscript item | Content | Section | Output files |
+|---|---|---|---|
+| Table 1 | Masked recovery | 21, 27, 29 | `R4/transductive_comparators/paired_differences.csv`; `R4/transductive_main/masked/<dataset>/{paired_differences,new_comparators_paired_differences}.csv`; `R4/round2_extras/part_b/highest_f1.csv` |
+| Table 2 | Zeros with known status | 22, 23, 28, 29 | `R4/round2_extras/part_a/table2_aurocs.csv` (continuous estimates and intervals, including label-aware rows) |
+| Table 3 | Error against deeper counts | 23, 31 | `R4/reviewer_extras/B_thinning/{all_rows,table3_new_rows_x100}.csv` |
+| Figure 1 | Overview and masked F1 | 21, 27, 29 | `R4/round2_extras/part_b/selector_f1_fillrate_allcell_1000_points.csv`; `R4/transductive_main/figures/f1_fillrate_3panel_oup.png` |
+| Figure 2 | CD274 RNA and PD-L1 protein | 22 | `R4/transductive_references/protein_cs/figures/pdl1_range_validation.png` |
+| Supplementary Figure S1 | Downstream error across fill fractions | 23, 31, 32 | `R4/fill_grid/fill_grid_long.csv`; `R4/fill_grid/fill_grid.{pdf,png}` |
+| Supplementary Table S1 | Standard-imputer fill rates | 15 | `fill_decisions/table_s1.csv` |
+| Supplementary Table S2 | Benchmark data | 19 | `benchmark_data/benchmark_data.csv; R2/leakage_free/benchmark_data/benchmark_data.csv; R3/colon_crossfit/benchmark_data.csv` |
+| Supplementary Table S3 | Comparison settings | 17, 19 | `Comparison launcher settings and each ALRA metadata.json chosen_k` |
+| Supplementary Table S4 | Mask and model replicates | 21, 29 | `R4/transductive_main/rebuilt_replicates/evaluation/{across_seeds,paired_differences,wins}.csv`; `R4/round2_extras/part_c/{across_seeds,paired_per_seed}.csv` |
+| Supplementary Table S5 | All comparison rankings | 21, 27 | `R4/transductive_main/masked/<dataset>/{paired_differences,new_comparators_paired_differences}.csv`; `R4/transductive_comparators/{absolute,paired_differences}.csv` |
+| Supplementary Table S6 | Teacher and classifier ablations | 21, 28 | `R4/transductive_main/item3_evaluation/<dataset>/paired_differences.csv`; label-baseline text: `R4/label_baselines/masked/<dataset>/report.json` and `masked/supplementary/<dataset>/report.json` |
+| Supplementary Table S7 | Selector feature groups | 21 | `R4/transductive_main/item3_evaluation/feature_pr_auc_exact.csv` |
+| Supplementary Table S8 | Inductive settings | 20 | `R3/value_v2_ablations/ablations/evaluation/paired_differences.csv` |
+| Supplementary Table S9 | Alternative training targets | 20, 25 | `R3/selector_v2/test/evaluation/{masked,thinned}/paired_differences.csv and references/{knockdown_summary,sex_paired,pdl1_paired}.csv; R4/dropout_posterior/evaluation/{masked,thinning,known,sex,protein}/ endpoint results.csv files` |
+| Supplementary Table S10 | Binomial thinning | 21 | `R4/transductive_main/thinning_evaluation/{absolute,paired_differences}.csv` |
+| Supplementary Table S11 | Recall by count | 8.3 | `R2/thinning_transfer/count_stratified_recall/count_stratified_recall.csv` |
+| Supplementary Table S12 | Inserted-value accuracy | 9, 30 | `R4/current_tables/current/masked/{error_removed,log_error}.csv`; historical autoencoders: `R2/norman_rebuilt/value_accuracy/{error_removed,log_error}.csv` |
+| Supplementary Table S13 | Value accuracy by budget and stratum | 9, 30 | `R4/current_tables/current/masked/{error_removed,log_error_strata}.csv`; historical autoencoders: `R2/norman_rebuilt/value_accuracy/{error_removed,log_error_strata}.csv` |
+| Supplementary Table S14 | Values at recorded zeros | 30 | `R4/current_tables/current/recorded/recorded_zero_fills.csv` |
+| Supplementary Table S15 | Thinning value bias | 30 | `R4/current_tables/current/thinning/bias.csv` |
+| Supplementary Table S16 | Perturbation zero controls | 22, 28 | `R4/label_baselines/screens/verification_transductive/{auroc,effects}.csv`; `screens/verification_inductive_comparators/knockdown/{auroc,effects}.csv`; `screens/s16_paper_cells.csv` |
+| Supplementary Table S17 | Masked F1 per screen | 22 | `R4/transductive_references/knockdown/masked_f1/masked_f1_by_screen.json` |
+| Supplementary Table S18 | Sex-linked zero controls | 22, 23, 28 | `R4/sex_zero_comparators/reproduction_run/evaluation/<tissue>/auroc.csv`; sensitivity text: `R4/label_baselines/sex/colon/{agreed25,metadata34}_auroc.csv` |
+| Supplementary Table S19 | Protein agreement | 22 | `R4/transductive_references/protein_cs/{evaluation_cd274/replicate_association,evaluation_cd274_raw_counts/continuous_protein_association,evaluation/continuous_protein_association}.csv` |
+| Supplementary Table S20 | Protein agreement within state | 22 | `R4/transductive_references/protein_cs/evaluation_within_state/{association,pdl1_pooled_rankings}.csv` |
+| Supplementary Table S21 | Masked downstream endpoints | 23 | `R4/transductive_downstream/summary/{s17_absolute,endpoint_changes,decomposition_counts}.csv` |
+| Supplementary Table S22 | Recorded-count downstream endpoints | 23 | `R4/transductive_downstream/summary/endpoint_changes.csv` |
+| Supplementary Table S23 | Disease effects and null tests | 23 | `R4/transductive_downstream/summary/disease_all.csv` |
+| Supplementary Table S24 | Reference mapping changes | 23 | `R4/transductive_downstream/disease/<tissue>_<fold>/deployment/annotation/<tissue>/overall.csv` |
+| Supplementary Table S25 | Correlation null | 23 | `R4/transductive_downstream/correlation/null/counts/{summary,versus_reference}.csv` |
+| Supplementary Table S26 | Fill-fraction rule | 30 | `R4/current_tables/current/rule/summary.csv`; `current/rule/{masked,recorded}/<unit>/calibration_report.json` |
+| Supplementary Table S27 | Runtime | 18 | `runtime/runtime_table.csv` |
+| Supplementary Table S28 | Scaling study | 26, 31, 33, 34 | `R3/scale/results/{paired_differences,resources,safe_fusion_totals}.csv`; Section S8 extensions: `R4/reviewer_extras/C_scale/results/paired_differences.csv`, `R4/scale_caps/genes_<2000 or 5000>/evaluation/results/paired_differences.csv`, `R4/scale_comparators/{paired_differences,resources}.csv` |
+| Supplementary Table S29 | Lupus Treg example | 24, 35 | `R4/sle_donor_labels/comparisons/masked_f1_intervals.csv`; `comparisons/{q1_zeros_sex/per_gene,q3_clustering/treg_calls_summary,q3_clustering/clustering_mean_over_folds,focus_fills/focus_fill_counts,deploy_main/q5_modules,deploy_main/q4_effects,deploy_main/q4_null_de,q7_protein/fcrl3_protein_agreement}.csv` |
+
+Output abbreviations: `R2`, `R3`, `R4` denote `review_round2`, `review_round3`,
+`review_round4` under `artifacts/paper_evidence/`.
 
 ## Conventions
 
@@ -911,7 +915,7 @@ python scripts/summarize_fill_evaluations.py \
   from these files. The pancreas share of masked positives pools the
   `decomposition_counts.csv` of the three folds.
 
-### 10.3 Fill-fraction rule (Supplementary Table S26)
+### 10.3 Inductive fill-fraction reference for section 30
 
 `slurm_detection_rule.sh` refits the selector with the production settings,
 calibrates its scores by isotonic regression on cross-fitted scores of the
@@ -1465,7 +1469,6 @@ sbatch --wait "$C/run.sh" value.py masked
 sbatch --wait "$C/run.sh" value.py thinning
 sbatch --wait "$C/run.sh" recorded_eval.py
 srun -A torch_pr_634_general -p cs -c 2 --mem=8G -t 00:30:00 .venv/bin/python scripts/build_transductive_fillrate_summary.py --output-dir "$O"
-srun -A torch_pr_634_general -p cs -c 2 --mem=8G -t 00:30:00 .venv/bin/python scripts/plot_overview_f1.py --curves "$O/selector_f1_fillrate_transductive_1000_points.csv" --output "$O/figures/f1_fillrate_3panel_oup.png"
 ```
 
 Files below are relative to `$O`:
@@ -1473,21 +1476,17 @@ Files below are relative to `$O`:
 | Item | Output read by the manuscript | Calculation |
 |---|---|---|
 | Table 1 | `masked/{Pancreas,Colon,CRISPRa}/{paired_differences,new_comparators_paired_differences}.csv`; `selector_f1_fillrate_transductive_1000_points.csv` | `masked.py`, `fusion_value_bootstrap.py`, `build_transductive_fillrate_summary.py` |
-| Figure 1 | `figures/f1_fillrate_3panel_oup.png` | `scripts/plot_overview_f1.py`, from the transductive/inductive curves |
+| Figure 1 | See section 29 | Final all-cell curves and plot |
 | S4 | `rebuilt_replicates/evaluation/{per_seed,across_seeds,paired_differences,wins}.csv` | `replicate_eval.py` |
 | S5 | `masked/{Pancreas,Colon,CRISPRa}/{paired_differences,new_comparators_paired_differences}.csv` | Both comparison tables, all three statistics |
 | S6 | `item3_evaluation/{Pancreas,Colon,CRISPRa}/paired_differences.csv` | Transductive teacher-removal and classifier variants |
 | S7 | `item3_evaluation/feature_pr_auc_exact.csv` | `attribution_exact.py`, `feature_eval.py` |
 | S10 | `thinning_evaluation/{absolute,paired_differences}.csv` | `thinning.py`, thinning-trained and mask-trained designs |
 | S11 | `artifacts/paper_evidence/review_round2/thinning_transfer/count_stratified_recall/count_stratified_recall.csv` | Inductive masked recall; section 8.3 |
-| S12 | `artifacts/paper_evidence/review_round2/norman_rebuilt/value_accuracy/{error_removed,log_error,cross_validation}.csv` | Inductive values on the captioned benchmarks; section 9 |
-| S13 | `artifacts/paper_evidence/review_round2/norman_rebuilt/value_accuracy/{error_removed,log_error_strata,replicates}.csv` | Inductive budget and stratum rows; section 9 |
-| S14 | `artifacts/paper_evidence/review_round2/inserted_value/recorded_zero_fills.csv` | Inductive recorded-zero values; section 11 |
-| S15 | `artifacts/paper_evidence/review_round2/inserted_value/thinning_positive_bias.csv`; `artifacts/paper_evidence/review_round3/value_v2_ablations/value/test/value_accuracy.csv` | Inductive bias; section 11; `conditional_detection`, `bias_selected` rows from section 20 |
 
 The transductive value results in the surrounding text read
-`value_accuracy/{masked,recorded,thinning}.csv`. Tables S11–S15 retain the
-inductive benchmarks explicitly identified in their captions.
+`value_accuracy/{masked,recorded,thinning}.csv`. S11 retains its inductive benchmark. S12–S15 now read the current outputs
+in section 30, with historical autoencoder comparisons retained from section 9.
 
 The transductive mode is the reference for the main comparisons. The inductive
 rows retain their own scores, values, training splits and intervals. Counts of
@@ -1706,21 +1705,315 @@ the nested samples, `scale_selector.py` computes the bounded-memory selector,
 Exact wall time and sampled memory require the accounting records of the run;
 new runs measure their own cost. No Slurm records are distributed by this update.
 
+## 27. All-cell SVD, weighted kNN and ALRA
+
+Prerequisites: sections 19–21, including the saved masked evaluations and all-cell
+teachers. Run from the release root. The setup command below creates local code
+links, output directories, a seven-unit manifest and source checksums. It never
+imports data or results from another checkout. Existing mismatched links or
+manifests cause an error. Run setup before each new analysis, then leave its
+source unchanged until its jobs finish.
+
+```bash
+python scripts/analyses/setup_revision.py transductive_comparators
+bash scripts/analyses/transductive_comparators/submit.sh
+bash scripts/analyses/transductive_comparators/wait.sh
+```
+
+The launcher submits three parity checks, seven ALRA fits, three evaluations and
+the report with `afterok` dependencies. SVD and weighted kNN reuse the all-cell
+teachers. Table 1 and S5 read
+`artifacts/paper_evidence/review_round4/transductive_comparators/paired_differences.csv`
+and `absolute.csv`; select `Safe Fusion (transductive)` as the reference and
+`SVD (transductive)`, `Weighted kNN (transductive)` and `ALRA (transductive)` as
+comparators. Other rows retain section 21's outputs. Figure 1's curves are built
+in section 29 after these fits complete.
+
+Several final analyses compare numerical output with literal manuscript cells.
+Supply the read-only final manuscript directory for these checks:
+
+```bash
+export SAFE_FUSION_MANUSCRIPT_DIR=/path/to/read-only/bioinformatics
+```
+
+This directory must contain `6_results.tex` and `supplementary_results.tex`.
+It is read directly and is not copied into the repository. Two historical audits
+also require the original, pre-update inputs below, under an external directory
+called `REVISION_REFERENCES`. These are not distributed with the source release:
+
+```text
+round2_extras/part_a/table2_original_snapshot.csv
+current_tables/original_supplementary_results.tex
+```
+
+Set `REVISION_REFERENCES` to that directory before sections 29–30. The setup
+option `--reference-root "$REVISION_REFERENCES"` links only these read-only audit
+inputs. The current supplement cannot replace the earlier supplement, and the
+continuous-AUROC Table 2 cannot replace its historical snapshot. Missing inputs
+stop the corresponding checks; no numerical or printed parity is assumed.
+
+## 28. Label-aware baselines and sex-label sensitivity
+
+Prerequisites: sections 21–23, complete sex-zero comparison fits including
+EnImpute, and `SAFE_FUSION_MANUSCRIPT_DIR` from section 27. Section 23 writes to
+`sex_zero_comparators/reproduction_run/`; these adapters use that same path.
+The EnImpute launcher requests `06:00:00`. Do not use incomplete donor folds.
+
+```bash
+python scripts/analyses/setup_revision.py label_baselines
+bash scripts/analyses/label_baselines/reproduce.sh
+while squeue -u "$USER" -h -o %j | grep -q '^lb-'; do sleep 600; done
+```
+
+The launcher replays S16 and S18, checks their receipts, replays selectors,
+checks the weighted AP implementation, evaluates masked baselines, runs the
+supplementary all-cell label rule, and evaluates screen and tissue zeros.
+Only the combined numerical gate releases new analyses. Its final report is
+submitted after these stages; inspect `complete_job_accounting.txt` and require
+successful completion of the report as well.
+
+Paths below are relative to
+`artifacts/paper_evidence/review_round4/label_baselines/`:
+
+- Table 2 label baselines: `screens/baseline_per_target.csv`,
+  `sex/<tissue>/label_rankings_auroc.csv`, and
+  `sex/<tissue>/transductive_expected_count_auroc.csv`. Section 29 supplies the
+  final continuous-score estimates and intervals for every Table 2 row.
+- S6 accompanying text: `masked/<dataset>/report.json` and
+  `masked/supplementary/<dataset>/report.json` (`Pancreas`, `Colon`, `adamson_crispri`,
+  `papalexi_eccite`, `norman_crispra`).
+- S16 corrections: `screens/verification_transductive/auroc.csv`,
+  `screens/verification_inductive_comparators/knockdown/auroc.csv`,
+  `screens/s16_paper_cells.csv`, and `screens/verification_receipt.json`.
+- S18 and the colon sex-sensitivity text: `sex/colon/agreed25_auroc.csv`,
+  `sex/colon/metadata34_auroc.csv`, `sex/colon/metadata_sex_audit.csv`, and
+  `sex/colon/excluded_donors.csv`.
+
+The strict fitting-cell donor baseline remains undefined for unseen donors.
+The separately reported all-cell rule uses the donor teachers' fitting
+population. The scripts retain that distinction and disclose printed rounding
+differences separately from numerical replay.
+
+## 29. Continuous AUROCs, all-cell curves and additional replicates
+
+Prerequisites: sections 21, 23, 27 and 28. Supply the historical Table 2 snapshot
+specified in section 27 and the final manuscript for the final audit.
+
+```bash
+python scripts/analyses/setup_revision.py round2_extras --reference-root "$REVISION_REFERENCES"
+srun -A torch_pr_634_general -p cs -c 2 --mem=8G -t 00:30:00 .venv/bin/python scripts/analyses/round2_extras/part_c/setup.py
+bash scripts/analyses/round2_extras/reproduce.sh
+bash scripts/analyses/round2_extras/wait.sh
+srun -A torch_pr_634_general -p cs -c 2 --mem=8G -t 00:30:00 .venv/bin/python scripts/plot_overview_f1.py --curves artifacts/paper_evidence/review_round4/round2_extras/part_b/selector_f1_fillrate_allcell_1000_points.csv --output artifacts/paper_evidence/review_round4/transductive_main/figures/f1_fillrate_3panel_oup.png
+```
+
+Part A checks the original source cells before four endpoint jobs and their
+summary. Part B replaces only the all-cell SVD, weighted kNN and ALRA curves
+and verifies the Table 1 points. Part C evaluates seed 1729, fits the four
+additional seeds, evaluates them, and summarizes complete comparisons. The
+final audit requires all comparisons; an `afterany` dependency does not treat a
+failed fit as a completed comparison.
+
+Table 2 reads `round2_extras/part_a/table2_aurocs.csv`: columns `continuous`,
+`continuous_lower`, and `continuous_upper`, including the label-aware rows.
+Figure 1 reads `round2_extras/part_b/selector_f1_fillrate_allcell_1000_points.csv`
+and uses a 12 by 2.85 inch canvas. Table 1's highest-F1 count reads
+`part_b/highest_f1.csv`. S4's additional block reads
+`part_c/across_seeds.csv` and `part_c/paired_per_seed.csv`. All these paths are
+under `artifacts/paper_evidence/review_round4/`.
+
+## 30. Current value and fill-rule tables
+
+Prerequisites: sections 9–11 and 19–23, including masked, recorded and thinning
+teachers and selectors, and section 20's detection-weighted value reference.
+Supply the earlier supplement snapshot from section 27. The old-input jobs are
+parity prerequisites; the final tables use the current transductive outputs.
+The sequential `--wait` commands below enforce the full dependency order.
+
+```bash
+python scripts/analyses/setup_revision.py current_tables --reference-root "$REVISION_REFERENCES"
+C=scripts/analyses/current_tables
+O=artifacts/paper_evidence/review_round4/current_tables
+for part in masked recorded thinning; do
+  sbatch --wait -A torch_pr_634_general -p cs -o "$O/logs/original-$part-%j.log" "$C/run.sh" original "$part"
+done
+sbatch --wait -A torch_pr_634_general -p cs -o "$O/logs/old-detection-%j.log" "$C/run.sh" extra old_detection
+sbatch --wait -A torch_pr_634_general -p cs --array=0-3,5-8%5 -o "$O/logs/old-rule-%A_%a.log" "$C/old_rule.sh"
+sbatch --wait -A torch_pr_634_general -p cs --array=4,9 -o "$O/logs/old-rule-norman-%A_%a.log" "$C/old_rule_norman.sh"
+sbatch --wait -A torch_pr_634_general -p cs -o "$O/logs/old-print-%j.log" "$C/run.sh" original_print
+sbatch --wait -A torch_pr_634_general -p cs --array=0-16%6 -o "$O/logs/linear-%A_%a.log" "$C/run.sh" linear
+sbatch --wait -A torch_pr_634_general -p cs --array=0-16%5 -o "$O/logs/rule-%A_%a.log" "$C/run.sh" extra rule
+sbatch --wait -A torch_pr_634_general -p cs -o "$O/logs/masked-%j.log" "$C/run.sh" masked
+sbatch --wait -A torch_pr_634_general -p cs -o "$O/logs/recorded-%j.log" "$C/run.sh" extra recorded
+sbatch --wait -A torch_pr_634_general -p cs -o "$O/logs/thinning-%j.log" "$C/run.sh" extra thinning
+sbatch --wait -A torch_pr_634_general -p cs -o "$O/logs/report-%j.log" "$C/run.sh" report
+```
+
+The report pools rule counts and writes `current/rule/summary.csv`, comparison
+LaTeX tables under `tables/`, and audit receipts. Paths below are relative to
+`artifacts/paper_evidence/review_round4/current_tables/`:
+
+| Item | Current output read |
+|---|---|
+| S12 | `current/masked/error_removed.csv`, `current/masked/log_error.csv` |
+| S13 | `current/masked/error_removed.csv`, `current/masked/log_error_strata.csv` |
+| S14 | `current/recorded/recorded_zero_fills.csv` |
+| S15 | `current/thinning/bias.csv` |
+| S26 | `current/rule/summary.csv`, `current/rule/{masked,recorded}/<unit>/calibration_report.json` |
+
+The earlier autoencoder comparisons remain the inductive results of section 9;
+the unchanged autoencoder runners do not accept the transductive teacher
+contracts. Dixit is omitted from S14 because its complete transductive input
+chain is unavailable. Neither case is replaced by a new fit or invented value.
+
+## 31. Calibration, additional Table 3 methods and 5,000 genes
+
+Prerequisites: section 23 for calibration and Table 3, and section 26 for the
+scale experiment's input cohort and environments.
+
+```bash
+python scripts/analyses/setup_revision.py reviewer_extras
+C=scripts/analyses/reviewer_extras
+O=artifacts/paper_evidence/review_round4/reviewer_extras
+sbatch --wait -A torch_pr_634_general -p cs -J extras-A -o "$O/logs/A-%j.log" "$C/job.sh" .venv/bin/python -u "$C/A_calibration/analyze.py"
+bash "$C/B_thinning/submit.sh"
+while squeue -u "$USER" -h -o %j | grep -q '^extras-B-'; do sleep 600; done
+bash "$C/C_scale/code/submit.sh"
+while squeue -u "$USER" -h -o %j | grep -q '^extras-C-'; do sleep 600; done
+sbatch --wait -A torch_pr_634_general -p cs -c 2 --mem=8G -t 00:30:00 -o "$O/logs/final-%j.log" "$C/job.sh" bash "$C/finalize.sh"
+```
+
+The Table 3 chain first reproduces the existing bootstrap, then fits ALRA and
+the single-method selectors on eight units, then summarizes. The scale chain
+prepares 200,000 cells with 5,000 genes, masks, fits teachers and comparators,
+fits fused values and selectors, and evaluates. The final report checks
+completion. A missing method remains unavailable; inspect job states before
+using the report.
+
+Table 3 reads `B_thinning/all_rows.csv` and
+`B_thinning/table3_new_rows_x100.csv`; the latter supplies ALRA and selector
+columns on the manuscript's percentage scale. Section S8 calibration reads
+`A_calibration/calibration.csv`. Its 5,000-gene text reads
+`C_scale/results/method_summary.csv`, `C_scale/results/paired_differences.csv`
+and the resource summaries produced by `C_scale/code/report.py`. All paths are
+relative to `$O`. The default 2,000-gene S28 table still reads section 26.
+
+## 32. Fill-fraction grid: Supplementary Figure S1
+
+Prerequisites: sections 23 and 31, including all Table 3 methods and saved
+1%/10% fills. Set `SAFE_FUSION_MANUSCRIPT_DIR` as in section 27.
+
+```bash
+python scripts/analyses/setup_revision.py fill_grid
+bash scripts/analyses/fill_grid/submit.sh
+while squeue -u "$USER" -h -o %j | grep -q '^fg-'; do sleep 600; done
+srun -A torch_pr_634_general -p cs -c 2 --mem=8G -t 00:30:00 .venv/bin/python scripts/analyses/fill_grid/verify.py
+```
+
+The chain runs eight unit gates, the numerical and printed Table 3 gate, eight
+grid jobs, and the summary with `afterok` dependencies. It reuses saved scores
+and values without refitting. The output root is
+`artifacts/paper_evidence/review_round4/fill_grid/`. The figure reads
+`fill_grid_long.csv`; `run.py summary` creates `fill_grid.pdf` and its PNG
+preview `fill_grid.png`. Existing output destinations are exclusive.
+
+## 33. Training-size sensitivity at 2,000 and 5,000 genes
+
+Prerequisites: sections 26 and 31, including the completed default
+200,000-cell transductive fits at both gene counts.
+
+```bash
+python scripts/analyses/setup_revision.py scale_caps
+bash scripts/analyses/scale_caps/submit.sh
+while squeue -u "$USER" -h -o %j | grep -q '^caps-'; do sleep 600; done
+srun -A torch_pr_634_general -p cs -c 2 --mem=8G -t 00:30:00 .venv/bin/python scripts/analyses/scale_caps/report.py
+```
+
+Both default value/selector replays must pass exact array checks before either
+larger-cap chain starts. Only the two training caps change, from 600,000 to
+6,000,000 value entries and from 2,000,000 to 20,000,000 selector candidates.
+Section S8 reads `scale_caps/genes_<2000|5000>/evaluation/results/paired_differences.csv`
+and `method_summary.csv`, relative to `artifacts/paper_evidence/review_round4/`.
+Resource measurements are `scale_caps/resources.csv` and per-step
+`*.resources.json`; a new run measures its own costs.
+
+## 34. Additional comparison methods at scale
+
+Prerequisites: sections 17, 19 and 26, including all four saved S28 evaluations,
+R environments, the frozen scGPT checkpoint, and the final supplement for its
+printed S28 gate. Run the monitor inside a Slurm allocation with enough time;
+it uses `SLURM_JOB_END_TIME` and stops two hours before that allocation ends.
+
+```bash
+python scripts/analyses/setup_revision.py scale_comparators
+srun -A torch_pr_634_general -p cs -c 2 --mem=8G -t 00:30:00 .venv/bin/python scripts/analyses/scale_comparators/check_table.py
+for n in 25000 50000 100000 200000; do
+  .venv/bin/python scripts/analyses/scale_comparators/submit.py reproduce "$n"
+done
+bash scripts/analyses/scale_comparators/monitor.sh
+srun -A torch_pr_634_general -p cs -c 2 --mem=8G -t 00:30:00 .venv/bin/python scripts/analyses/scale_comparators/report.py
+srun -A torch_pr_634_general -p cs -c 2 --mem=8G -t 00:30:00 .venv/bin/python scripts/analyses/scale_comparators/check_results.py
+```
+
+The monitor waits for all four numerical reproductions before submitting DCA,
+scGPT and the selectors. R methods first run at 25,000 cells; larger sizes are
+eligible only when that run completes within 12 hours. Evaluations follow each
+size's applicable methods. A monitor timeout is not completion: resume using
+the existing ledger and require `DONE` and successful result checks.
+Section S8 reads `scale_comparators/paired_differences.csv`,
+`scale_comparators/method_summary.csv`, `scale_comparators/resources.csv` and
+`scale_comparators/r_gates.json`, under `artifacts/paper_evidence/review_round4/`.
+Table S28 itself retains the original section 26 rows.
+
+## 35. Donor labels in the lupus example
+
+Prerequisites: section 24, including both unlabeled transductive values,
+inductive references, the CITE-seq inputs and the saved AP intervals.
+
+```bash
+python scripts/analyses/setup_revision.py sle_donor_labels
+bash scripts/analyses/sle_donor_labels/reproduce.sh
+bash scripts/analyses/sle_donor_labels/monitor.sh
+```
+
+The launcher builds input links, replays both unlabeled values, validates the
+saved endpoints, fits twelve donor-label scVI teachers on L40S GPUs, then runs
+corresponding CPU chains, both sets of evaluations, AP bootstrap, audits and
+the final report. All dependencies preserve that order.
+
+Section S9 and S29 read
+`artifacts/paper_evidence/review_round4/sle_donor_labels/comparisons/`, including
+`masked_f1_intervals.csv`, `q1_zeros_sex/per_gene.csv`,
+`q3_clustering/treg_calls_summary.csv`,
+`q3_clustering/clustering_mean_over_folds.csv`,
+`focus_fills/focus_fill_counts.csv`, `deploy_main/q4_effects.csv`,
+`deploy_main/q4_null_de.csv`, `deploy_main/q5_modules.csv`, and `q7_protein/fcrl3_protein_agreement.csv`.
+The report also writes `masked_ap_intervals.csv`. The underlying donor-label
+endpoints are retained under `conditional/results/` and
+`conditional_detection/results/`; the inductive and unlabeled columns retain
+section 24's references.
+
 ## Verification
 
 Run this from the repository root on a compute node. It checks every Python file,
-every shell launcher and each literal script path in this guide.
+every shell launcher and each literal script path in this guide, including the
+C++ AP helper and temporary-directory setup check. Git-listed files exclude
+environments and generated outputs. The AP launcher compiles its shared library
+and runs its numerical selfcheck before fitting.
 
 ```bash
 srun -A torch_pr_634_general -p cs -c 2 --mem=8G -t 00:30:00 python - <<'PYCODE'
 from pathlib import Path
 import re, subprocess, sys
 root = Path.cwd()
-python_files = sorted(root.rglob("*.py"))
+files = [root / p for p in subprocess.check_output(["git", "ls-files", "--cached", "--others", "--exclude-standard"], text=True).splitlines()]
+python_files = sorted(p for p in files if p.suffix == ".py")
 subprocess.run([sys.executable, "-m", "py_compile", *map(str, python_files)], check=True)
-for path in sorted(root.rglob("*")):
-    if path.is_file() and path.suffix in {".sh", ".s", ".sbatch"}:
+for path in files:
+    if path.suffix in {".sh", ".s", ".sbatch"}:
         subprocess.run(["bash", "-n", str(path)], check=True)
+subprocess.run(["g++", "-fopenmp", "-fsyntax-only", "scripts/analyses/label_baselines/masked/weighted_ap.cpp"], check=True)
+subprocess.run([sys.executable, "scripts/analyses/test_setup_revision.py"], check=True)
 paths = set(re.findall(r"(?:scripts|src|fusion)/[\w/.-]+\.(?:py|sh|s|R)", (root / "docs/REPRODUCTION.md").read_text()))
 assert all((root / path).is_file() for path in paths)
 print(f"Compiled {len(python_files)} Python files; shell syntax and {len(paths)} script paths passed.")

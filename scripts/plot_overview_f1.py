@@ -64,7 +64,7 @@ def main() -> None:
     parser.add_argument(
         "--curves",
         type=Path,
-        default=Path("artifacts/paper_evidence/review_round4/transductive_main/selector_f1_fillrate_transductive_1000_points.csv"),
+        default=Path("artifacts/paper_evidence/review_round4/round2_extras/part_b/selector_f1_fillrate_allcell_1000_points.csv"),
     )
     parser.add_argument("--output", type=Path, default=Path("artifacts/paper_evidence/figures/overview_f1_fillrate.png"))
     args = parser.parse_args()
