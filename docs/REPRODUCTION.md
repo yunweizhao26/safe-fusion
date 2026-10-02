@@ -54,6 +54,7 @@ another run that must remain unchanged.
 | Supplementary Table S18 | Sex-linked zero controls | 22, 23, 28 | `R4/sex_zero_comparators/reproduction_run/evaluation/<tissue>/auroc.csv`; sensitivity text: `R4/label_baselines/sex/colon/{agreed25,metadata34}_auroc.csv` |
 | Supplementary Table S19 | Protein agreement | 22 | `R4/transductive_references/protein_cs/{evaluation_cd274/replicate_association,evaluation_cd274_raw_counts/continuous_protein_association,evaluation/continuous_protein_association}.csv` |
 | Supplementary Table S20 | Protein agreement within state | 22 | `R4/transductive_references/protein_cs/evaluation_within_state/{association,pdl1_pooled_rankings}.csv` |
+| Supplementary Section S7, Full screen | PD-L1 across all 20,156 Papalexi cells | 22.1 | `R4/protein_followup/full/evaluation/{association,paired_differences,pdl1_pooled_rankings,global_fill}.csv` |
 | Supplementary Table S21 | Masked downstream endpoints | 23 | `R4/transductive_downstream/summary/{s17_absolute,endpoint_changes,decomposition_counts}.csv` |
 | Supplementary Table S22 | Recorded-count downstream endpoints | 23 | `R4/transductive_downstream/summary/endpoint_changes.csv` |
 | Supplementary Table S23 | Disease effects and null tests | 23 | `R4/transductive_downstream/summary/disease_all.csv` |
@@ -1539,6 +1540,110 @@ Both stages write under
 The expected Safe Fusion pooled Spearman correlation is 0.547 and the mean
 AUROC across the 41 PD-L1 thresholds is 76.5%. The paired Safe Fusion minus
 SVD correlation is 0.039 [0.006, 0.080].
+
+### 22.1 Full-screen PD-L1 analysis (Supplementary Section S7, “Full screen”)
+
+This analysis uses all 20,156 audit-matched Papalexi cells and the frozen
+2,032-gene panel. It reproduces the full-screen paragraph in Results and
+Supplementary Section S7 alongside Figure 2 and Supplementary Tables S19
+and S20. It holds out 30% of each target: 14,108 development cells and
+6,048 test cells, including 4,083 recorded CD274 zeros.
+
+Prerequisites are the `.venv`, `.conda-magic-current` and
+`.conda-scvi-current` environments from section 1 and these inputs:
+
+- `external_data/prepared/papalexi_eccite_crossmodal.h5ad`: the prepared
+  3,400-cell RNA-protein data from `data/papalexi_crossmodal_inputs.tar.gz`,
+  which fixes the gene panel and checks overlapping counts.
+- `artifacts/paper_evidence/papalexi_crossmodal/audit/matched_rna_adt_panel.parquet`:
+  the audit panel from the same archive, which identifies all matched cells,
+  perturbation targets, guides and protein measurements.
+- `external_data/scperturb/PapalexiSatija2021_eccite_RNA.h5ad`: the full raw
+  RNA matrix, downloaded separately from scPerturb as described in
+  [DATA.md](DATA.md). It is not included in the protein input archive.
+
+Run from the release root. Download and unpack on a compute node, then
+submit the fitting pipeline after all three inputs exist:
+
+```bash
+set -euo pipefail
+git lfs install
+git lfs pull --include "data/papalexi_crossmodal_inputs.tar.gz"
+echo "dfdbb72a33e642ee3095ab054dd9bae2209809d76841cb83ccb0d33d62230185  data/papalexi_crossmodal_inputs.tar.gz" | sha256sum --check
+tar -xzf data/papalexi_crossmodal_inputs.tar.gz
+echo "03e9602d124c261281936717d5795445805e6e704a52b0310bcde94225aa0929  external_data/scperturb/PapalexiSatija2021_eccite_RNA.h5ad" | sha256sum --check
+test -f external_data/prepared/papalexi_eccite_crossmodal.h5ad
+test -f artifacts/paper_evidence/papalexi_crossmodal/audit/matched_rna_adt_panel.parquet
+bash scripts/analyses/protein_full/submit.sh
+```
+
+The launcher submits the following stages of
+`scripts/analyses/protein_full/stage.sh` with `afterok` dependencies:
+
+1. `prepare`: extend the frozen preparation to every audit-matched cell,
+   preserve gene order, assign target-stratified splits and mask 10% of
+   nonzero counts with seed 1729.
+2. `teachers`, `baselines`, `magic` and `scvi`: fit the all-cell teachers,
+   training-cell SVD and weighted kNN comparators, standard MAGIC and scVI.
+   MAGIC and scVI also provide the count-scale teacher contracts.
+3. `stack`: fit the fused value after all five teachers finish.
+4. `selector`: fit the selector with the Section S8 sampling rule after
+   `stack`. Draw 1,000,000 masked positives and 1,000,000 sampled recorded
+   zeros without replacement, seed 1729, from the production candidate
+   frame. Score all genes and write the 1%, 5% and 10% global fills.
+5. `evaluate`: run after `selector` and `baselines`. Reuse the all-cell SVD
+   and weighted kNN teacher predictions as additional comparators and run
+   the unchanged within-state statistics with 2,000 bootstrap draws.
+
+CPU jobs request `cs`; the selector uses eight BLAS threads on the same CPU
+model as section 22. The scVI job requests an L40S GPU through automatic
+partition routing because `cs` has no GPUs. Submission clears the inherited
+`SBATCH_PARTITION` for this routing; CPU jobs explicitly request `cs`.
+The launcher prints job IDs and returns after submission. Check that every
+job completes successfully before reading results. It refuses a second
+submission when its job record already exists.
+
+Benchmark, teacher and comparator outputs are under
+`artifacts/paper_evidence/review_round4/protein_full/full/`:
+
+- `prepared.h5ad`, `prepared.report.json`, `prepared.split_by_target.csv`,
+  `corrupted.h5ad`, `coordinates.parquet`, `splits.parquet` and
+  `benchmark_report.json`.
+- `teachers/gene_median/`, `teachers/svd_impute/`, `teachers/graph_smooth/`,
+  `teachers/magic/` and `teachers/scvi_counts/`, each containing `mean.npy`
+  and `metadata.json`.
+- `safe_fusion/`, `svd_impute/`, `graph_smooth/`, `magic_standard/` and
+  `scvi/`, each containing `mean.npy` and `metadata.json`.
+
+The Part A selector and final evaluation are under
+`artifacts/paper_evidence/review_round4/protein_followup/full/`:
+
+- `selector/selected_gene_scores.parquet`, `selector/calibration_report.json`
+  and `selector/sampling.json`; the last file records the sampled class
+  counts and the hash of selected indices.
+- `selector/safe_fusion_calibrated_mlp_topk_0p01/`,
+  `selector/safe_fusion_calibrated_mlp_topk_0p05/` and
+  `selector/safe_fusion_calibrated_mlp_topk_0p1/`, each containing `mean.npy`
+  and `metadata.json`.
+- `evaluation/association.csv`, `evaluation/paired_differences.csv`,
+  `evaluation/pdl1_pooled_rankings.csv`, `evaluation/global_fill.csv`,
+  `evaluation/within_target_by_target.csv`,
+  `evaluation/cd274_zero_targets.csv`, `evaluation/pdl1_cells.parquet` and
+  `evaluation/report.json`.
+
+The final evaluator creates local links to the benchmark and contracts and
+links both selector input names to the Part A selector. No saved outputs
+need to be copied between runs.
+
+For PD-L1 CLR in recorded CD274-zero test cells, select `scope=all`,
+`resampling=target_clusters` and `statistic=pooled_spearman` in the association
+and paired-difference tables. Expected Safe Fusion Spearman is
+**0.581 [0.407, 0.672]**. Safe Fusion minus all-cell SVD
+(`svd_all_cells`) is **0.075 [0.026, 0.109]**, and minus all-cell weighted
+kNN (`weighted_knn_all_cells`) is **0.026 [0.007, 0.051]**. Intervals are
+95% target-bootstrap percentile intervals. In the global-fill table,
+`filled_recorded_zeros` is **0, 0 and 5** at fractions **1%, 5% and 10%**,
+respectively, out of 4,083 CD274 zeros. The pooled mean AUROC is 79.2%.
 
 ### Full perturbation, sex and protein workflow
 

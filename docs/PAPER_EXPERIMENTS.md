@@ -18,6 +18,7 @@ semicolon retain the analysis root of the preceding path unless written in full.
 | Table 3 | Error against deeper counts | 23, 31 | `R4/reviewer_extras/B_thinning/{all_rows,table3_new_rows_x100}.csv` |
 | Figure 1 | Overview and masked F1 | 21, 27, 29 | `R4/round2_extras/part_b/selector_f1_fillrate_allcell_1000_points.csv`; `R4/transductive_main/figures/f1_fillrate_3panel_oup.png` |
 | Figure 2 | CD274 RNA and PD-L1 protein | 22 | `R4/transductive_references/protein_cs/figures/pdl1_range_validation.png` |
+| 22.1 | `scripts/analyses/protein_full/submit.sh`, `scripts/analyses/protein_full/stage.sh`, `scripts/analyses/protein_full/prepare.py`, `scripts/analyses/protein_full/selector.py`, `scripts/analyses/protein_full/evaluate_full.py`, `scripts/analyses/protein_full/evaluate.py` | `review_round4/protein_full/full/`, `review_round4/protein_followup/full/` |
 | Supplementary Figure S1 | Downstream error across fill fractions | 23, 31, 32 | `R4/fill_grid/fill_grid_long.csv`; `R4/fill_grid/fill_grid.{pdf,png}` |
 | Supplementary Table S1 | Standard-imputer fill rates | 15 | `fill_decisions/table_s1.csv` |
 | Supplementary Table S2 | Benchmark data | 19 | `benchmark_data/benchmark_data.csv; R2/leakage_free/benchmark_data/benchmark_data.csv; R3/colon_crossfit/benchmark_data.csv` |
@@ -39,6 +40,7 @@ semicolon retain the analysis root of the preceding path unless written in full.
 | Supplementary Table S18 | Sex-linked zero controls | 22, 23, 28 | `R4/sex_zero_comparators/reproduction_run/evaluation/<tissue>/auroc.csv`; sensitivity text: `R4/label_baselines/sex/colon/{agreed25,metadata34}_auroc.csv` |
 | Supplementary Table S19 | Protein agreement | 22 | `R4/transductive_references/protein_cs/{evaluation_cd274/replicate_association,evaluation_cd274_raw_counts/continuous_protein_association,evaluation/continuous_protein_association}.csv` |
 | Supplementary Table S20 | Protein agreement within state | 22 | `R4/transductive_references/protein_cs/evaluation_within_state/{association,pdl1_pooled_rankings}.csv` |
+| Supplementary Section S7, Full screen | PD-L1 across all 20,156 Papalexi cells | 22.1 | `R4/protein_followup/full/evaluation/{association,paired_differences,pdl1_pooled_rankings,global_fill}.csv` |
 | Supplementary Table S21 | Masked downstream endpoints | 23 | `R4/transductive_downstream/summary/{s17_absolute,endpoint_changes,decomposition_counts}.csv` |
 | Supplementary Table S22 | Recorded-count downstream endpoints | 23 | `R4/transductive_downstream/summary/endpoint_changes.csv` |
 | Supplementary Table S23 | Disease effects and null tests | 23 | `R4/transductive_downstream/summary/disease_all.csv` |
