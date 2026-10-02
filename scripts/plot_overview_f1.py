@@ -70,7 +70,7 @@ def main() -> None:
     args = parser.parse_args()
 
     curves = pd.read_csv(args.curves)
-    figure, axes = plt.subplots(1, 4, figsize=(12, 3.0), gridspec_kw={"width_ratios": [1.15, 1, 1, 1]})
+    figure, axes = plt.subplots(1, 4, figsize=(12, 2.85), gridspec_kw={"width_ratios": [1.15, 1, 1, 1]})
     draw_overview(axes[0])
     for axis, dataset in zip(axes[1:], DATASETS):
         subset = curves[curves["dataset"] == dataset]
