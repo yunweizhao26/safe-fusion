@@ -1,0 +1,216 @@
+import hashlib
+import json
+import subprocess
+
+configfile: "configs/study.yaml"
+
+CONFIG_PATH = config.get("_config_path", "configs/study.yaml")
+CLI = ".venv/bin/safefusion-benchmark"
+COMMIT = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+CONFIG_HASH = hashlib.sha256(json.dumps(config, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+RUN_ID = f"{COMMIT[:12]}-{CONFIG_HASH[:12]}"
+ROOT = f"{config['study']['results_root']}/{RUN_ID}"
+DATASETS = [name for name, spec in config["datasets"].items() if spec.get("enabled", True)]
+CORRUPTIONS = [name for name, spec in config["corruptions"].items() if spec.get("enabled", True)]
+METHODS = [name for name, spec in config["methods"].items() if spec.get("enabled", True)]
+
+
+def method_conda(wildcards):
+    path = config["methods"][wildcards.method].get("env", "workflow/envs/core.yaml")
+    return path.removeprefix("workflow/")
+
+
+def method_environment(wildcards):
+    return config["methods"][wildcards.method].get("env", "workflow/envs/core.yaml")
+
+
+def raw(dataset):
+    return f"{ROOT}/data/{dataset}/raw.h5ad"
+
+
+def preprocessed(dataset):
+    return f"{ROOT}/data/{dataset}/preprocessed.h5ad"
+
+
+def split_file(dataset):
+    return f"{ROOT}/data/{dataset}/splits.parquet"
+
+
+def corrupted(dataset, corruption):
+    return f"{ROOT}/data/{dataset}/corrupted/{corruption}.h5ad"
+
+
+def coordinates(dataset, corruption):
+    return f"{ROOT}/data/{dataset}/coordinates/{corruption}.parquet"
+
+
+CORES = expand(f"{ROOT}/metrics/core/{{dataset}}/{{corruption}}/{{method}}.parquet", dataset=DATASETS, corruption=CORRUPTIONS, method=METHODS)
+DOWNSTREAM = expand(f"{ROOT}/metrics/downstream/{{dataset}}/{{corruption}}/{{method}}.parquet", dataset=DATASETS, corruption=CORRUPTIONS, method=METHODS)
+PERTURB = expand(f"{ROOT}/metrics/perturbation/{{dataset}}/{{corruption}}/{{method}}.parquet", dataset=DATASETS, corruption=CORRUPTIONS, method=METHODS)
+METHOD_PROVENANCE = expand(f"{ROOT}/provenance/run_method/{{dataset}}/{{corruption}}/{{method}}.json", dataset=DATASETS, corruption=CORRUPTIONS, method=METHODS)
+
+
+rule all:
+    input:
+        f"{ROOT}/run_manifest.json",
+        f"{ROOT}/tables/consolidated_metrics.parquet",
+        f"{ROOT}/tables/method_failures.parquet",
+        f"{ROOT}/tables/publication_gate.json",
+
+
+rule run_manifest:
+    output:
+        manifest=f"{ROOT}/run_manifest.json",
+        provenance=f"{ROOT}/provenance/run_manifest.json",
+    conda:
+        "envs/core.yaml"
+    shell:
+        "{CLI} manifest --config {CONFIG_PATH} --output {output.manifest} --provenance {output.provenance}"
+
+
+rule fetch:
+    output:
+        data=f"{ROOT}/data/{{dataset}}/raw.h5ad",
+        provenance=f"{ROOT}/provenance/fetch/{{dataset}}.json",
+    conda:
+        "envs/core.yaml"
+    shell:
+        "{CLI} fetch --config {CONFIG_PATH} --dataset {wildcards.dataset} --output {output.data} --provenance {output.provenance}"
+
+
+rule validate:
+    input:
+        data=lambda wc: raw(wc.dataset),
+    output:
+        report=f"{ROOT}/data/{{dataset}}/validation.json",
+        provenance=f"{ROOT}/provenance/validate/{{dataset}}.json",
+    conda:
+        "envs/core.yaml"
+    shell:
+        "{CLI} validate --config {CONFIG_PATH} --dataset {wildcards.dataset} --input {input.data} --output {output.report} --provenance {output.provenance}"
+
+
+rule preprocess:
+    input:
+        data=lambda wc: raw(wc.dataset),
+        validation=f"{ROOT}/data/{{dataset}}/validation.json",
+    output:
+        data=f"{ROOT}/data/{{dataset}}/preprocessed.h5ad",
+        provenance=f"{ROOT}/provenance/preprocess/{{dataset}}.json",
+    conda:
+        "envs/core.yaml"
+    shell:
+        "{CLI} preprocess --config {CONFIG_PATH} --input {input.data} --output {output.data} --provenance {output.provenance}"
+
+
+rule split:
+    input:
+        data=lambda wc: preprocessed(wc.dataset),
+    output:
+        splits=f"{ROOT}/data/{{dataset}}/splits.parquet",
+        provenance=f"{ROOT}/provenance/split/{{dataset}}.json",
+    conda:
+        "envs/core.yaml"
+    shell:
+        "{CLI} split --config {CONFIG_PATH} --dataset {wildcards.dataset} --input {input.data} --output {output.splits} --provenance {output.provenance}"
+
+
+rule corrupt:
+    input:
+        data=lambda wc: preprocessed(wc.dataset),
+        splits=lambda wc: split_file(wc.dataset),
+    output:
+        data=f"{ROOT}/data/{{dataset}}/corrupted/{{corruption}}.h5ad",
+        coordinates=f"{ROOT}/data/{{dataset}}/coordinates/{{corruption}}.parquet",
+        provenance=f"{ROOT}/provenance/corrupt/{{dataset}}/{{corruption}}.json",
+    conda:
+        "envs/core.yaml"
+    shell:
+        "{CLI} corrupt --config {CONFIG_PATH} --dataset {wildcards.dataset} --corruption {wildcards.corruption} --input {input.data} --splits {input.splits} --output {output.data} --coordinates {output.coordinates} --provenance {output.provenance}"
+
+
+rule run_method:
+    input:
+        data=lambda wc: corrupted(wc.dataset, wc.corruption),
+        coordinates=lambda wc: coordinates(wc.dataset, wc.corruption),
+        splits=lambda wc: split_file(wc.dataset),
+    output:
+        contract=directory(f"{ROOT}/methods/native/{{dataset}}/{{corruption}}/{{method}}"),
+        provenance=f"{ROOT}/provenance/run_method/{{dataset}}/{{corruption}}/{{method}}.json",
+    conda:
+        method_conda
+    params:
+        environment=method_environment
+    shell:
+        "{CLI} run-method --config {CONFIG_PATH} --method {wildcards.method} --input {input.data} --coordinates {input.coordinates} --splits {input.splits} --output {output.contract} --provenance {output.provenance} --environment {params.environment}"
+
+
+rule standardize:
+    input:
+        contract=f"{ROOT}/methods/native/{{dataset}}/{{corruption}}/{{method}}",
+        data=lambda wc: corrupted(wc.dataset, wc.corruption),
+    output:
+        contract=directory(f"{ROOT}/methods/standardized/{{dataset}}/{{corruption}}/{{method}}"),
+        provenance=f"{ROOT}/provenance/standardize/{{dataset}}/{{corruption}}/{{method}}.json",
+    conda:
+        "envs/core.yaml"
+    shell:
+        "{CLI} standardize --config {CONFIG_PATH} --input {input.contract} --input-data {input.data} --output {output.contract} --provenance {output.provenance}"
+
+
+rule core_evaluation:
+    input:
+        truth=lambda wc: preprocessed(wc.dataset),
+        corrupted=lambda wc: corrupted(wc.dataset, wc.corruption),
+        coordinates=lambda wc: coordinates(wc.dataset, wc.corruption),
+        contract=f"{ROOT}/methods/standardized/{{dataset}}/{{corruption}}/{{method}}",
+    output:
+        metrics=f"{ROOT}/metrics/core/{{dataset}}/{{corruption}}/{{method}}.parquet",
+        provenance=f"{ROOT}/provenance/core_evaluation/{{dataset}}/{{corruption}}/{{method}}.json",
+    conda:
+        "envs/core.yaml"
+    shell:
+        "{CLI} core-eval --config {CONFIG_PATH} --dataset {wildcards.dataset} --corruption {wildcards.corruption} --method {wildcards.method} --truth {input.truth} --corrupted {input.corrupted} --coordinates {input.coordinates} --contract {input.contract} --output {output.metrics} --provenance {output.provenance}"
+
+
+rule downstream_evaluation:
+    input:
+        truth=lambda wc: preprocessed(wc.dataset),
+        splits=lambda wc: split_file(wc.dataset),
+        contract=f"{ROOT}/methods/standardized/{{dataset}}/{{corruption}}/{{method}}",
+    output:
+        metrics=f"{ROOT}/metrics/downstream/{{dataset}}/{{corruption}}/{{method}}.parquet",
+        provenance=f"{ROOT}/provenance/downstream_evaluation/{{dataset}}/{{corruption}}/{{method}}.json",
+    conda:
+        "envs/core.yaml"
+    shell:
+        "{CLI} downstream --config {CONFIG_PATH} --dataset {wildcards.dataset} --corruption {wildcards.corruption} --method {wildcards.method} --truth {input.truth} --splits {input.splits} --contract {input.contract} --output {output.metrics} --provenance {output.provenance}"
+
+
+rule perturbation_evaluation:
+    input:
+        contract=f"{ROOT}/methods/standardized/{{dataset}}/{{corruption}}/{{method}}",
+    output:
+        metrics=f"{ROOT}/metrics/perturbation/{{dataset}}/{{corruption}}/{{method}}.parquet",
+        provenance=f"{ROOT}/provenance/perturbation_evaluation/{{dataset}}/{{corruption}}/{{method}}.json",
+    conda:
+        "envs/core.yaml"
+    shell:
+        "{CLI} perturb --config {CONFIG_PATH} --dataset {wildcards.dataset} --corruption {wildcards.corruption} --method {wildcards.method} --contract {input.contract} --output {output.metrics} --provenance {output.provenance}"
+
+
+rule aggregate:
+    input:
+        core=CORES,
+        downstream=DOWNSTREAM,
+        perturb=PERTURB,
+        method_provenance=METHOD_PROVENANCE,
+    output:
+        metrics=f"{ROOT}/tables/consolidated_metrics.parquet",
+        failures=f"{ROOT}/tables/method_failures.parquet",
+        gate=f"{ROOT}/tables/publication_gate.json",
+        provenance=f"{ROOT}/provenance/aggregate.json",
+    conda:
+        "envs/core.yaml"
+    shell:
+        "{CLI} aggregate --config {CONFIG_PATH} --core {input.core} --downstream {input.downstream} --perturb {input.perturb} --method-provenance {input.method_provenance} --output {output.metrics} --failures {output.failures} --gate {output.gate} --provenance {output.provenance}"

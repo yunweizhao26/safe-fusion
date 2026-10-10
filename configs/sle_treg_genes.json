@@ -1,0 +1,16 @@
+{
+  "description": "Fixed genes of the SLE Treg case study. They are appended to the variable genes of every donor fold. Lineage groups name the author lineage whose cells express them.",
+  "focus": ["TLR5", "FCRL3"],
+  "treg_suppressive": ["FOXP3", "IL2RA", "CTLA4", "IKZF2", "TIGIT", "TNFRSF18", "TNFRSF4", "LRRC32", "ENTPD1", "IKZF4"],
+  "sex_x": ["XIST"],
+  "sex_y": ["RPS4Y1", "DDX3Y", "UTY", "KDM5D", "EIF1AY", "ZFY", "USP9Y"],
+  "lineage": {
+    "B": ["MS4A1", "CD79A", "CD79B"],
+    "CD8_T": ["CD8A", "CD8B"],
+    "Monocyte": ["LYZ", "CD14", "S100A8"],
+    "NK": ["NKG7", "GNLY"],
+    "Erythrocyte": ["HBB"]
+  },
+  "treg_exclusive_lineages": ["B", "CD8_T", "Monocyte"],
+  "interferon": ["IFI27", "IFI44L", "IFIT1", "IFIT3", "ISG15", "MX1", "RSAD2", "OAS1", "SIGLEC1", "IFI6", "EPSTI1", "HERC5"]
+}

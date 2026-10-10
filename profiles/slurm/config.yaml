@@ -1,0 +1,20 @@
+executor: slurm
+jobs: 64
+use-conda: true
+rerun-incomplete: true
+printshellcmds: true
+show-failed-logs: true
+latency-wait: 120
+default-resources:
+  - mem_mb=8000
+  - runtime=120
+  - cpus_per_task=1
+set-resources:
+  run_method:
+    mem_mb: 32000
+    runtime: 720
+    cpus_per_task: 4
+  downstream_evaluation:
+    mem_mb: 32000
+    runtime: 480
+    cpus_per_task: 4
